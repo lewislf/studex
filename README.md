@@ -68,20 +68,59 @@ sistema.
 
 ## Documentação do Código
 
-Será utilizado Jsdoc para o Front-End e Pydoc para o Back-End
+A documentação do projeto será gerada automaticamente através das ferramentas JSDoc e PyDoc.
+
+- Como gerar documentação para o front-end:
+
+```bash
+cd frontend
+npm run docs
+```
+
+- Como gerar documentação para o back-end:
+
+```bash
+cd backend
+python -m pydoc -w .
+```
+
+A documentação gerada pelo PyDoc é derivada da docstring (i.e. atributo `__doc__`).
 
 <p>
 <img width="150" height="100" src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmiro.medium.com%2Fv2%2Fresize%3Afit%3A1200%2F1*lnghcjKEV-lAxd0x6nQKuQ.png&f=1&nofb=1&ipt=0ee4ca086838cfa31038a2e44bc550520c6ad300fb79e8ac52c43404dd49c79e" /> 
   <img width="150" height="100" src="https://github.com/user-attachments/assets/2a02f6fb-7235-41cc-a6e2-a8405cd72fc7" />
 </p>
 
-
-
 ## Execução
+
+```bash
+# Clone o repositório
+git clone https://github.com/lewislf/studex.git
+cd studex
+
+# Crie o ambiente virtual
+conda create -n studex python=3.11
+conda activate studex
+
+pip install -r requirements.txt
+
+# Rodar o Backend
+cd backend
+python3 main.py
+
+# Rodar o frontend
+npm install
+npm run dev
+```
 
 ## Tecnologias Utilizadas
 
-Controle de versão: Git
+### DevOps e Ferramentas
+
+- Git
+- GitHub
+- Miniconda
+- npm
 
 ### Back-End
 
@@ -125,3 +164,4 @@ Controle de versão: Git
 
 ## Licença
 
+Este projeto está licenciado sob a licença MIT. Consulte o arquivo LICENSE para mais informações.
