@@ -105,10 +105,11 @@ conda activate studex
 pip install -r requirements.txt
 
 # Rodar o Backend
-cd backend
+cd backend/src
 python3 main.py
 
 # Rodar o frontend
+cd frontend/src
 npm install
 npm run dev
 ```
