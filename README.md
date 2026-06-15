@@ -75,6 +75,8 @@ A documentação do projeto será gerada automaticamente através das ferramenta
 ```bash
 cd frontend
 npm run docs
+# Abra a documentação no navegador de sua preferência (Chrome, Firefox, Brave, etc.)
+firefox docs/index.html
 ```
 
 - Como gerar documentação para o back-end:
@@ -159,7 +161,7 @@ npm run dev
 
 ## Contribuidores
 
-<a href="https://github.com/Artur-SLO"> <img src="https://github.com/ArturSLO.png" width="100" alt="Artur" /> </a>
+<a href="https://github.com/Artur-SLO"> <img src="https://github.com/Artur-SLO.png" width="100" alt="Artur" /> </a>
 <a href="https://github.com/FeLiPeOLi7"> <img src="https://github.com/FeLiPeOLi7.png" width="100" alt="Felipe" /> </a>
 <a href="https://github.com/lewislf"> <img src="https://github.com/lewislf.png" width="100" alt="Luis" /> </a> 
 
