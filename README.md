@@ -159,7 +159,7 @@ npm run dev
 
 ## Contribuidores
 
-<a href="https://github.com/ArturSLO"> <img src="https://github.com/ArturSLO.png" width="100" alt="Artur" /> </a>
+<a href="https://github.com/Artur-SLO"> <img src="https://github.com/ArturSLO.png" width="100" alt="Artur" /> </a>
 <a href="https://github.com/FeLiPeOLi7"> <img src="https://github.com/FeLiPeOLi7.png" width="100" alt="Felipe" /> </a>
 <a href="https://github.com/lewislf"> <img src="https://github.com/lewislf.png" width="100" alt="Luis" /> </a> 
 
