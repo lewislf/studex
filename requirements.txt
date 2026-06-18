@@ -1,0 +1,4 @@
+# Documentação do código (MkDocs + mkdocstrings)
+mkdocs
+mkdocs-material
+mkdocstrings[python]
