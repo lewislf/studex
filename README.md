@@ -93,8 +93,8 @@ A documentação gerada pelo MkDocs (com o plugin `mkdocstrings`) é derivada da
 docstrings do código Python, de forma análoga ao JSDoc.
 
 <p>
-<img width="150" height="100" src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmiro.medium.com%2Fv2%2Fresize%3Afit%3A1200%2F1*lnghcjKEV-lAxd0x6nQKuQ.png&f=1&nofb=1&ipt=0ee4ca086838cfa31038a2e44bc550520c6ad300fb79e8ac52c43404dd49c79e" /> 
-  <img width="150" height="100" src="https://github.com/user-attachments/assets/2a02f6fb-7235-41cc-a6e2-a8405cd72fc7" />
+  <img width="180" height="120" src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmiro.medium.com%2Fv2%2Fresize%3Afit%3A1200%2F1*lnghcjKEV-lAxd0x6nQKuQ.png&f=1&nofb=1&ipt=0ee4ca086838cfa31038a2e44bc550520c6ad300fb79e8ac52c43404dd49c79e" /> 
+  <img width="180" height="120" src="https://github.com/user-attachments/assets/bb1c48e4-44df-44cb-93a1-5b8ce9ea4d14" />
 </p>
 
 ## Execução
