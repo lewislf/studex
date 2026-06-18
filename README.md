@@ -68,7 +68,7 @@ sistema.
 
 ## Documentação do Código
 
-A documentação do projeto será gerada automaticamente através das ferramentas JSDoc e PyDoc.
+A documentação do projeto será gerada automaticamente através das ferramentas JSDoc e MkDocs.
 
 - Como gerar documentação para o front-end:
 
@@ -83,10 +83,14 @@ firefox docs/index.html
 
 ```bash
 cd backend
-python -m pydoc -w .
+# Você pode gerar os arquivos estáticos na pasta site/
+mkdocs build
+# Ou Servir localmente com hot-reload (abre em http://127.0.0.1:8000)
+mkdocs serve
 ```
 
-A documentação gerada pelo PyDoc é derivada da docstring (i.e. atributo `__doc__`).
+A documentação gerada pelo MkDocs (com o plugin `mkdocstrings`) é derivada das
+docstrings do código Python, de forma análoga ao JSDoc.
 
 <p>
 <img width="150" height="100" src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmiro.medium.com%2Fv2%2Fresize%3Afit%3A1200%2F1*lnghcjKEV-lAxd0x6nQKuQ.png&f=1&nofb=1&ipt=0ee4ca086838cfa31038a2e44bc550520c6ad300fb79e8ac52c43404dd49c79e" /> 
