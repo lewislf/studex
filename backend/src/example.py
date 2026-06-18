@@ -27,7 +27,7 @@ class Usuario:
         Args:
             name: Nome do usuário.
             email: Endereço de e-mail do usuário.
-            hash_password (str): Hash da senha do usuário.
+            hash_password: Hash da senha do usuário.
         """
         self.name = name
         self.email = email
