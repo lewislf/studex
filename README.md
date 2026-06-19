@@ -19,7 +19,8 @@
 * [Arquitetura](#arquitetura)
 * [Como gerar a Documentação do Código](#documentação-do-código)
 * [Execução](#execução) 
-* [Tecnologias utilizadas](#tecnologias-utilizadas) 
+* [Tecnologias utilizadas](#tecnologias-utilizadas)
+* [Diagrama de Classes](#diagrama-de-classes)
 * [Telas](#telas)
 * [Pessoas Contribuidoras](#contribuidores) 
 * [Licença](#licença) 
@@ -154,6 +155,11 @@ npm run dev
 - Material UI
 - Lucide Icons
 - Vitest
+
+## Diagrama de Classes
+
+<img width="3269" height="2249" alt="Classe UML" src="https://github.com/user-attachments/assets/b05536b8-dff4-4edd-a578-21401cb43156" />
+
 
 ## Telas
 
