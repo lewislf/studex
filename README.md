@@ -158,7 +158,7 @@ npm run dev
 
 ## Diagrama de Classes
 
-<img width="3269" height="2249" alt="Classe UML" src="https://github.com/user-attachments/assets/b05536b8-dff4-4edd-a578-21401cb43156" />
+<img width="3158" height="2197" alt="StudexUML" src="https://github.com/user-attachments/assets/88448d27-da89-47ee-973a-1a679b314d76" />
 
 
 ## Telas
