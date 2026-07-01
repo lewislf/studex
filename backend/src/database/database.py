@@ -72,7 +72,7 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
             """
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
                 email TEXT NOT NULL UNIQUE,
                 passwd_encrypted BLOB NOT NULL 
             );
@@ -97,12 +97,17 @@ def save_user(name: str, passwd: str, email: str, db_path: Path = DB_PATH, key_p
         cur = conn.cursor()
 
         cur.execute("BEGIN")
-        cur.execute("INSERT INTO users(passwd_encrypted)", (encrypted_passwd,))
-        cur.execute("INSERT INTO users(name)", (name))
-        cur.execute("INSERT INTO users(email)", (email))
+        query = """
+            INSERT INTO users (name, email, passwd_encrypted) 
+            VALUES (?, ?, ?)
+        """
+
+        cur.execute(query, (name, email, encrypted_passwd))
+
+        #user_id = cur.lastrowid()
 
         conn.commit()
-        return user_id
+        #return user_id
 
 
 def search_user(
