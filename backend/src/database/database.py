@@ -7,6 +7,7 @@ from typing import Any
 from cryptography.fernet import Fernet
 import numpy as np
 
+from user import Usuario
 
 DB_PATH = Path("users.db")
 KEY_PATH = Path("db_key.key")
@@ -63,7 +64,6 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
     Create the database and tables if they do not exist
         - users: stores the user_id, name, email and encrypted password.
     """
-    
     _get_or_create_key(key_path)
 
     with _open_connection(db_path) as conn:
@@ -83,13 +83,12 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
     return None
 
 
-def save_user(name: str, passwd: str, email: str, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int:
+def save_user_db(name: str, passwd: str, email: str, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int:
     """
     Register a new user in the database. 
     
     Returns the user_id of the new entry.
     """
-
     key = _get_or_create_key(key_path)
     encrypted_passwd = _encrypt_passwd(passwd, key)
     
@@ -97,51 +96,50 @@ def save_user(name: str, passwd: str, email: str, db_path: Path = DB_PATH, key_p
         cur = conn.cursor()
 
         cur.execute("BEGIN")
-        query = """
+        ins = """
             INSERT INTO users (name, email, passwd_encrypted) 
             VALUES (?, ?, ?)
         """
 
-        cur.execute(query, (name, email, encrypted_passwd))
+        cur.execute(ins, (name, email, encrypted_passwd))
 
         #user_id = cur.lastrowid()
 
         conn.commit()
+        return 0
         #return user_id
 
 
-def search_user(
-    email: str,
+def get_users_db(
+    name: str,
     db_path: Path = DB_PATH,
     key_path: Path = KEY_PATH,
-) -> dict[str, Any] | None:
+) -> list | None:
     """
-    Try to search a user with the email
+    Try to search a user with the name
 
-    Returns a dict if we have a match, else returns None
+    Returns the list of users with the same name
     """
 
     with _open_connection(db_path) as conn:
-        user_id = None
-        distance = None
+        rows = conn.execute("""SELECT name, email, passwd_encrypted 
+                                    FROM users 
+                                    WHERE name LIKE ?""", (f"%{name}%",)).fetchall()  
+        
+        users = []
+        for name, email, hash_passwd in rows:
+            users.append(Usuario(name, email, hash_passwd))
+        
+        return users
 
-        # Fallback when we don't have sqlite-vec our SQL didn't return any candidate
-        if user_id is None:
-            candidates = conn.execute("SELECT user_id, email FROM users").fetchall()
-            if not candidates:
-                return None
 
-            return candidates
-
-
-def delete_person(user_id: int, db_path: Path = DB_PATH) -> bool:
+def delete_person_db(user_id: int, db_path: Path = DB_PATH) -> bool:
     """
     Atomic deletion of a user by user_id. (LGPD - Right to be forgotten)
     
     Returns True if a user was deleted, False if no such user_id exists.
     """
     with _open_connection(db_path) as conn:
-        vec_enabled = _load_sqlite_vec(conn)
         cur = conn.cursor()
         cur.execute("BEGIN")
         cur.execute("DELETE FROM users WHERE id = ?", (int(user_id),))
@@ -150,7 +148,7 @@ def delete_person(user_id: int, db_path: Path = DB_PATH) -> bool:
         return deleted
 
 
-def count_people(db_path: Path = DB_PATH) -> int:
+def count_people_db(db_path: Path = DB_PATH) -> int:
     """
     Returns the total number of registered people in the database.
     """
@@ -158,12 +156,10 @@ def count_people(db_path: Path = DB_PATH) -> int:
         row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
         return int(row[0]) if row else 0
 
-def print_all_people(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
+def print_all_people_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
     """
     Prints all registered users.
     """
-    key = _get_or_create_key(key_path)
-
     with _open_connection(db_path) as conn:
         rows = conn.execute("SELECT id, name FROM users").fetchall()
         print("Registered people:")
