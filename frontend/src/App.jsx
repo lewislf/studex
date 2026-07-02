@@ -1,7 +1,7 @@
 // Mantine imports
 import '@mantine/core/styles.css';
 import { MantineProvider } from '@mantine/core';
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 
 export default function App() {
     return (
