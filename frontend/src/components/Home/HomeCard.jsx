@@ -1,12 +1,16 @@
 import { Card, Text, Group, Space } from '@mantine/core';
 import styles from '../../styles/Home/Home.module.css'
 
+/**
+ * A customizable generic card subcomponent designed to render status items and metrics.
+ * Supports side-by-side flexbox alignment containing labels, numerical values, and dynamic raw icons.
+ */
 export default function HomeCard({title, text, Icon, iconColor = 'orange'}) {
     return (
         <Card shadow="md" padding="xl" className={styles.card}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
 
-                {/* Textos */}
+                {/* Text */}
                 <div style={{ flex: 1 }}>
                     <Text fw={500} size="lg">
                         {title}

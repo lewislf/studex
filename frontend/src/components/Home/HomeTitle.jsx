@@ -1,6 +1,9 @@
 import { Space, Stack, Text, Title } from "@mantine/core";
 import styles from '../../styles/Home/Home.module.css'
 
+/**
+ * Standard welcoming layout block.
+ */
 export default function HomeTitle({name, totalFlashcards}) {
     return (
         <Stack className={styles.title}>

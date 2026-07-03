@@ -1,6 +1,9 @@
 import { Text, ThemeIcon, Card } from '@mantine/core';
 import classes from '../../styles/Mantine/CreationCard.module.css';
 
+/**
+ * A specialty card variant optimized for grid item selection layouts.
+ */
 export default function HomeCreationCard({ icon: Icon, title, description, color }) {
     return (
         <Card shadow="sm" padding="xl" radius="md" withBorder className={classes.card}>

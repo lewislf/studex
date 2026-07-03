@@ -2,6 +2,7 @@ import { IconFileText, IconSitemap, IconCards } from '@tabler/icons-react';
 import { SimpleGrid, Stack, Title } from '@mantine/core';
 import HomeCreationCard from './HomeCreationCard';
 
+// Core layout configuration data for the content creation options
 const DATA = [
     {
         icon: IconFileText,
@@ -23,6 +24,9 @@ const DATA = [
     },
 ];
 
+/**
+ * Renders a grid section presenting options to generate study resources from raw data.
+ */
 export default function HomeCreationGrid() {
     const cards = DATA.map((item) => <HomeCreationCard {...item} key={item.title} />);
 
