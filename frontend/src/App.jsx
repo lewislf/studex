@@ -15,14 +15,11 @@ export default function App() {
             </AppShell.Header>
 
             {/* Content */}
-            <AppShell.Main>
+            <AppShell.Main bg="blue.3">
                 <Outlet />
             </AppShell.Main>
 
-            {/* Footer */}
-            <AppShell.Footer>
-                <Footer />
-            </AppShell.Footer>
+            <Footer />
         </AppShell>
     );
 }

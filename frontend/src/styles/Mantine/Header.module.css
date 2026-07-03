@@ -1,6 +1,5 @@
 .header {
     height: 56px;
-    margin-bottom: 120px;
     background-color: var(--mantine-color-body);
 }
 
@@ -9,6 +8,14 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+}
+
+.subjects {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
 }
 
 .link {
@@ -31,7 +38,7 @@
     }
 
     [data-mantine-color-scheme] &[data-active] {
-        background-color: var(--mantine-color-blue-filled);
+        background-color: var(--mantine-color-blue-3);
         color: var(--mantine-color-white);
     }
 }

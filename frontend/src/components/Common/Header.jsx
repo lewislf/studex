@@ -27,7 +27,7 @@ export default function Header() {
         <header className={classes.header}>
             <Container size="xl" className={classes.inner}>
                 <Title order={3} c="black">Studex</Title>
-                <Group gap={3} visibleFrom="xs">
+                <Group gap={3} visibleFrom="xs" className={classes.subjects}>
                     {items}
                 </Group>
             </Container>
