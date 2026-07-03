@@ -19,7 +19,7 @@ export default function Home() {
                 {/* Greeting banner introducing */}
                 <HomeTitle
                     name={user.name}
-                    totalFlashcards={user.counters.totalFlashcardsCreated}
+                    totalFlashcards={user.counters.pendingFlashcardsToday}
                 />
 
                 {/* Gamification tracking grid */}
