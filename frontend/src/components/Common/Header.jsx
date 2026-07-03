@@ -2,12 +2,18 @@ import { Container, Group, Title, Avatar } from '@mantine/core';
 import { Link, useLocation } from 'react-router';
 import classes from '../../styles/Mantine/Header.module.css';
 
+// Routing Configuration
 const links = [
     { link: '/', label: 'Home' },
     { link: '/revisoes', label: 'Revisões' },
     { link: '/materias', label: 'Matérias' },
     { link: '/estatisticas', label: 'Estatísticas' },
 ];
+
+/**
+ * Main application header navigation bar.
+ * Provides sticky/top accessibility across all view segments and tracks current active location.
+ */
 export default function Header({name, avatarUrl}) { const location = useLocation();
 
     const items = links.map((link) => (

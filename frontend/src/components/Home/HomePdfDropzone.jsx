@@ -64,7 +64,7 @@ export default function HomePdfDropzone() {
 
         // Map contextual feedback text matching the dynamic validation error code
         const reason = fileRejections[0]?.errors[0]?.code === 'file-too-large' 
-            ? 'O arquivo excede o limite de 50MB.' 
+            ? 'O arquivo excede o limite de 250MB.'
             : 'Formato inválido. Apenas arquivos .pdf são aceitos.';
 
         notifications.show({
@@ -84,7 +84,7 @@ export default function HomePdfDropzone() {
                 className={classes.dropzone}
                 radius="md"
                 accept={[MIME_TYPES.pdf]}
-                maxSize={50 * 1024 ** 2} // 50MB maximum threshold limit
+                maxSize={250 * 1024 ** 2} // Updated threshold constraint limit to 250MB
                 loading={loading}        // Displays native Mantine loading background overlay during uploads
                 aria-label="Upload PDF"
             >

@@ -2,6 +2,10 @@ import { Button, Container, Group, Text, Title } from '@mantine/core';
 import { useNavigate } from 'react-router';
 import classes from '../../styles/Mantine/ErrorPage.module.css';
 
+/**
+ * Standard HTTP 404 Error View Component.
+ * Intercepts broken routes or invalid application states and provides navigation safety paths.
+ */
 export default function ErrorPage() {
     const navigate = useNavigate();
 
