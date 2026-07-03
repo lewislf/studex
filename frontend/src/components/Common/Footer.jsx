@@ -27,7 +27,7 @@ export default function Footer() {
     return (
         <div className={classes.footer}>
             <Container size="xl" className={classes.inner}>
-                <Title order={3}>Studex</Title>
+                <Title order={3} className={classes.title}>Studex</Title>
 
                 <Group className={classes.links}>{items}</Group>
 

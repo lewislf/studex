@@ -3,6 +3,10 @@
     background-color: var(--mantine-color-body);
 }
 
+.title {
+    user-select: none;
+}
+
 .inner {
     height: 56px;
     display: flex;

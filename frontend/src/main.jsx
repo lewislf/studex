@@ -11,9 +11,9 @@ import routes from "./routes.jsx";
 import { createBrowserRouter, RouterProvider } from "react-router";
 const router = createBrowserRouter(routes);
 
-// Default css
-import './styles/root.css'
-import './styles/reset.css'
+// // Default css
+// import './styles/root.css'
+// import './styles/reset.css'
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>
