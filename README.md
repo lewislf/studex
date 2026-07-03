@@ -75,6 +75,10 @@ sistema.
 git clone https://github.com/lewislf/studex.git
 cd studex
 
+# Lembre-se de ativar o Conda
+conda init
+source ~/.bashrc
+
 # Crie o ambiente virtual
 conda create -n studex python=3.11
 conda activate studex
