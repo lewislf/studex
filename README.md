@@ -19,6 +19,7 @@
 * [Arquitetura](#arquitetura)
 * [Como gerar a Documentação do Código](#documentação-do-código)
 * [Execução](#execução) 
+* [Testes](#testes)
 * [Tecnologias utilizadas](#tecnologias-utilizadas)
 * [Diagrama de Classes](#diagrama-de-classes)
 * [Telas](#telas)
@@ -115,10 +116,20 @@ pip install -r requirements.txt
 cd backend/src
 python3 main.py
 
-# Rodar o frontend
+# Rodar o frontend (lembre-se de rodar em outro terminal e ativar o ambiente virtual)
 cd frontend/src
 npm install
 npm run dev
+```
+
+## Testes
+
+Testes unitários utilizando PyTest para o Backend e Vitest para o Front-end
+
+```bash
+# Rodar testes unitários para o Backend
+cd backend/src
+python -m pytest
 ```
 
 ## Tecnologias Utilizadas

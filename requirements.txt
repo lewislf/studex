@@ -4,11 +4,13 @@ certifi==2026.6.17
 cffi @ file:///home/conda/feedstock_root/build_artifacts/cffi_1761202849623/work
 charset-normalizer==3.4.7
 click==8.4.2
-colorama==0.4.6
+colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
 cryptography @ file:///home/conda/feedstock_root/build_artifacts/cryptography-split_1781385263074/work
+exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1763918002538/work
 ghp-import==2.1.0
 griffelib==2.1.0
 idna==3.18
+iniconfig @ file:///home/conda/feedstock_root/build_artifacts/iniconfig_1760831328738/work
 Jinja2==3.1.6
 Markdown==3.10.2
 MarkupSafe==3.0.3
@@ -25,13 +27,17 @@ packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_
 paginate==0.5.7
 pathspec==1.1.1
 platformdirs==4.10.0
+pluggy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pluggy_1764896838/work
 pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1779293633/work
-Pygments==2.20.0
+Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1774796700044/work
 pymdown-extensions==11.0
+pytest @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pytest_1782127176/work
 python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 pyyaml_env_tag==1.1
 requests==2.34.2
 six==1.17.0
+tomli @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_tomli_1774492402/work
+typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_typing_extensions_1783002732/work
 urllib3==2.7.0
 watchdog==6.0.0

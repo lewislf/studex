@@ -21,7 +21,7 @@ class Usuario:
         **Output:** 'Olá, Ana!'
     """
 
-    def __init__(self, name: str, email: str, hash_password: bytes) -> None:
+    def __init__(self, name: str, email: str, hash_password: bytes, id=None) -> None:
         """Inicializa um novo usuário.
 
         Args:
