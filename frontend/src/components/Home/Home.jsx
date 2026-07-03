@@ -1,16 +1,29 @@
 import { Container, Stack } from "@mantine/core";
 import HomeTitle from "./HomeTitle";
-import { parseUserProfile } from '../../utils/userHelpers.js'
-import mock from '../../config/userProfileMock.json'
+import HomeStats from "./HomeStats.jsx";
 import styles from '../../styles/Home/Home.module.css'
+import { useOutletContext } from "react-router";
+import HomeCreationGrid from "./CreationGrid.jsx";
+import HomePdfDropzone from "./HomePdfDropzone.jsx";
 
 export default function Home() {
-    const user = parseUserProfile(mock);
+    const user = useOutletContext();
 
     return (
         <Container size="xl" className={styles.container}>
-            <Stack>
-                <HomeTitle name={user.name} totalFlashcards={user.gamification.streak}/>
+            <Stack gap="xl">
+                <HomeTitle
+                    name={user.name}
+                    totalFlashcards={user.counters.totalFlashcardsCreated}
+                />
+                <HomeStats
+                    streak={user.gamification.streak}
+                    summaries={user.counters.summariesCount}
+                    mind_maps={user.counters.mapsCount}
+                    today={user.counters.pendingFlashcardsToday}
+                />
+                <HomeCreationGrid />
+                <HomePdfDropzone />
             </Stack>
         </Container>
     )
