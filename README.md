@@ -17,8 +17,9 @@
 * [Descrição do Projeto](#descrição) 
 * [Funcionalidades](#funcionalidades)
 * [Arquitetura](#arquitetura)
-* [Execução](#execução) 
-* [Como gerar a Documentação do Código](#documentação-do-código)
+* [Execução](#execução)
+* [Como gerar a Documentação do Código](#documentação-do-código) 
+* [Testes](#testes)
 * [Tecnologias utilizadas](#tecnologias-utilizadas)
 * [Diagrama de Classes](#diagrama-de-classes)
 * [Telas](#telas)
@@ -74,10 +75,6 @@ sistema.
 git clone https://github.com/lewislf/studex.git
 cd studex
 
-# Lembrete, ative o conda antes de rodar!!!
-conda init
-source ~/.bashrc
-
 # Crie o ambiente virtual
 conda create -n studex python=3.11
 conda activate studex
@@ -88,7 +85,7 @@ pip install -r requirements.txt
 cd backend/src
 python3 main.py
 
-# Rodar o frontend
+# Rodar o frontend (lembre-se de rodar em outro terminal e ativar o ambiente virtual)
 cd frontend/src
 npm install
 npm run dev
@@ -124,6 +121,16 @@ docstrings do código Python, de forma análoga ao JSDoc.
   <img width="180" height="120" src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmiro.medium.com%2Fv2%2Fresize%3Afit%3A1200%2F1*lnghcjKEV-lAxd0x6nQKuQ.png&f=1&nofb=1&ipt=0ee4ca086838cfa31038a2e44bc550520c6ad300fb79e8ac52c43404dd49c79e" /> 
   <img width="180" height="120" src="https://github.com/user-attachments/assets/bb1c48e4-44df-44cb-93a1-5b8ce9ea4d14" />
 </p>
+
+## Testes
+
+Testes unitários utilizando PyTest para o Backend e Vitest para o Front-end
+
+```bash
+# Rodar testes unitários para o Backend
+cd backend/src
+python -m pytest
+```
 
 ## Tecnologias Utilizadas
 
