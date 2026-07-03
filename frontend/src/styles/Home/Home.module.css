@@ -1,0 +1,10 @@
+.container {
+    height: 100vh;
+
+    padding: var(--mantine-spacing-xl);
+    margin: var(--mantine-spacing-xl);
+
+    background-color: var(--mantine-color-default);
+
+    border-radius: var(--mantine-radius-lg);
+}

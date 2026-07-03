@@ -1,0 +1,75 @@
+{
+    "user_id": "usr_placeholder_id",
+    "subjects": [
+        {
+            "id": "mat_101",
+            "title": "Redes",
+            "icon": "globe",
+            "color": "#e63946",
+            "total_topics": 11,
+            "mastery_percentage": 55,
+            "pending_in_queue": 10,
+            "counters": {
+                "summaries": 1,
+                "mind_maps": 2,
+                "flashcards": 10
+            }
+        },
+        {
+            "id": "mat_102",
+            "title": "Projeto Integrado",
+            "icon": "rocket",
+            "color": "#ffb703",
+            "total_topics": 11,
+            "mastery_percentage": 99,
+            "pending_in_queue": 20,
+            "counters": {
+                "summaries": 25,
+                "mind_maps": 30,
+                "flashcards": 298
+            }
+        },
+        {
+            "id": "mat_103",
+            "title": "Engenharia de Software 1",
+            "icon": "user-teacher",
+            "color": "#fb8500",
+            "total_topics": 11,
+            "mastery_percentage": 67,
+            "pending_in_queue": 10,
+            "counters": {
+                "summaries": 8,
+                "mind_maps": 3,
+                "flashcards": 98
+            }
+        },
+        {
+            "id": "mat_104",
+            "title": "Engenharia de Software 2",
+            "icon": "users",
+            "color": "#4361ee",
+            "total_topics": 11,
+            "mastery_percentage": 38,
+            "pending_in_queue": 15,
+            "counters": {
+                "summaries": 6,
+                "mind_maps": 1,
+                "flashcards": 48
+            }
+        },
+        {
+            "id": "mat_105",
+            "title": "Banco de Dados",
+            "icon": "database",
+            "color": "#2ec4b6",
+            "total_topics": 11,
+            "mastery_percentage": 67,
+            "pending_in_queue": 10,
+            "counters": {
+                "summaries": 8,
+                "mind_maps": 3,
+                "flashcards": 98
+            }
+        }
+    ]
+}
