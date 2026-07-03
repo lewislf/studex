@@ -1,0 +1,15 @@
+{
+    "user_id": "usr_placeholder_id",
+    "stats_distribution": {
+        "categories": [
+            { "label": "Línguas Estrangeiras", "percentage": 34.35, "color": "#1976d2" },
+            { "label": "Medicina", "percentage": 33.93, "color": "#2ec4b6" },
+            { "label": "História", "percentage": 19.25, "color": "#ff9f1c" },
+            { "label": "Programação", "percentage": 6.51, "color": "#9b5de5" },
+            { "label": "Outros", "percentage": 5.97, "color": "#e0e0e0" }
+        ]
+    },
+    "activity_heatmap": {
+        "2026-06-01": 2, "2026-06-02": 4, "2026-07-01": 1, "2026-07-02": 5
+    }
+}

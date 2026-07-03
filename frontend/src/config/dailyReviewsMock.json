@@ -1,0 +1,53 @@
+{
+    "user_id": "usr_placeholder_id",
+    "summary": {
+        "total_pending": 18,
+        "estimated_time_minutes": 14,
+        "split": {
+            "new": 3,
+            "learning": 6,
+            "review": 9
+        }
+    },
+    "decks_today": [
+        {
+            "subject_id": "mat_01",
+            "subject_name": "Cálculo I",
+            "subtitle": "Derivadas Parciais",
+            "color": "#9b5de5",
+            "new": 2,
+            "learning": 3,
+            "review": 3,
+            "total_cards": 8
+        },
+        {
+            "subject_id": "mat_02",
+            "subject_name": "Física II",
+            "subtitle": "Leis de Kirchhoff",
+            "color": "#2ec4b6",
+            "new": 1,
+            "learning": 2,
+            "review": 3,
+            "total_cards": 6
+        },
+        {
+            "subject_id": "mat_03",
+            "subject_name": "Química Geral",
+            "subtitle": "Ligações Iônicas",
+            "color": "#ff9f1c",
+            "new": 0,
+            "learning": 1,
+            "review": 3,
+            "total_cards": 4
+        }
+    ],
+    "next_7_days_projection": [
+        { "day_offset": 0, "cards_count": 18 },
+        { "day_offset": 1, "cards_count": 14 },
+        { "day_offset": 2, "cards_count": 9 },
+        { "day_offset": 3, "cards_count": 22 },
+        { "day_offset": 4, "cards_count": 7 },
+        { "day_offset": 5, "cards_count": 0, "is_free": true },
+        { "day_offset": 6, "cards_count": 11 }
+    ]
+}

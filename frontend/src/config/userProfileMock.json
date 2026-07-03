@@ -1,0 +1,18 @@
+{
+    "id": "usr_placeholder_id",
+    "profile": {
+        "display_name": "João Silva",
+        "email": "user@example.com",
+        "photo": "../assets/generic-profile.svg"
+    },
+    "gamification": {
+        "current_streak": 32,
+        "active_yesterday": true
+    },
+    "counters": {
+        "summaries": 24,
+        "mind_maps": 7,
+        "pending_flashcards_today": 18,
+        "total_flashcards_created": 1247
+    }
+}
