@@ -5,6 +5,16 @@
 
 .title {
     user-select: none;
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.profile {
+    user-select: none;
+}
+
+.title:hover {
+    transform: scale(1.05);
+    color: var(--mantine-color-blue-6);
 }
 
 .inner {
@@ -45,4 +55,12 @@
         background-color: var(--mantine-color-blue-3);
         color: var(--mantine-color-white);
     }
+
+    transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
+
+.link:hover {
+    background-color: var(--mantine-color-blue-3);
+    color: var(--mantine-color-white);
+}
+
