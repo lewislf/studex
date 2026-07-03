@@ -1,4 +1,43 @@
-# Documentação do código (MkDocs + mkdocstrings)
-mkdocs
-mkdocs-material
-mkdocstrings[python]
+babel==2.18.0
+backrefs==7.0
+certifi==2026.6.17
+cffi @ file:///home/conda/feedstock_root/build_artifacts/cffi_1761202849623/work
+charset-normalizer==3.4.7
+click==8.4.2
+colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
+cryptography @ file:///home/conda/feedstock_root/build_artifacts/cryptography-split_1781385263074/work
+exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1763918002538/work
+ghp-import==2.1.0
+griffelib==2.1.0
+idna==3.18
+iniconfig @ file:///home/conda/feedstock_root/build_artifacts/iniconfig_1760831328738/work
+Jinja2==3.1.6
+Markdown==3.10.2
+MarkupSafe==3.0.3
+mergedeep==1.3.4
+mkdocs==1.6.1
+mkdocs-autorefs==1.4.4
+mkdocs-get-deps==0.2.2
+mkdocs-material==9.7.6
+mkdocs-material-extensions==1.3.1
+mkdocstrings==1.0.4
+mkdocstrings-python==2.0.5
+numpy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_numpy_1779169198/work/dist/numpy-2.4.6-cp311-cp311-linux_x86_64.whl#sha256=9f5ed645865bdd41eb671568973753a710fda708ed74e7a0b4acf98e7a7a2970
+packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1777103621/work
+paginate==0.5.7
+pathspec==1.1.1
+platformdirs==4.10.0
+pluggy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pluggy_1764896838/work
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1779293633/work
+Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1774796700044/work
+pymdown-extensions==11.0
+pytest @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pytest_1782127176/work
+python-dateutil==2.9.0.post0
+PyYAML==6.0.3
+pyyaml_env_tag==1.1
+requests==2.34.2
+six==1.17.0
+tomli @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_tomli_1774492402/work
+typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_typing_extensions_1783002732/work
+urllib3==2.7.0
+watchdog==6.0.0

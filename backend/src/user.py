@@ -11,7 +11,7 @@ class Usuario:
     Attributes:
         name (str): Nome do usuário.
         email (str): Endereço de e-mail do usuário.
-        hash_password (str): Hash da senha do usuário.
+        hash_password (bytes): Hash da senha do usuário.
 
     Example:
         > user = User("Ana", "ana@studex.com", "9f3a7c2e8b14d6a0f5c9e1b78a42d3c6")
@@ -21,7 +21,7 @@ class Usuario:
         **Output:** 'Olá, Ana!'
     """
 
-    def __init__(self, name: str, email: str, hash_password: str) -> None:
+    def __init__(self, name: str, email: str, hash_password: bytes, id=None) -> None:
         """Inicializa um novo usuário.
 
         Args:
@@ -32,6 +32,12 @@ class Usuario:
         self.name = name
         self.email = email
         self.hash_password = hash_password
+    
+    def __str__(self):
+        """
+            Define o formato padrão de impressão do usuário
+        """
+        return f"Nome: {self.name}, Email: {self.email}"
 
     def greet(self) -> str:
         """Gera uma saudação personalizada para o usuário.

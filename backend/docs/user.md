@@ -1,3 +1,3 @@
 # Usuário
 
-::: example.Usuario
+::: user.Usuario
