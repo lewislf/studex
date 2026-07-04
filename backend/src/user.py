@@ -32,6 +32,7 @@ class Usuario:
         self.name = name
         self.email = email
         self.hash_password = hash_password
+        self.id = id
     
     def __str__(self):
         """
