@@ -1,0 +1,86 @@
+{
+    "filename": "leis-de-newton.pdf",
+    "collection": "studex_books",
+    "status": "indexed",
+    "comment": "Companheiro de documentGenerationMock.json — mostra que as categorias do mapa mental NÃO são fixas (tipo 'Personagens'/'Lugares'), elas vêm do conteúdo real do documento. Aqui o documento é de Física, então as categorias que emergem são outras (Conceitos, Fórmulas, Exemplos, Aplicações).",
+    "materiais": [
+        {
+            "tipo": "resumo",
+            "titulo": "Leis de Newton",
+            "subject_id": "mat_102",
+            "creation_date": "2026-07-04",
+            "conteudo": {
+                "texto": "As três Leis de Newton descrevem a relação entre um corpo e as forças que atuam sobre ele, e seu movimento em resposta a essas forças. A Primeira Lei (Lei da Inércia) afirma que um corpo permanece em repouso ou em movimento retilíneo uniforme a menos que uma força resultante externa atue sobre ele. A Segunda Lei estabelece que a força resultante sobre um corpo é igual ao produto de sua massa pela aceleração (F = m·a), relacionando quantitativamente força, massa e aceleração. A Terceira Lei (Ação e Reação) afirma que, para toda ação, existe uma reação de mesma intensidade e direção, mas sentido oposto, atuando em corpos diferentes. Juntas, essas leis formam a base da mecânica clássica e permitem prever o movimento de objetos desde projéteis até corpos celestes.",
+                "topicos_chave": [
+                    "1ª Lei: inércia — corpo em repouso ou MRU sem força resultante",
+                    "2ª Lei: F = m·a, relação entre força, massa e aceleração",
+                    "3ª Lei: ação e reação — forças em pares, corpos diferentes",
+                    "Aplicação: previsão de movimento em mecânica clássica"
+                ]
+            }
+        },
+        {
+            "tipo": "mapa_mental",
+            "titulo": "Leis de Newton — Mapa Mental de Estudo",
+            "subject_id": "mat_102",
+            "creation_date": "2026-07-04",
+            "comment": "Categorias de 1º nível: 'Conceitos Fundamentais', 'Fórmulas', 'Exemplos Resolvidos', 'Aplicações Práticas' — bem diferentes de 'Personagens'/'Lugares' do mock de Planolândia. 'position' não vem do LLM — é calculado pelo frontend.",
+            "conteudo": {
+                "nodes": [
+                    { "id": "1", "type": "tema_central", "data": { "label": "Leis de Newton", "conteudo": "Três leis que descrevem a relação entre forças e o movimento dos corpos." } },
+
+                    { "id": "2", "type": "categoria", "data": { "label": "Conceitos Fundamentais", "conteudo": "As ideias centrais por trás de cada lei." } },
+                    { "id": "3", "type": "detalhe", "data": { "label": "Inércia", "conteudo": "Um corpo mantém seu estado de repouso ou movimento uniforme sem força resultante (1ª Lei)." } },
+                    { "id": "4", "type": "detalhe", "data": { "label": "Força resultante", "conteudo": "A soma vetorial de todas as forças que atuam sobre um corpo." } },
+                    { "id": "5", "type": "detalhe", "data": { "label": "Ação e reação", "conteudo": "Toda força tem um par de reação de mesma intensidade e sentido oposto, em corpos diferentes (3ª Lei)." } },
+
+                    { "id": "6", "type": "categoria", "data": { "label": "Fórmulas", "conteudo": "Expressões matemáticas derivadas das leis." } },
+                    { "id": "7", "type": "detalhe", "data": { "label": "F = m·a (2ª Lei)", "conteudo": "A força resultante é o produto da massa pela aceleração." } },
+
+                    { "id": "8", "type": "categoria", "data": { "label": "Exemplos Resolvidos", "conteudo": "Situações clássicas onde as leis são aplicadas." } },
+                    { "id": "9", "type": "detalhe", "data": { "label": "Bloco em plano inclinado", "conteudo": "Decomposição de forças (peso, normal, atrito) num plano inclinado." } },
+                    { "id": "10", "type": "detalhe", "data": { "label": "Sistema de dois corpos com corda e polia", "conteudo": "Tração igual nos dois corpos, assumindo corda ideal e polia sem atrito." } },
+
+                    { "id": "11", "type": "categoria", "data": { "label": "Aplicações Práticas", "conteudo": "Onde as leis de Newton são usadas fora da sala de aula." } },
+                    { "id": "12", "type": "detalhe", "data": { "label": "Movimento de projéteis", "conteudo": "Combinação de velocidade horizontal constante e aceleração vertical da gravidade." } },
+                    { "id": "13", "type": "detalhe", "data": { "label": "Órbitas de corpos celestes", "conteudo": "A gravitação e as leis de Newton juntas explicam órbitas planetárias." } }
+                ],
+                "edges": [
+                    { "id": "e1-2", "source": "1", "target": "2" },
+                    { "id": "e1-6", "source": "1", "target": "6" },
+                    { "id": "e1-8", "source": "1", "target": "8" },
+                    { "id": "e1-11", "source": "1", "target": "11" },
+                    { "id": "e2-3", "source": "2", "target": "3" },
+                    { "id": "e2-4", "source": "2", "target": "4" },
+                    { "id": "e2-5", "source": "2", "target": "5" },
+                    { "id": "e6-7", "source": "6", "target": "7" },
+                    { "id": "e8-9", "source": "8", "target": "9" },
+                    { "id": "e8-10", "source": "8", "target": "10" },
+                    { "id": "e11-12", "source": "11", "target": "12" },
+                    { "id": "e11-13", "source": "11", "target": "13" }
+                ]
+            }
+        },
+        {
+            "tipo": "baralho",
+            "titulo": "Leis de Newton — Flashcards",
+            "subject_id": "mat_102",
+            "creation_date": "2026-07-04",
+            "comment": "Sem 'acuracia'/'novos'/'aprendendo'/'review' — isso é estado de progresso do usuário, calculado pela aplicação, não gerado pelo LLM.",
+            "conteudo": {
+                "flashcards": [
+                    { "pergunta": "O que afirma a 1ª Lei de Newton (Lei da Inércia)?", "resposta": "Um corpo permanece em repouso ou em movimento retilíneo uniforme, a menos que uma força resultante externa atue sobre ele." },
+                    { "pergunta": "Qual é a fórmula da 2ª Lei de Newton?", "resposta": "F = m · a (força resultante = massa × aceleração)." },
+                    { "pergunta": "O que afirma a 3ª Lei de Newton (Ação e Reação)?", "resposta": "Para toda ação existe uma reação de mesma intensidade e direção, mas sentido oposto, atuando em corpos diferentes." },
+                    { "pergunta": "Por que as forças de ação e reação não se anulam?", "resposta": "Porque atuam em corpos diferentes, não no mesmo corpo." },
+                    { "pergunta": "Qual é a unidade de força no Sistema Internacional?", "resposta": "Newton (N), equivalente a kg·m/s²." },
+                    { "pergunta": "O que significa dizer que a força resultante sobre um corpo é nula?", "resposta": "Que o corpo está em equilíbrio: em repouso ou em movimento retilíneo uniforme." },
+                    { "pergunta": "Em um sistema de dois corpos ligados por uma corda ideal sobre uma polia, o que se assume sobre a tração?", "resposta": "Que a tração é a mesma em toda a extensão da corda, assumindo corda inextensível e sem massa." },
+                    { "pergunta": "Como as Leis de Newton se aplicam ao movimento de projéteis?", "resposta": "Permitem decompor o movimento em componentes horizontal (velocidade constante) e vertical (aceleração da gravidade), prevendo trajetória." },
+                    { "pergunta": "Que grandeza física relaciona a 2ª Lei de Newton com a variação de velocidade ao longo do tempo?", "resposta": "A aceleração (a = Δv/Δt)." },
+                    { "pergunta": "As Leis de Newton descrevem corretamente o movimento em qualquer velocidade?", "resposta": "Não — são válidas para a mecânica clássica; em velocidades próximas à da luz, a relatividade especial é necessária." }
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,68 @@
+import logging
+import sys
+from pathlib import Path
+from werkzeug.utils import secure_filename
+
+from flask import Blueprint, jsonify, request
+
+logger = logging.getLogger(__name__)
+
+sys.path.append(str(Path(__file__).resolve().parent.parent / "rag_api"))
+from search_query import load_documents, split_into_nodes, build_vector_index, COLLECTION_NAME
+from materials import generate_materials
+
+document_bp = Blueprint("documents", __name__, url_prefix="/documents")
+
+DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
+ALLOWED_EXTENSIONS = {".pdf"}
+
+
+@document_bp.post("")
+def upload_document():
+    if "file" not in request.files:
+        return jsonify({"error": "Nenhum arquivo enviado (campo 'file' ausente)"}), 400
+
+    file = request.files["file"]
+
+    if not file.filename:
+        return jsonify({"error": "Nenhum arquivo selecionado"}), 400
+
+    filename = secure_filename(file.filename)
+    extension = Path(filename).suffix.lower()
+
+    if extension not in ALLOWED_EXTENSIONS:
+        return jsonify({"error": f"Extensão não suportada: {extension}"}), 400
+
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    saved_path = DOCS_DIR / filename
+    file.save(saved_path)
+
+    user_id = request.form.get("user_id")
+    subject_id = request.form.get("subject_id")
+    doc_metadata = {k: v for k, v in {"user_id": user_id, "subject_id": subject_id}.items() if v is not None}
+
+    try:
+        docs = load_documents([saved_path], metadata=doc_metadata)
+        nodes = split_into_nodes(docs)
+        build_vector_index(nodes, collection_name=COLLECTION_NAME)
+    except Exception:
+        logger.exception("Falha ao indexar documento %s", filename)
+        return jsonify({"error": "Falha ao indexar o documento"}), 500
+
+    try:
+        materials = generate_materials(nodes, fallback_titulo=Path(filename).stem, subject_id=subject_id)
+    except Exception:
+        logger.exception("Falha ao gerar materiais para %s", filename)
+        return jsonify({
+            "filename": filename,
+            "collection": COLLECTION_NAME,
+            "status": "indexed_without_materials",
+            "error": "Documento indexado, mas falha ao gerar os materiais de estudo",
+        }), 207
+
+    return jsonify({
+        "filename": filename,
+        "collection": COLLECTION_NAME,
+        "status": "indexed",
+        "materiais": materials,
+    }), 201

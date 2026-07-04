@@ -15,6 +15,10 @@ idna==3.18
 iniconfig @ file:///home/conda/feedstock_root/build_artifacts/iniconfig_1760831328738/work
 itsdangerous @ file:///home/conda/feedstock_root/build_artifacts/itsdangerous_1733308265247/work
 Jinja2 @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_jinja2_1764517220/work
+llama-index
+llama-index-embeddings-ollama
+llama-index-llms-ollama
+llama-index-vector-stores-qdrant
 Markdown==3.10.2
 MarkupSafe @ file:///home/conda/feedstock_root/build_artifacts/markupsafe_1772444934960/work
 mergedeep==1.3.4
@@ -25,6 +29,7 @@ mkdocs-material==9.7.6
 mkdocs-material-extensions==1.3.1
 mkdocstrings==1.0.4
 mkdocstrings-python==2.0.5
+nest-asyncio==1.6.0
 numpy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_numpy_1779169198/work/dist/numpy-2.4.6-cp311-cp311-linux_x86_64.whl#sha256=9f5ed645865bdd41eb671568973753a710fda708ed74e7a0b4acf98e7a7a2970
 packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1777103621/work
 paginate==0.5.7
@@ -34,10 +39,12 @@ pluggy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_plu
 pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1779293633/work
 Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1774796700044/work
 pymdown-extensions==11.0
+pymupdf
 pytest @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pytest_1782127176/work
 python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 pyyaml_env_tag==1.1
+qdrant-client
 requests==2.34.2
 six==1.17.0
 tomli @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_tomli_1774492402/work
