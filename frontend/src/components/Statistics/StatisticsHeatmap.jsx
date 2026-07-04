@@ -1,21 +1,50 @@
 import { Tooltip, Container, Box, Stack, Text } from "@mantine/core";
 import styles from '../../styles/Statistics/Statistics.module.css';
 
-export default function ActivityHeatmap({ stats }) {
-    // Calculate dates for Heatmap (last 52 weeks + current week = 53 weeks)
-    // Calendar starts on Sunday to align with default layout
+/**
+ * StatisticsHeatmap renders a contribution-style calendar grid.
+ * Displays daily active studying counts across a 53-week span, starting on Sunday.
+ */
+export default function StatisticsHeatmap({ stats }) {
+    // Current date of the user's browser
     const today = new Date();
-    const todayDay = today.getDay(); // 0 (Sun) to 6 (Sat)
+    // Normalize today's date to midnight local time for safe comparisons
+    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    // Start date is 52 weeks ago, aligned to Sunday
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 364 - todayDay);
+    // Calculate the shift difference in days between the last mock date (2026-07-04) and today's local date
+    const lastMockDateStr = "2026-07-04";
+    const lastMockDate = new Date(lastMockDateStr + "T00:00:00");
+    const diffTime = todayLocal.getTime() - lastMockDate.getTime();
+    const dayShift = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-    // Generate days (53 weeks * 7 days = 371 days)
+    // Shift all heatmap dates dynamically so the last activity aligns with today
+    const shiftedHeatmap = {};
+    if (stats.activityHeatmap) {
+        Object.keys(stats.activityHeatmap).forEach((dateStr) => {
+            const mockDate = new Date(dateStr + "T00:00:00");
+            mockDate.setDate(mockDate.getDate() + dayShift);
+            const yyyy = mockDate.getFullYear();
+            const mm = String(mockDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(mockDate.getDate()).padStart(2, '0');
+            const shiftedStr = `${yyyy}-${mm}-${dd}`;
+            shiftedHeatmap[shiftedStr] = stats.activityHeatmap[dateStr];
+        });
+    }
+
+    const todayDay = todayLocal.getDay(); // 0 (Sun) to 6 (Sat)
+    const weeksToShow = 53;
+    const daysInWeek = 7;
+    const totalDays = weeksToShow * daysInWeek;
+
+    // Start date is 52 weeks ago, aligned to Sunday of that week
+    const startDate = new Date(todayLocal);
+    startDate.setDate(startDate.getDate() - (totalDays - daysInWeek) - todayDay);
+
+    // Generate days using dynamic variables
     const weeks = [];
     let currentWeek = [];
 
-    for (let i = 0; i < 371; i++) {
+    for (let i = 0; i < totalDays; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
 
@@ -25,10 +54,10 @@ export default function ActivityHeatmap({ stats }) {
         const dd = String(date.getDate()).padStart(2, '0');
         const dateStr = `${yyyy}-${mm}-${dd}`;
 
-        // Get activity count strictly from mock data
+        // Get activity count strictly from shifted mock data
         let count = 0;
-        if (stats.activityHeatmap && stats.activityHeatmap[dateStr] !== undefined) {
-            count = stats.activityHeatmap[dateStr];
+        if (shiftedHeatmap[dateStr] !== undefined) {
+            count = shiftedHeatmap[dateStr];
         }
 
         currentWeek.push({
@@ -37,7 +66,7 @@ export default function ActivityHeatmap({ stats }) {
             count
         });
 
-        if (currentWeek.length === 7) {
+        if (currentWeek.length === daysInWeek) {
             weeks.push(currentWeek);
             currentWeek = [];
         }
@@ -84,7 +113,7 @@ export default function ActivityHeatmap({ stats }) {
         <Container className={styles.heatmapContainer}>
             <Box className={styles.heatmapScroll}>
                 <Box className={styles.heatmapGridWrapper}>
-                    {/* Months Header */}
+                    {/* Months Header row */}
                     <Box className={styles.monthsRow}>
                         <Box className={styles.monthsRowLabel} />
                         {monthLabels}
@@ -101,6 +130,7 @@ export default function ActivityHeatmap({ stats }) {
                             <div className={styles.weekdayLabel}>S</div>
                             <div className={styles.weekdayLabel} />
                         </div>
+                        {/* Daily contribution cells grid */}
                         <Box className={styles.heatmapGrid}>
                             {weeks.map((week) =>
                                 week.map((day) => {

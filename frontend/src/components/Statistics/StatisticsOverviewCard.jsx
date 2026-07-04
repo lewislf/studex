@@ -8,8 +8,12 @@ import {
 } from '@tabler/icons-react';
 import styles from '../../styles/Statistics/Statistics.module.css';
 
+/**
+ * StatisticsOverviewCard displays primary numeric indicators (such as streak count,
+ * flashcards created, maps created) and maps them to a gamified progress rating rank (E-S).
+ */
 export default function StatisticsOverviewCard({ user, stats }) {
-    // Formatter for counts (e.g. 1247 -> 1.2k)
+    // Helper function to format thousands (e.g. 1500 -> 1.5k)
     const formatCount = (val) => {
         if (val >= 1000) {
             return (val / 1000).toFixed(1) + 'k';
@@ -17,14 +21,14 @@ export default function StatisticsOverviewCard({ user, stats }) {
         return val;
     };
 
-    // Calculate dynamic performance-based rank (E, D, C, B, A, S)
+    // Formulates a score index from statistics to assign a gamified rank tier (E, D, C, B, A, S)
     const calculateUserRank = () => {
         const streak = user.gamification?.streak || 0;
         const maps = user.counters?.mapsCount || 0;
         const summaries = user.counters?.summariesCount || 0;
         const flashcards = user.counters?.totalFlashcardsCreated || 0;
 
-        // Score formulation: flashcards created weight 2, streak weight 25, maps/summaries weight 10
+        // Weights: flashcards created weight 2, streak weight 25, maps/summaries weight 10
         const score = (flashcards * 2) + (streak * 25) + (maps * 10) + (summaries * 10);
 
         let grade = "E";
@@ -70,10 +74,12 @@ export default function StatisticsOverviewCard({ user, stats }) {
         <Container className={styles.leftCard}>
             <Stack justify="space-between" className={styles.overviewStack} gap="xl">
                 <Stack gap="sm">
+                    {/* Header title */}
                     <Title order={2} className={styles.sectionTitle}>
                         Estatísticas
                     </Title>
 
+                    {/* Responsive Flex block containing list stats and the rating ring progress chart */}
                     <Flex direction={{ base: 'column', sm: 'row' }} justify="space-between" align="center" gap="md" mt="md" mb="md">
                         {/* List of Stats */}
                         <Stack className={styles.statList} gap="sm">
@@ -114,7 +120,7 @@ export default function StatisticsOverviewCard({ user, stats }) {
                             </Group>
                         </Stack>
 
-                        {/* Ring Chart of Performance Rank */}
+                        {/* Large Ring Chart displaying overall gamified rank tier */}
                         <Group gap="md" justify="center">
                             <RingProgress
                                 size={300}
@@ -136,12 +142,13 @@ export default function StatisticsOverviewCard({ user, stats }) {
                     </Flex>
                 </Stack>
 
-                {/* Subject Distribution */}
+                {/* Subject Distribution segmented bar */}
                 <Stack className={styles.segmentedBarContainer} gap="xs">
                     <Title order={3} className={styles.sectionTitle} style={{ fontSize: "1.1rem" }}>
                         Assuntos de Cartões Mais Usados
                     </Title>
 
+                    {/* Progress root stacking sections proportionally */}
                     <Progress.Root size="lg" radius="xl">
                         {stats.statsDistribution?.map((item, idx) => (
                             <Progress.Section
@@ -152,6 +159,7 @@ export default function StatisticsOverviewCard({ user, stats }) {
                         ))}
                     </Progress.Root>
 
+                    {/* Color legends grid */}
                     <Group gap="md" mt="sm" wrap="wrap">
                         {stats.statsDistribution?.map((item, idx) => (
                             <Group key={idx} className={styles.legendItem} gap={6}>

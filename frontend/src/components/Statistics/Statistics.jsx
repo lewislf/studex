@@ -7,30 +7,33 @@ import { parseUserStats } from '../../utils/userHelpers.js';
 import StatisticsTitle from "./StatisticsTitle.jsx";
 import StatisticsOverviewCard from "./StatisticsOverviewCard.jsx";
 import StreakCard from "./StreakCard.jsx";
-import ActivityHeatmap from "./ActivityHeatmap.jsx";
+import StatisticsHeatmap from "./StatisticsHeatmap.jsx";
 
 /**
- * Main dashboard view module representing the Statistics layout.
- * Cohesive integration of child widgets monitoring student progress metrics.
+ * Parent view container for the application statistics dashboard route entry point.
+ * Integrates overview metrics, streaks, and historical calendars.
  */
 export default function Statistics() {
+    // Consume global profile entities streamed down from the root route layout context
     const user = useOutletContext();
     const stats = parseUserStats(userStatsMock);
 
     return (
         <Container size="xl" className={styles.container}>
             <Stack gap="xl">
-                {/* Header title block */}
+                {/* Greeting banner introducing the statistics view */}
                 <StatisticsTitle />
 
-                {/* Dashboard section */}
+                {/* Dashboard layout partitioning user counters and streak widgets */}
                 <div className={styles.dashboardGrid}>
+                    {/* General performance overview card */}
                     <StatisticsOverviewCard user={user} stats={stats} />
+                    {/* Gamified weekly streak component */}
                     <StreakCard user={user} />
                 </div>
 
-                {/* Year activity heatmap block */}
-                <ActivityHeatmap stats={stats} />
+                {/* Historical contribution calendar widget */}
+                <StatisticsHeatmap stats={stats} />
             </Stack>
         </Container>
     );
