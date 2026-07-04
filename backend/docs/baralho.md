@@ -1,0 +1,3 @@
+# Baralho
+
+::: baralho.Baralho
