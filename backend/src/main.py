@@ -1,22 +1,15 @@
+from flask import Flask, jsonify, request
+
 from database.database import *
+from routes.user_routes import user_bp
+from routes.subject_routes import subject_bp
 
-def main():
-    print("Fluxo de Cadastro\n")
-    email = input("Email: ")
-    name = input("Nome: ")
-    passwd = input("Password: ")
+app = Flask(__name__)
+HOST = "0.0.0.0"
+SOCKET = 5000
 
-    init_db()
-    save_user_db(name, passwd, email)
-    print_all_people_db()
-
-    print("Procure por um nome!\n")
-    qry_name = input("Nome para busca:")
-    my_users = get_users_db(qry_name)
-
-    print("\nImprimindo usuários correspondentes:")
-    for user in my_users:
-        print(user)
+app.register_blueprint(user_bp)
+app.register_blueprint(subject_bp)
 
 if __name__ == "__main__":
-    main()
+    app.run(host=HOST, port=SOCKET, debug=True)

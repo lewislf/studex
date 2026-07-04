@@ -11,21 +11,21 @@ class Materia:
             id (int): ID da matéria
             name (str): Nome da matéria
             description (str): Breve descrição sobre a matéria
-            domain (str): Grande área da matéria
+            domain (int): Percentual de domínio da matéria
             creation_date (date): Data de criação da matéria
     
         Example:
-            > materia = Materia("Projeto Integrado", "Ensina boas práticas no desenvolvimento de software", "Desenvolvimento de Software")
+            > materia = Materia(1, "Projeto Integrado", "Ensina boas práticas no desenvolvimento de software", 100)
     """
     
-    def __init__(self, user_id: int, name: str, description: str, domain: str, creation_date=date.today(), id=None) -> None:
+    def __init__(self, user_id: int, name: str, description: str, domain: int, creation_date=date.today(), id=None) -> None:
         """Inicializa uma nova matéria.
 
         Args:
             user_id: O ID do usuário ao qual essa matéria pertence
             name: Nome da matéria.
             description: Uma breve descrição da matéria
-            domain: A grande área da matéria.
+            domain: Percentual de domínio da matéria
             creation_date (date): A data de criação da matéria
             id (int): O id da matéria
         """
@@ -33,6 +33,8 @@ class Materia:
         self.name = name
         self.description = description
         self.domain = domain
+        self.date = creation_date
+        self.id = id
       
     def __str__(self):
         """
