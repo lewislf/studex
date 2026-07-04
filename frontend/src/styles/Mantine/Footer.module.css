@@ -5,6 +5,12 @@
 
 .title {
     user-select: none;
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.title:hover {
+    transform: scale(1.05);
+    color: var(--mantine-color-blue-6);
 }
 
 .inner {
@@ -12,6 +18,7 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--mantine-spacing-md) var(--mantine-spacing-md);
+
 
     @media (max-width: $mantine-breakpoint-sm) {
         flex-direction: column;
@@ -23,4 +30,14 @@
         margin-top: var(--mantine-spacing-lg);
         margin-bottom: var(--mantine-spacing-sm);
     }
+}
+
+.linkText {
+    text-decoration: none;
+    color: inherit;
+    transition: color 150ms ease;
+}
+
+.linkText:hover {
+    color: var(--mantine-color-blue-6);
 }

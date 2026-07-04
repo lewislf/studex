@@ -4,7 +4,9 @@ import { createRoot } from 'react-dom/client'
 
 // Mantine imports
 import { MantineProvider } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { theme } from './styles/Mantine/theme.js'
+import '@mantine/notifications/styles.css';
 
 // Router config
 import routes from "./routes.jsx";
@@ -19,6 +21,8 @@ createRoot(document.getElementById('root')).render(
     <StrictMode>
         {/* Provider for mantine variables and css reset */}
         <MantineProvider theme={theme}>
+            {/* Notification system */}
+            <Notifications position="top-right" zIndex={1000} />
             {/* Router to manage page transitions */}
             <RouterProvider router={router} />
         </MantineProvider>

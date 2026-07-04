@@ -1,13 +1,20 @@
+// Global map representing short names for week days in Portuguese
 const WEEK_DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 
-// Converts the projection offset into days and actual names based on today's date.
+/**
+ * Transforms standard mock date offsets into real dynamic calendar days and names.
+ * Ensures the projection timeline updates relative to runtime device dates.
+ * @param {Object[]} projectionData - Array containing items with sequential day offsets.
+ * @returns {Object[]} Cloned array augmented with local calendar properties.
+ */
 export function getDynamicProjection(projectionData) {
     if (!projectionData) return [];
 
     const today = new Date();
 
-    // array iteration
+    // Map over sequential items to attach structural time markers dynamically
     return projectionData.map((item) => {
+        // Special case: Day 0 is always formatted as 'HOJE'
         if (item.day_offset === 0) {
             return {
                 ...item,
@@ -16,13 +23,14 @@ export function getDynamicProjection(projectionData) {
             };
         }
 
+        // Initialize target date copy and apply offset increments
         const targetDate = new Date();
         targetDate.setDate(today.getDate() + item.day_offset);
 
         return {
             ...item,
-            day_name: WEEK_DAYS[targetDate.getDay()],
-            day_number: targetDate.getDate()
+            day_name: WEEK_DAYS[targetDate.getDay()], // Fetches corresponding weekday string
+            day_number: targetDate.getDate()          // Fetches dynamic calendar day number
         };
     });
 }

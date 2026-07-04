@@ -1,10 +1,17 @@
 .container {
-    height: 100vh;
-
     padding: var(--mantine-spacing-xl);
     margin: var(--mantine-spacing-xl);
 
     background-color: var(--mantine-color-default);
 
     border-radius: var(--mantine-radius-lg);
+}
+
+.card {
+    border: 1px solid var(--mantine-color-gray-3);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: scale(1.05);
 }
