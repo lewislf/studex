@@ -4,7 +4,7 @@
     max-width: 1200px;
     background-color: var(--mantine-color-default);
     border-radius: var(--mantine-radius-lg);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .titleSection {
@@ -45,6 +45,9 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
 }
 
 .rightCard {
@@ -58,6 +61,9 @@
     align-items: center;
     justify-content: center;
     text-align: center;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
 }
 
 /* Burgundy styling matching print */
@@ -74,17 +80,6 @@
     flex: 1;
 }
 
-.statItem {
-    display: flex;
-    align-items: center;
-    gap: var(--mantine-spacing-md);
-}
-
-.statTextContainer {
-    display: flex;
-    flex-direction: column;
-}
-
 .statLabel {
     font-size: 0.85rem;
     color: var(--mantine-color-gray-6);
@@ -97,39 +92,6 @@
     color: var(--mantine-color-dark-8);
 }
 
-.progressContainer {
-    display: flex;
-    gap: var(--mantine-spacing-md);
-    align-items: center;
-    margin-top: var(--mantine-spacing-md);
-    margin-bottom: var(--mantine-spacing-md);
-}
-
-@media (max-width: 576px) {
-    .progressContainer {
-        flex-direction: column;
-    }
-}
-
-.circleWrapper {
-    display: flex;
-    align-items: center;
-    gap: var(--mantine-spacing-md);
-    justify-content: center;
-}
-
-.smallCircles {
-    display: flex;
-    flex-direction: column;
-    gap: var(--mantine-spacing-sm);
-}
-
-.smallCircleItem {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
 .smallCircleLabel {
     font-size: 0.7rem;
     font-weight: 700;
@@ -140,13 +102,6 @@
 /* Horizontal bar and legend */
 .segmentedBarContainer {
     margin-top: var(--mantine-spacing-lg);
-}
-
-.legendGrid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--mantine-spacing-md);
-    margin-top: var(--mantine-spacing-sm);
 }
 
 .legendItem {
@@ -182,26 +137,12 @@
 }
 
 .weekdaysContainer {
-    display: flex;
-    justify-content: center;
-    gap: var(--mantine-spacing-xs);
-    margin-bottom: var(--mantine-spacing-md);
     width: 100%;
-    max-width: 320px;
+    max-width: 360px;
 }
 
 .weekdayItem {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     flex-grow: 1;
-    gap: 4px;
-}
-
-.weekdayName {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--mantine-color-gray-5);
 }
 
 .checkmarkCircle {
@@ -239,8 +180,15 @@
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); opacity: 1; }
-    100% { transform: scale(1.3); opacity: 0; }
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.3);
+        opacity: 0;
+    }
 }
 
 .streakMessage {
@@ -255,7 +203,6 @@
     font-weight: 700;
 }
 
-/* Heatmap widget */
 .heatmapContainer {
     background-color: var(--mantine-color-white);
     border: 1px solid var(--mantine-color-gray-2);
@@ -263,6 +210,8 @@
     padding: var(--mantine-spacing-xl);
     box-shadow: var(--mantine-shadow-sm);
     width: 100%;
+    max-width: 100%;
+    margin: 0;
 }
 
 .heatmapScroll {
@@ -272,7 +221,8 @@
 }
 
 .heatmapGridWrapper {
-    min-width: 720px; /* Ensure columns don't compress */
+    min-width: 720px;
+    /* Ensure columns don't compress */
     display: flex;
     flex-direction: column;
 }
@@ -310,7 +260,8 @@
     font-size: 0.7rem;
     font-weight: 600;
     color: var(--mantine-color-gray-5);
-    height: 98px; /* 7 cells + spacing */
+    height: 98px;
+    /* 7 cells + spacing */
 }
 
 .weekdayLabel {
@@ -333,4 +284,16 @@
     height: 12px;
     border-radius: 2px;
     transition: background-color 0.2s ease;
+}
+
+.overviewStack {
+    height: 100%;
+}
+
+.studexLogoText {
+    font-family: sans-serif;
+}
+
+.flameIcon {
+    fill: #ff9f1c;
 }
