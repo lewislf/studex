@@ -8,3 +8,5 @@ __pycache__/
 venv/
 *.db
 *.key
+src/docs/*
+!src/docs/.gitkeep

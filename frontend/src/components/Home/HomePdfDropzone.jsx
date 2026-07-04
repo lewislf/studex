@@ -13,7 +13,7 @@ export default function HomePdfDropzone() {
     const openRef = useRef(null);
 
     // Network logic
-    const { uploadPdf, loading, error, success } = usePdfUpload('api-url');
+    const { uploadPdf, loading, error, success } = usePdfUpload(`${import.meta.env.VITE_API_URL}/documents`);
 
     /**
      * Event handler triggered whenever a file satisfies the constraint filters.

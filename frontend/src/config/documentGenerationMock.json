@@ -1,0 +1,100 @@
+{
+    "filename": "planolandia-livro.pdf",
+    "collection": "studex_books",
+    "status": "indexed",
+    "materiais": [
+        {
+            "tipo": "resumo",
+            "titulo": "Planolândia",
+            "subject_id": "mat_101",
+            "creation_date": "2026-07-04",
+            "conteudo": {
+                "texto": "Planolândia (Flatland), de Edwin A. Abbott, é narrado por 'O Quadrado', habitante de um mundo bidimensional onde cada pessoa é uma figura geométrica. A sociedade é organizada em uma hierarquia rígida baseada no número de lados: quanto mais lados e mais regular a figura, maior o status social — os círculos formam a classe sacerdotal no topo, enquanto as mulheres, representadas apenas por linhas retas, ocupam a posição mais baixa e são consideradas incapazes de raciocínio. O enredo principal começa quando O Quadrado tem um sonho com Linolândia, um mundo unidimensional, e depois é visitado por uma Esfera vinda de Espaçolândia (o mundo tridimensional), que o arrasta para fora do plano e lhe revela a existência da terceira dimensão. Ao retornar, O Quadrado tenta convencer seus concidadãos da existência de outras dimensões, mas é preso por heresia. A obra funciona tanto como sátira social vitoriana — criticando rigidez de classes, machismo e resistência a novas ideias — quanto como uma introdução acessível a conceitos matemáticos de geometria e dimensionalidade.",
+                "topicos_chave": [
+                    "Estrutura social hierárquica baseada em número de lados",
+                    "Papel das mulheres como linhas retas sem direitos",
+                    "Visita da Esfera e revelação da terceira dimensão",
+                    "Prisão do Quadrado por divulgar a doutrina das dimensões",
+                    "Analogia entre percepção limitada e resistência a novas ideias"
+                ]
+            }
+        },
+        {
+            "tipo": "mapa_mental",
+            "titulo": "Planolândia — Mapa Mental de Estudo",
+            "subject_id": "mat_101",
+            "creation_date": "2026-07-04",
+            "comment": "As categorias de 1º nível (Personagens, Lugares, Enredo, Temas...) NÃO são uma taxonomia fixa — surgiram da estrutura deste livro (uma narrativa). Para um documento de exatas, o LLM geraria categorias completamente diferentes: ver documentGenerationMockStem.json (Conceitos Fundamentais, Fórmulas, Exemplos, Aplicações). Sem rótulos de relação nas conexões — foco em revisão, não em modelar relações semânticas. 'position' não vem do LLM — é calculado pelo frontend (ex: layout automático do ReactFlow/dagre).",
+            "conteudo": {
+                "nodes": [
+                    { "id": "1", "type": "tema_central", "data": { "label": "Planolândia", "conteudo": "Narrativa satírica ambientada num mundo bidimensional, narrada por um quadrado." } },
+
+                    { "id": "2", "type": "categoria", "data": { "label": "Personagens", "conteudo": "As figuras centrais da narrativa e seus papéis." } },
+                    { "id": "3", "type": "detalhe", "data": { "label": "O Quadrado", "conteudo": "Narrador; habitante de Planolândia que descobre a terceira dimensão." } },
+                    { "id": "4", "type": "detalhe", "data": { "label": "A Esfera", "conteudo": "Visitante de Espaçolândia que revela a existência da 3ª dimensão ao Quadrado." } },
+
+                    { "id": "5", "type": "categoria", "data": { "label": "Lugares", "conteudo": "Os diferentes mundos dimensionais visitados na história." } },
+                    { "id": "6", "type": "detalhe", "data": { "label": "Planolândia (2D)", "conteudo": "Mundo bidimensional onde a história se passa." } },
+                    { "id": "7", "type": "detalhe", "data": { "label": "Linolândia (1D)", "conteudo": "Mundo unidimensional visto pelo Quadrado em sonho." } },
+                    { "id": "8", "type": "detalhe", "data": { "label": "Espaçolândia (3D)", "conteudo": "Mundo tridimensional de onde vem a Esfera." } },
+
+                    { "id": "9", "type": "categoria", "data": { "label": "Enredo", "conteudo": "Sequência principal de eventos da narrativa." } },
+                    { "id": "10", "type": "detalhe", "data": { "label": "Sonho com Linolândia", "conteudo": "O Quadrado sonha com um mundo de apenas uma dimensão." } },
+                    { "id": "11", "type": "detalhe", "data": { "label": "Revelação da 3ª dimensão", "conteudo": "A Esfera arrasta o Quadrado para fora do plano e lhe mostra Espaçolândia." } },
+                    { "id": "12", "type": "detalhe", "data": { "label": "Prisão do Quadrado", "conteudo": "Ao tentar divulgar a doutrina das dimensões, o Quadrado é preso por heresia." } },
+
+                    { "id": "13", "type": "categoria", "data": { "label": "Temas e Crítica Social", "conteudo": "As camadas de sátira social presentes na obra." } },
+                    { "id": "14", "type": "detalhe", "data": { "label": "Hierarquia por número de lados", "conteudo": "Status social determinado pela quantidade e regularidade dos lados de cada figura." } },
+                    { "id": "15", "type": "detalhe", "data": { "label": "Mulheres como linhas retas", "conteudo": "Representadas como inferiores, sem direitos e sem capacidade de raciocínio." } },
+                    { "id": "16", "type": "detalhe", "data": { "label": "Resistência a novas ideias", "conteudo": "A punição ao Quadrado simboliza a resistência social a paradigmas desconhecidos." } }
+                ],
+                "edges": [
+                    { "id": "e1-2", "source": "1", "target": "2" },
+                    { "id": "e1-5", "source": "1", "target": "5" },
+                    { "id": "e1-9", "source": "1", "target": "9" },
+                    { "id": "e1-13", "source": "1", "target": "13" },
+                    { "id": "e2-3", "source": "2", "target": "3" },
+                    { "id": "e2-4", "source": "2", "target": "4" },
+                    { "id": "e5-6", "source": "5", "target": "6" },
+                    { "id": "e5-7", "source": "5", "target": "7" },
+                    { "id": "e5-8", "source": "5", "target": "8" },
+                    { "id": "e9-10", "source": "9", "target": "10" },
+                    { "id": "e9-11", "source": "9", "target": "11" },
+                    { "id": "e9-12", "source": "9", "target": "12" },
+                    { "id": "e13-14", "source": "13", "target": "14" },
+                    { "id": "e13-15", "source": "13", "target": "15" },
+                    { "id": "e13-16", "source": "13", "target": "16" }
+                ]
+            }
+        },
+        {
+            "tipo": "baralho",
+            "titulo": "Planolândia — Flashcards",
+            "subject_id": "mat_101",
+            "creation_date": "2026-07-04",
+            "comment": "Sem 'acuracia'/'novos'/'aprendendo'/'review' aqui — isso é estado de progresso do usuário, calculado pela aplicação (ex: novos = quantidade de flashcards na criação), não algo que o LLM deva gerar.",
+            "conteudo": {
+                "flashcards": [
+                    { "pergunta": "Quem é o narrador de Planolândia?", "resposta": "Um quadrado, conhecido apenas como 'O Quadrado'." },
+                    { "pergunta": "Quem escreveu Planolândia (Flatland) e em que ano foi publicado originalmente?", "resposta": "Edwin A. Abbott, publicado em 1884." },
+                    { "pergunta": "Como é organizada a hierarquia social em Planolândia?", "resposta": "Pelo número de lados e regularidade da figura: quanto mais lados e mais regular, maior o status social." },
+                    { "pergunta": "Qual classe social ocupa o topo da hierarquia em Planolândia?", "resposta": "Os círculos, que formam a classe sacerdotal." },
+                    { "pergunta": "Como as mulheres são representadas em Planolândia?", "resposta": "Como linhas retas, consideradas a forma mais baixa e sem capacidade de raciocínio segundo a sociedade planolandesa." },
+                    { "pergunta": "O que é Linolândia?", "resposta": "Um mundo unidimensional que O Quadrado visita em um sonho." },
+                    { "pergunta": "O que é Espaçolândia?", "resposta": "O mundo tridimensional, de onde vem a Esfera que visita O Quadrado." },
+                    { "pergunta": "Quem visita O Quadrado vindo de Espaçolândia?", "resposta": "Uma Esfera." },
+                    { "pergunta": "O que a Esfera revela ao Quadrado?", "resposta": "A existência da terceira dimensão, mostrando-lhe Espaçolândia." },
+                    { "pergunta": "O que acontece com O Quadrado ao tentar divulgar a doutrina das três dimensões?", "resposta": "Ele é preso por heresia." },
+                    { "pergunta": "Que tipo de crítica social a obra faz, além da exploração matemática?", "resposta": "Uma sátira à sociedade vitoriana, criticando rigidez de classes, machismo e resistência a novas ideias." },
+                    { "pergunta": "Como um habitante de Planolândia enxerga os outros habitantes?", "resposta": "Como linhas ou pontos, já que só percebem uma dimensão a menos que a sua própria (visão lateral em 2D)." },
+                    { "pergunta": "Por que a Esfera tem dificuldade em convencer O Quadrado sobre a 3ª dimensão antes de arrastá-lo pra fora do plano?", "resposta": "Porque O Quadrado só consegue conceber duas dimensões, assim como os planolandeses não concebem uma linha reconhecendo largura." },
+                    { "pergunta": "Qual analogia central o livro estabelece sobre percepção e dimensões?", "resposta": "A dificuldade de um ser de dimensão N em conceber a existência de uma dimensão N+1, usada como metáfora para resistência a novas ideias e paradigmas." },
+                    { "pergunta": "Que castigo Planolândia aplica a irregularidades físicas graves?", "resposta": "Pode levar à morte ou à internação, já que a irregularidade é vista como uma desgraça e ameaça à ordem social." },
+                    { "pergunta": "O que acontece com os filhos de figuras planolandesas ao longo das gerações (regra de evolução das formas)?", "resposta": "Cada geração tende a ganhar um lado a mais que a geração anterior, uma forma de 'evolução' social e geométrica." },
+                    { "pergunta": "Como as mulheres devem se anunciar ao se locomover em Planolândia?", "resposta": "Emitindo um 'canto de paz' contínuo, para alertar os demais de sua presença, já que são invisíveis de frente (aparecem como um ponto)." },
+                    { "pergunta": "Qual é o gênero literário de Planolândia?", "resposta": "Uma novela de ficção matemática e sátira social, também classificada como ficção especulativa." }
+                ]
+            }
+        }
+    ]
+}
