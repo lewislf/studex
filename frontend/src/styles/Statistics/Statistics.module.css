@@ -66,9 +66,9 @@
     margin: 0;
 }
 
-/* Burgundy styling matching print */
-.burgundyTitle {
-    color: #801438;
+/* Title styling */
+.sectionTitle {
+    color: var(--mantine-color-dark-9);
     font-weight: 700;
     margin-bottom: var(--mantine-spacing-md);
 }
@@ -90,13 +90,6 @@
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--mantine-color-dark-8);
-}
-
-.smallCircleLabel {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--mantine-color-dark-4);
-    margin-bottom: 2px;
 }
 
 /* Horizontal bar and legend */

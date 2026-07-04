@@ -17,11 +17,60 @@ export default function StatisticsOverviewCard({ user, stats }) {
         return val;
     };
 
+    // Calculate dynamic performance-based rank (E, D, C, B, A, S)
+    const calculateUserRank = () => {
+        const streak = user.gamification?.streak || 0;
+        const maps = user.counters?.mapsCount || 0;
+        const summaries = user.counters?.summariesCount || 0;
+        const flashcards = user.counters?.totalFlashcardsCreated || 0;
+
+        // Score formulation: flashcards created weight 2, streak weight 25, maps/summaries weight 10
+        const score = (flashcards * 2) + (streak * 25) + (maps * 10) + (summaries * 10);
+
+        let grade = "E";
+        let progressValue = 0;
+        let color = "gray.5";
+
+        if (score < 500) {
+            grade = "E";
+            progressValue = (score / 500) * 100;
+            color = "gray.5";
+        } else if (score < 1200) {
+            grade = "D";
+            progressValue = ((score - 500) / 700) * 100;
+            color = "orange.5";
+        } else if (score < 2200) {
+            grade = "C";
+            progressValue = ((score - 1200) / 1000) * 100;
+            color = "yellow.5";
+        } else if (score < 3500) {
+            grade = "B";
+            progressValue = ((score - 2200) / 1300) * 100;
+            color = "green.5";
+        } else if (score < 5000) {
+            grade = "A";
+            progressValue = ((score - 3500) / 1500) * 100;
+            color = "blue.5";
+        } else {
+            grade = "S";
+            progressValue = Math.min(((score - 5000) / 3000) * 100 + 50, 100);
+            color = "grape.6";
+        }
+
+        return {
+            grade,
+            progressValue: Math.round(progressValue),
+            color
+        };
+    };
+
+    const rank = calculateUserRank();
+
     return (
         <Container className={styles.leftCard}>
             <Stack justify="space-between" className={styles.overviewStack} gap="xl">
                 <Stack gap="sm">
-                    <Title order={2} className={styles.burgundyTitle}>
+                    <Title order={2} className={styles.sectionTitle}>
                         Estatísticas
                     </Title>
 
@@ -65,59 +114,31 @@ export default function StatisticsOverviewCard({ user, stats }) {
                             </Group>
                         </Stack>
 
-                        {/* Ring Charts */}
+                        {/* Ring Chart of Performance Rank */}
                         <Group gap="md" justify="center">
-                            {/* Big Donut */}
                             <RingProgress
-                                size={140}
-                                thickness={14}
+                                size={300}
+                                thickness={25}
                                 roundCaps
-                                sections={[{ value: 65, color: "blue.4" }]}
+                                sections={[{ value: rank.progressValue, color: rank.color }]}
                                 label={
-                                    <Text size="2rem" fw={800} c="blue.4" ta="center" className={styles.studexLogoText}>
-                                        S
-                                    </Text>
+                                    <Stack gap={0} align="center" justify="center">
+                                        <Text size="5rem" fw={900} c={rank.color} lh={1} className={styles.studexLogoText}>
+                                            {rank.grade}
+                                        </Text>
+                                        <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                                            Ranking
+                                        </Text>
+                                    </Stack>
                                 }
                             />
-
-                            {/* Small Donut Stack */}
-                            <Stack gap="sm">
-                                <Stack gap={2} align="center">
-                                    <Text className={styles.smallCircleLabel}>Línguas Estrangeiras</Text>
-                                    <RingProgress
-                                        size={65}
-                                        thickness={6}
-                                        roundCaps
-                                        sections={[{ value: 70, color: "pink.4" }]}
-                                        label={
-                                            <Text size="xs" fw={700} c="pink.5" ta="center">
-                                                70%
-                                            </Text>
-                                        }
-                                    />
-                                </Stack>
-                                <Stack gap={2} align="center">
-                                    <Text className={styles.smallCircleLabel}>Medicina</Text>
-                                    <RingProgress
-                                        size={65}
-                                        thickness={6}
-                                        roundCaps
-                                        sections={[{ value: 30, color: "pink.4" }]}
-                                        label={
-                                            <Text size="xs" fw={700} c="pink.5" ta="center">
-                                                30%
-                                            </Text>
-                                        }
-                                    />
-                                </Stack>
-                            </Stack>
                         </Group>
                     </Flex>
                 </Stack>
 
                 {/* Subject Distribution */}
                 <Stack className={styles.segmentedBarContainer} gap="xs">
-                    <Title order={3} className={styles.burgundyTitle} style={{ fontSize: "1.1rem" }}>
+                    <Title order={3} className={styles.sectionTitle} style={{ fontSize: "1.1rem" }}>
                         Assuntos de Cartões Mais Usados
                     </Title>
 
