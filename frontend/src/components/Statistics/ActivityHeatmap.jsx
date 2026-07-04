@@ -56,9 +56,19 @@ export default function ActivityHeatmap({ stats }) {
     let lastMonth = "";
     const monthLabels = weeks.map((week, idx) => {
         const firstDayOfWeek = week[0].date;
-        const monthNum = firstDayOfWeek.getMonth();
+        const lastDayOfWeek = week[6].date;
+        
+        const firstMonthNum = firstDayOfWeek.getMonth();
+        const lastMonthNum = lastDayOfWeek.getMonth();
+        
         const ptMonths = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        const monthName = ptMonths[monthNum];
+        let monthName = ptMonths[firstMonthNum];
+        
+        // If we are on the last week of the calendar and the week spans into the next month
+        if (idx === weeks.length - 1 && lastMonthNum !== firstMonthNum) {
+            monthName = ptMonths[lastMonthNum];
+        }
+
         if (monthName !== lastMonth) {
             lastMonth = monthName;
             return (
