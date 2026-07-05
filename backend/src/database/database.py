@@ -158,7 +158,7 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
 
         conn.execute(
             """
-            CREATE TABLE flashcards (
+            CREATE TABLE IF NOT EXISTS flashcards (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 deck_id INTEGER NOT NULL,
                 pergunta TEXT NOT NULL,
@@ -313,19 +313,19 @@ def save_subject_db(user_id: int, name: str, desc: str, domain: int, creation_da
 
 
 def get_subjects_db(
-    name: str,
+    user_id: int,
     db_path: Path = DB_PATH,
 ) -> list | None:
     """
-    Try to search a subject with the name
+    Try to search a subject with the user_id
 
-    Returns the list of subjects with the same name
+    Returns the list of subjects with the same user_id
     """
 
     with _open_connection(db_path) as conn:
         rows = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain 
                                     FROM subjects 
-                                    WHERE name LIKE ?""", (f"%{name}%",)).fetchall()  
+                                    WHERE user_id LIKE ?""", (user_id,)).fetchall()  
         
         if rows is None:
             return None
@@ -527,19 +527,19 @@ def save_deck_db(subject_id: int, titulo: str, acuracia: int, novos: int, aprend
 
 
 def get_decks_db(
-    titulo: str,
+    subject_id: int,
     db_path: Path = DB_PATH,
 ) -> list | None:
     """
-    Try to search a deck with the name
+    Try to search a deck with the subject id
 
-    Returns the list of decks with the same name
+    Returns the list of decks with the same subject id
     """
 
     with _open_connection(db_path) as conn:
         rows = conn.execute("""SELECT id, subject_id, titulo, acuracia, novos, aprendendo, review, creation_date
                                     FROM decks 
-                                    WHERE titulo LIKE ?""", (f"%{titulo}%",)).fetchall()  
+                                    WHERE subject_id LIKE ?""", (subject_id,)).fetchall()  
         
         if rows is None:
             return None
@@ -875,3 +875,14 @@ def save_materials_db(
         except Exception:
             conn.rollback()
             raise
+
+def match_subject_user_db(subject_id:int, user_id:int, db_path: Path = DB_PATH):
+    with _open_connection(db_path) as conn:
+        row = conn.execute("""SELECT user_id
+                                    FROM subjects 
+                                    WHERE id = ?""", (subject_id,)).fetchone()  
+        
+        if row is None:
+            return False
+        
+        return row[0] == user_id

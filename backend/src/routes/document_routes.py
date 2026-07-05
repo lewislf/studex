@@ -11,14 +11,14 @@ sys.path.append(str(Path(__file__).resolve().parent.parent / "rag_api"))
 from search_query import load_documents, split_into_nodes, build_vector_index, COLLECTION_NAME
 from materials import generate_materials
 
-document_bp = Blueprint("documents", __name__, url_prefix="/documents")
+document_bp = Blueprint("documents", __name__, url_prefix="/users/<int:user_id>/documents")
 
 DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
 ALLOWED_EXTENSIONS = {".pdf"}
 
 
 @document_bp.post("")
-def upload_document():
+def upload_document(user_id):
     if "file" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado (campo 'file' ausente)"}), 400
 
@@ -37,9 +37,13 @@ def upload_document():
     saved_path = DOCS_DIR / filename
     file.save(saved_path)
 
-    user_id = request.form.get("user_id")
+    id_user = request.form.get("user_id")
+
+    if id_user != user_id:
+        return jsonify({"error": "Erro: O id do usuário passado na URL não corresponde ao ID passada na requisição"}), 400
+
     subject_id = request.form.get("subject_id")
-    doc_metadata = {k: v for k, v in {"user_id": user_id, "subject_id": subject_id}.items() if v is not None}
+    doc_metadata = {k: v for k, v in {"user_id": id_user, "subject_id": subject_id}.items() if v is not None}
 
     try:
         docs = load_documents([saved_path], metadata=doc_metadata)

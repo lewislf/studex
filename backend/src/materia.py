@@ -18,7 +18,7 @@ class Materia:
             > materia = Materia(1, "Projeto Integrado", "Ensina boas práticas no desenvolvimento de software", 100)
     """
     
-    def __init__(self, user_id: int, name: str, description: str, domain: int, creation_date=date.today(), id=None) -> None:
+    def __init__(self, user_id: int, name: str, description: str, domain: int, creation_date=date.today(), id: int | None = None) -> None:
         """Inicializa uma nova matéria.
 
         Args:
@@ -41,5 +41,20 @@ class Materia:
             Define o formato padrão de impressão da matéria
         """
         return f"Nome: {self.name}, Descrição: {self.description}, Domínio: {self.domain}"
+
+    def to_dict(self):
+        """
+        Retorna um dicionario de matéria, facilitando o envio de JSONs
+        """
+        return {
+            "id": self.id,
+            "title": self.name,
+            "user_id": self.user_id,
+            "description": self.description,
+            "date": self.date,
+            "icon": "globe",
+            "color": "#e63946", 
+            "mastery_percentage": self.domain, 
+        }
        
 

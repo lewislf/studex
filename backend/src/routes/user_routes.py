@@ -9,6 +9,18 @@ from database.database import (
 
 user_bp = Blueprint("users", __name__, url_prefix="/users")
 
+@user_bp.get("")
+def get_users():
+    users = get_users_db("")
+
+    if users is None:
+        return jsonify({"error": "No users found by this name"}), 404
+
+    response = []
+    for user in users:
+        response.append(user.to_dict())
+
+    return jsonify(response)
 
 @user_bp.get("/<int:user_id>")
 def get_user(user_id):
@@ -17,11 +29,7 @@ def get_user(user_id):
     if user is None:
         return jsonify({"error": "User not found"}), 404
 
-    return jsonify({
-        "id": user.id,
-        "name": user.name,
-        "email": user.email,
-    })
+    return jsonify(user.to_dict())
 
 
 @user_bp.post("")
