@@ -5,6 +5,8 @@ from werkzeug.utils import secure_filename
 
 from flask import Blueprint, jsonify, request
 
+from database.database import save_materials_db
+
 logger = logging.getLogger(__name__)
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "rag_api"))
@@ -39,7 +41,7 @@ def upload_document(user_id):
 
     id_user = request.form.get("user_id")
 
-    if id_user != user_id:
+    if int(id_user) != user_id:
         return jsonify({"error": "Erro: O id do usuário passado na URL não corresponde ao ID passada na requisição"}), 400
 
     subject_id = request.form.get("subject_id")
@@ -64,9 +66,25 @@ def upload_document(user_id):
             "error": "Documento indexado, mas falha ao gerar os materiais de estudo",
         }), 207
 
+    # Persiste os materiais na matéria escolhida (nova ou existente).
+    # Sem subject_id, apenas devolve os materiais sem salvar.
+    if subject_id is not None:
+        try:
+            save_materials_db(int(subject_id), materials)
+        except Exception:
+            logger.exception("Falha ao salvar materiais para a matéria %s", subject_id)
+            return jsonify({
+                "filename": filename,
+                "collection": COLLECTION_NAME,
+                "status": "generated_without_saving",
+                "error": "Materiais gerados, mas falha ao salvá-los na matéria",
+                "materiais": materials,
+            }), 207
+
     return jsonify({
         "filename": filename,
         "collection": COLLECTION_NAME,
+        "subject_id": subject_id,
         "status": "indexed",
         "materiais": materials,
     }), 201

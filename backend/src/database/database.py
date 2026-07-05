@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 import os
 import sqlite3
 from sqlite3 import Connection
@@ -12,6 +13,7 @@ from datetime import date
 from user import Usuario
 from materia import Materia
 from resumo import Resumo
+from mapa_mental import MapaMental
 from baralho import Baralho
 from flashcard import Flashcard
 from enums.flashcard_status import FlashcardStatus
@@ -173,6 +175,20 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mind_maps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject_id INTEGER NOT NULL,
+                titulo TEXT NOT NULL,
+                conteudo TEXT NOT NULL,
+                creation_date DATETIME,
+
+                FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+            );
+            """
+        )
+
 
     return None
 
@@ -325,7 +341,8 @@ def get_subjects_db(
     with _open_connection(db_path) as conn:
         rows = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain 
                                     FROM subjects 
-                                    WHERE user_id LIKE ?""", (user_id,)).fetchall()  
+                                    WHERE user_id = ?
+                                    ORDER BY creation_date DESC""", (user_id,)).fetchall()  
         
         if rows is None:
             return None
@@ -490,6 +507,114 @@ def count_summaries_db(subject_id: int, db_path: Path = DB_PATH) -> int:
         row = conn.execute("SELECT COUNT(*) FROM summaries WHERE subject_id = ?", (subject_id,),).fetchone()
         return int(row[0]) if row else 0
 
+### MIND MAP ###
+
+def save_mindmap_db(subject_id: int, titulo: str, conteudo: str, creation_date: date, db_path: Path = DB_PATH, conn: Connection | None = None) -> int | None:
+    """
+    Register a new mind map in the database.
+
+    `conteudo` is expected to be a JSON string (nodes/edges).
+
+    Returns the mind_map_id of the new entry.
+    """
+    conn, own_conn = _get_connection(conn, db_path)
+
+    try:
+        cur = conn.cursor()
+
+        ins = """
+            INSERT INTO mind_maps (subject_id, titulo, conteudo, creation_date)
+            VALUES (?, ?, ?, ?)
+        """
+
+        cur.execute(ins, (subject_id, titulo, conteudo, creation_date))
+
+        mind_map_id = cur.lastrowid
+
+        if own_conn:
+            conn.commit()
+
+        return mind_map_id
+    except:
+        if own_conn:
+            conn.rollback()
+        raise
+    finally:
+        if own_conn:
+            conn.close()
+
+
+def get_mindmaps_db(
+    titulo: str,
+    db_path: Path = DB_PATH,
+) -> list | None:
+    """
+    Try to search a mind map with the name
+
+    Returns the list of mind maps with the same name
+    """
+
+    with _open_connection(db_path) as conn:
+        rows = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
+                                    FROM mind_maps
+                                    WHERE titulo LIKE ?""", (f"%{titulo}%",)).fetchall()
+
+        if rows is None:
+            return None
+
+        mind_maps = []
+        for mind_map_id, subject_id, titulo, conteudo, creation_date in rows:
+            mind_maps.append(MapaMental(subject_id, titulo, conteudo, creation_date, mind_map_id))
+
+        return mind_maps
+
+
+def get_mindmap_db(
+    mind_map_id: int,
+    db_path: Path = DB_PATH,
+) -> MapaMental | None:
+    """
+    Try to search a mind map with id
+
+    Returns the mind map, if it exists
+    """
+
+    with _open_connection(db_path) as conn:
+        row = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
+                                    FROM mind_maps
+                                    WHERE id = ?""", (mind_map_id,)).fetchone()
+
+        if row is None:
+            return None
+
+        mind_map_id, subject_id, titulo, conteudo, creation_date = row
+        return MapaMental(subject_id, titulo, conteudo, creation_date, mind_map_id)
+
+
+def delete_mindmap_db(mind_map_id: int, db_path: Path = DB_PATH) -> bool:
+    """
+    Atomic deletion of a mind map by mind_map_id.
+
+    Returns True if a mind map was deleted, False if no such mind_map_id exists.
+    """
+    with _open_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("BEGIN")
+        cur.execute("DELETE FROM mind_maps WHERE id = ?", (int(mind_map_id),))
+        deleted = cur.rowcount > 0
+        conn.commit()
+        return deleted
+
+
+def count_mindmaps_db(subject_id: int, db_path: Path = DB_PATH) -> int:
+    """
+    Returns the total number of registered mind maps in the database with given subject_id.
+    """
+    with _open_connection(db_path) as conn:
+        row = conn.execute("SELECT COUNT(*) FROM mind_maps WHERE subject_id = ?", (subject_id,),).fetchone()
+        return int(row[0]) if row else 0
+
+
 ### DECK ###
 
 def save_deck_db(subject_id: int, titulo: str, acuracia: int, novos: int, aprendendo: int, review: int, creation_date: date, db_path: Path = DB_PATH, conn: Connection | None = None) -> int | None:
@@ -620,8 +745,6 @@ def save_flashcard_db(
     try:
         cur = conn.cursor()
 
-        cur.execute("BEGIN")
-
         cur.execute(
             """
             INSERT INTO flashcards (
@@ -644,7 +767,8 @@ def save_flashcard_db(
 
         flashcard_id = cur.lastrowid
 
-        conn.commit()
+        if own_conn:
+            conn.commit()
 
         return flashcard_id
     except:
@@ -825,22 +949,23 @@ def save_materials_db(
                     save_summary_db(
                         subject_id=subject_id,
                         titulo=material["titulo"],
-                        conteudo=material["conteudo"],
+                        conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
                         creation_date=material["creation_date"],
                         db_path=db_path,
                         conn=conn
                     )
 
                 elif tipo == "mapa_mental":
-                     pass
-                     #save_mindmap_db(                        
-                     #    subject_id=subject_id,
-                     #    titulo=material["titulo"],
-                     #    conteudo=material["conteudo"],
-                     #    creation_date=material["creation_date"],
-                     #    db_path=db_path,
-                     #    conn=conn
-                     #)
+
+                    save_mindmap_db(
+                        subject_id=subject_id,
+                        titulo=material["titulo"],
+                        conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
+                        creation_date=material["creation_date"],
+                        db_path=db_path,
+                        conn=conn
+                    )
+
                 elif tipo == "baralho":
 
                     deck_id = save_deck_db(

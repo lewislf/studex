@@ -20,6 +20,9 @@ subject_bp = Blueprint("subjects", __name__, url_prefix="/users/<int:user_id>/su
 def get_subject(user_id, subject_id):
     subject = get_subject_db(subject_id)
 
+    if subject is None:
+        return jsonify({"error": "Subject not found"}), 404
+
     has_subj = match_subject_user_db(subject_id, user_id)
 
     if has_subj is False:

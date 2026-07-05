@@ -70,30 +70,67 @@ sistema.
 
 ## Execução
 
+A aplicação é executada com **Docker Compose**, que sobe três serviços: o
+banco vetorial **Qdrant**, o **backend** (Flask, na porta `5000`) e o
+**frontend** (Vite, na porta `5173`).
+
+A **LLM roda separadamente**, através do **Ollama** instalado diretamente na
+máquina host (não dentro do Docker). O backend acessa o Ollama via
+`host.docker.internal:11434`. Essa separação permite que o Ollama use a GPU
+da máquina e evita reprocessar os modelos a cada rebuild dos containers.
+
+### Pré-requisitos
+
+- [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/)
+- [Ollama](https://ollama.com/download) instalado no host
+
+### 1. Suba a LLM (Ollama) no host
+
+```bash
+# Inicie o servidor do Ollama (caso não esteja rodando como serviço)
+ollama serve
+
+# Em outro terminal, baixe os modelos utilizados pelo RAG
+ollama pull bge-m3        # modelo de embeddings
+ollama pull llama3.2      # modelo de geração (LLM)
+```
+
+> Você pode trocar o modelo de geração via variável de ambiente `LLM_MODEL`
+> (padrão: `llama3.2:latest`). Confira os modelos disponíveis com `ollama list`.
+
+### 2. Suba a aplicação com Docker
+
 ```bash
 # Clone o repositório
 git clone https://github.com/lewislf/studex.git
 cd studex
 
-# Lembre-se de ativar o Conda
-conda init
-source ~/.bashrc
-
-# Crie o ambiente virtual
-conda create -n studex python=3.11
-conda activate studex
-
-pip install -r requirements.txt
-
-# Rodar o Backend
-cd backend/src
-python3 main.py
-
-# Rodar o frontend (lembre-se de rodar em outro terminal e ativar o ambiente virtual)
-cd frontend/src
-npm install
-npm run dev
+# Construa e suba os containers (Qdrant + backend + frontend)
+docker compose up --build
 ```
+
+Após subir:
+
+- Frontend: http://localhost:5173
+- Backend (API): http://localhost:5000
+- Qdrant: http://localhost:6333
+
+Para rodar em segundo plano use `docker compose up --build -d`, e para
+encerrar `docker compose down`.
+
+### Variáveis de ambiente relevantes (backend)
+
+| Variável            | Padrão                              | Descrição                                  |
+| ------------------- | ----------------------------------- | ------------------------------------------ |
+| `OLLAMA_HOST`       | `http://host.docker.internal:11434` | Endereço do servidor Ollama no host        |
+| `OLLAMA_EMBED_HOST` | valor de `OLLAMA_HOST`              | Host do modelo de embeddings (se separado) |
+| `OLLAMA_LLM_HOST`   | valor de `OLLAMA_HOST`              | Host do modelo de geração (se separado)    |
+| `LLM_MODEL`         | `llama3.2:latest`                   | Modelo de geração usado pela LLM           |
+| `QDRANT_URL`        | `http://qdrant:6333`                | URL do banco vetorial Qdrant               |
+
+> As variáveis já vêm configuradas no `docker-compose.yml` para o cenário
+> padrão (Docker + Ollama no host). Só é necessário ajustá-las se o Ollama
+> estiver em outra máquina ou porta.
 
 ## Documentação do Código
 
@@ -131,9 +168,8 @@ docstrings do código Python, de forma análoga ao JSDoc.
 Testes unitários utilizando PyTest para o Backend e Vitest para o Front-end
 
 ```bash
-# Rodar testes unitários para o Backend
-cd backend/src
-python -m pytest
+# Rodar testes unitários do Backend dentro do container (com a stack no ar)
+docker compose exec backend python -m pytest
 ```
 
 ## Tecnologias Utilizadas
