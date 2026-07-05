@@ -6,7 +6,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
-from backend.src.database import database
+from database.database import save_materials_db
 from llama_index.core import SummaryIndex
 from llama_index.core.schema import BaseNode
 
@@ -319,6 +319,6 @@ def generate_materials(nodes: list[BaseNode], fallback_titulo: str = "Documento"
         ]
     
     if subject_id is not None:
-        database.save_materials_db(subject_id, materials)
+        save_materials_db(subject_id, materials)
 
     return materials
