@@ -11,6 +11,8 @@ CORS(app)
 HOST = "0.0.0.0"
 SOCKET = 5000
 
+init_db()
+
 app.register_blueprint(user_bp)
 app.register_blueprint(subject_bp)
 app.register_blueprint(document_bp)

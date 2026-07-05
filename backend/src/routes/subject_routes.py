@@ -4,11 +4,34 @@ from database.database import (
     count_summaries_db,
     get_subject_db,
     get_subjects_db,
+    get_subjects_by_user_db,
     save_subject_db,
     delete_subject_db,
 )
 
 subject_bp = Blueprint("subjects", __name__, url_prefix="/subjects")
+
+
+@subject_bp.get("")
+def list_subjects():
+    user_id = request.args.get("user_id")
+
+    if user_id is None:
+        return jsonify({"error": "Parâmetro 'user_id' é obrigatório"}), 400
+
+    subjects = get_subjects_by_user_db(user_id)
+
+    return jsonify([
+        {
+            "id": subject.id,
+            "title": subject.name,
+            "user_id": subject.user_id,
+            "description": subject.description,
+            "date": subject.date,
+            "mastery_percentage": subject.domain,
+        }
+        for subject in subjects
+    ])
 
 
 @subject_bp.get("/<int:subject_id>")
