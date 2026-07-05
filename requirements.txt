@@ -52,3 +52,4 @@ typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattle
 urllib3==2.7.0
 watchdog==6.0.0
 Werkzeug @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_werkzeug_1775160081/work
+flasgger

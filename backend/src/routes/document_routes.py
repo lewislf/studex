@@ -21,6 +21,39 @@ ALLOWED_EXTENSIONS = {".pdf"}
 
 @document_bp.post("")
 def upload_document():
+    """
+    Envia um PDF, gera os materiais de estudo e os salva na matéria escolhida.
+    ---
+    tags:
+      - Documentos
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: file
+        type: file
+        required: true
+        description: Arquivo PDF
+      - in: formData
+        name: subject_id
+        type: integer
+        required: false
+        description: Matéria (nova ou existente) onde salvar os materiais
+      - in: formData
+        name: user_id
+        type: integer
+        required: false
+        description: Usuário dono do upload
+    responses:
+      201:
+        description: Documento indexado e materiais gerados/salvos
+      207:
+        description: Indexado, mas falha ao gerar ou salvar os materiais
+      400:
+        description: Arquivo ausente ou extensão inválida
+      500:
+        description: Falha ao indexar o documento
+    """
     if "file" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado (campo 'file' ausente)"}), 400
 
