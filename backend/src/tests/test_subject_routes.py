@@ -14,81 +14,165 @@ from flask import Flask
 from routes.subject_routes import subject_bp
 
 
-@pytest.fixture
-def client():
-    app = Flask(__name__)
-    app.register_blueprint(subject_bp)
-    return app.test_client()
+# @pytest.fixture
+# def client():
+#     app = Flask(__name__)
+#     app.register_blueprint(subject_bp)
+#     return app.test_client()
 
 
-def _fake_subject(**kwargs):
-    base = dict(id=1, name="Redes", user_id=1, description="Redes de Computadores",
-                date="2026-07-05", domain=55)
+def fake_subject(**kwargs):
+    base = {
+        "id": 1,
+        "user_id": 10,
+        "name": "Redes",
+        "description": "Redes de Computadores",
+        "domain": 55,
+        "date": "2026-07-05",
+        "to_dict": lambda: {
+            "id": 1,
+            "title": "Redes",
+            "description": "Redes de Computadores",
+            "mastery_percentage": 55,
+            "date": "2026-07-05",
+        },
+    }
+
     base.update(kwargs)
+
+    # Atualiza o to_dict caso algum campo tenha sido sobrescrito
+    base["to_dict"] = lambda: {
+        "id": base["id"],
+        "title": base["name"],
+        "description": base["description"],
+        "mastery_percentage": base["domain"],
+        "date": base["date"],
+    }
+
     return SimpleNamespace(**base)
 
 
-def test_list_subjects_success(client):
-    fakes = [_fake_subject(id=1, name="Redes"), _fake_subject(id=2, name="POO")]
+def test_get_subjects(client):
+    subjects = [
+        fake_subject(id=1, name="Redes"),
+        fake_subject(id=2, name="POO"),
+    ]
 
-    with patch("routes.subject_routes.get_subjects_by_user_db", return_value=fakes) as mock_get:
-        resp = client.get("/subjects?user_id=1")
+    with patch(
+        "routes.subject_routes.get_subjects_db",
+        return_value=subjects,
+    ) as mock_get, patch(
+        "routes.subject_routes.match_subject_user_db",
+        return_value=True,
+    ):
 
-    assert resp.status_code == 200
-    body = resp.get_json()
+        response = client.get("/users/10/subjects")
+
+    assert response.status_code == 200
+
+    body = response.get_json()
+
     assert len(body) == 2
     assert body[0]["id"] == 1
     assert body[0]["title"] == "Redes"
     assert body[1]["title"] == "POO"
-    mock_get.assert_called_once_with("1")
+
+    mock_get.assert_called_once_with(10)
 
 
-def test_list_subjects_empty(client):
-    with patch("routes.subject_routes.get_subjects_by_user_db", return_value=[]):
-        resp = client.get("/subjects?user_id=99")
+def test_get_subjects_none(client):
+    with patch(
+        "routes.subject_routes.get_subjects_db",
+        return_value=None,
+    ):
+        response = client.get("/users/10/subjects")
 
-    assert resp.status_code == 200
-    assert resp.get_json() == []
+    assert response.status_code == 404
 
 
-def test_list_subjects_missing_user_id(client):
-    resp = client.get("/subjects")
+def test_get_subject(client):
+    with patch(
+        "routes.subject_routes.get_subject_db",
+        return_value=fake_subject(),
+    ), patch(
+        "routes.subject_routes.match_subject_user_db",
+        return_value=True,
+    ):
 
-    assert resp.status_code == 400
-    assert "user_id" in resp.get_json()["error"]
+        response = client.get("/users/10/subjects/1")
+
+    assert response.status_code == 200
+
+    body = response.get_json()
+
+    assert body["id"] == 1
+    assert body["title"] == "Redes"
+
+
+def test_get_subject_not_found(client):
+    with patch(
+        "routes.subject_routes.get_subject_db",
+        return_value=None,
+    ):
+        response = client.get("/users/10/subjects/1")
+
+    assert response.status_code == 404
 
 
 def test_create_subject(client):
     payload = {
-        "user_id": 1, "name": "Redes", "description": "desc",
-        "domain": 55, "date": "2026-07-05",
+        "user_id": 10,
+        "name": "Redes",
+        "description": "desc",
+        "domain": 55,
+        "date": "2026-07-05",
     }
 
-    with patch("routes.subject_routes.save_subject_db", return_value=7) as mock_save:
-        resp = client.post("/subjects", json=payload)
+    with patch(
+        "routes.subject_routes.save_subject_db",
+        return_value=7,
+    ) as mock_save:
 
-    assert resp.status_code == 201
-    assert resp.get_json() == {"id": 7}
-    mock_save.assert_called_once_with(1, "Redes", "desc", 55, "2026-07-05")
+        response = client.post(
+            "/users/10/subjects",
+            json=payload,
+        )
 
+    assert response.status_code == 201
+    assert response.get_json() == {"id": 7}
 
-def test_get_subject_not_found(client):
-    with patch("routes.subject_routes.get_subject_db", return_value=None):
-        resp = client.get("/subjects/123")
-
-    assert resp.status_code == 404
-    assert "error" in resp.get_json()
+    mock_save.assert_called_once_with(
+        10,
+        "Redes",
+        "desc",
+        55,
+        "2026-07-05",
+    )
 
 
 def test_delete_subject_success(client):
-    with patch("routes.subject_routes.delete_subject_db", return_value=True):
-        resp = client.delete("/subjects/1")
+    with patch(
+        "routes.subject_routes.match_subject_user_db",
+        return_value=True,
+    ), patch(
+        "routes.subject_routes.delete_subject_db",
+        return_value=True,
+    ):
 
-    assert resp.status_code == 204
+        response = client.delete("/users/10/subjects/1")
+
+    assert response.status_code == 204
 
 
 def test_delete_subject_not_found(client):
-    with patch("routes.subject_routes.delete_subject_db", return_value=False):
-        resp = client.delete("/subjects/1")
+    with patch(
+        "routes.subject_routes.match_subject_user_db",
+        return_value=True,
+    ), patch(
+        "routes.subject_routes.delete_subject_db",
+        return_value=False,
+    ):
 
-    assert resp.status_code == 404
+        response = client.delete("/users/10/subjects/1")
+
+    assert response.status_code == 404

@@ -52,7 +52,7 @@ export function useSubjects(userId) {
         setError(null);
 
         try {
-            const response = await fetch(`${API_URL}/subjects`, {
+            const response = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/subjects`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

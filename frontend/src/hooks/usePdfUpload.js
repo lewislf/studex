@@ -43,6 +43,8 @@ export function usePdfUpload(endpointUrl) {
             });
 
             if (!response.ok) {
+                const text = await response.text();
+                console.error(text)
                 throw new Error(`Upload failed with status: ${response.status}`);
             }
 

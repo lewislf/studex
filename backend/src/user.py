@@ -39,6 +39,16 @@ class Usuario:
             Define o formato padrão de impressão do usuário
         """
         return f"Nome: {self.name}, Email: {self.email}"
+    
+    def to_dict(self):
+        """
+        Retorna um dicionário de usuário, facilitando o envio de JSONs
+        """
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+        }
 
     def greet(self) -> str:
         """Gera uma saudação personalizada para o usuário.
