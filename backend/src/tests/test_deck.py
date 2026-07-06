@@ -126,7 +126,7 @@ def test_search_deck(temp_db):
     )
 
     decks = get_decks_db(
-        "Her",
+        subject_id,
         db_path=db_path,
     )
 

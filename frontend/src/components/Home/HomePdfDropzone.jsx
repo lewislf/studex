@@ -24,7 +24,7 @@ export default function HomePdfDropzone() {
     const [modalOpened, setModalOpened] = useState(false);
 
     // Network logic
-    const { uploadPdf, loading, error, success } = usePdfUpload(`${import.meta.env.VITE_API_URL}/documents`);
+    const { uploadPdf, loading, error, success } = usePdfUpload(`${import.meta.env.VITE_API_URL}/users/${encodeURIComponent(userId)}/documents`);
 
     /**
      * Ao soltar o arquivo, não enviamos direto: abrimos o menu para o usuário

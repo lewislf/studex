@@ -11,7 +11,7 @@ export function useSubjects(userId) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    /** Busca as matérias existentes do usuário (GET /subjects?user_id=...). */
+    /** Busca as matérias existentes do usuário (GET /users/<int:user_id>/subjects). */
     const fetchSubjects = useCallback(async () => {
         if (userId === undefined || userId === null || userId === '') return;
 
@@ -19,7 +19,7 @@ export function useSubjects(userId) {
         setError(null);
 
         try {
-            const response = await fetch(`${API_URL}/subjects?user_id=${encodeURIComponent(userId)}`);
+            const response = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/subjects`);
 
             if (!response.ok) {
                 throw new Error(`Falha ao carregar matérias (status ${response.status})`);
@@ -41,7 +41,7 @@ export function useSubjects(userId) {
         setError(null);
 
         try {
-            const response = await fetch(`${API_URL}/subjects`, {
+            const response = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/subjects`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
