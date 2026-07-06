@@ -21,7 +21,7 @@ ALLOWED_EXTENSIONS = {".pdf"}
 
 @document_bp.post("")
 def upload_document(user_id):
-  """
+    """
     Envia um PDF, gera os materiais de estudo e os salva na matéria escolhida.
     ---
     tags:
