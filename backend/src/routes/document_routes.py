@@ -5,6 +5,8 @@ from werkzeug.utils import secure_filename
 
 from flask import Blueprint, jsonify, request
 
+from database.database import save_materials_db
+
 logger = logging.getLogger(__name__)
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "rag_api"))
@@ -19,6 +21,39 @@ ALLOWED_EXTENSIONS = {".pdf"}
 
 @document_bp.post("")
 def upload_document():
+    """
+    Envia um PDF, gera os materiais de estudo e os salva na matéria escolhida.
+    ---
+    tags:
+      - Documentos
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: file
+        type: file
+        required: true
+        description: Arquivo PDF
+      - in: formData
+        name: subject_id
+        type: integer
+        required: false
+        description: Matéria (nova ou existente) onde salvar os materiais
+      - in: formData
+        name: user_id
+        type: integer
+        required: false
+        description: Usuário dono do upload
+    responses:
+      201:
+        description: Documento indexado e materiais gerados/salvos
+      207:
+        description: Indexado, mas falha ao gerar ou salvar os materiais
+      400:
+        description: Arquivo ausente ou extensão inválida
+      500:
+        description: Falha ao indexar o documento
+    """
     if "file" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado (campo 'file' ausente)"}), 400
 
@@ -60,9 +95,25 @@ def upload_document():
             "error": "Documento indexado, mas falha ao gerar os materiais de estudo",
         }), 207
 
+    # Persiste os materiais na matéria escolhida (nova ou existente).
+    # Sem subject_id, apenas devolve os materiais sem salvar.
+    if subject_id is not None:
+        try:
+            save_materials_db(int(subject_id), materials)
+        except Exception:
+            logger.exception("Falha ao salvar materiais para a matéria %s", subject_id)
+            return jsonify({
+                "filename": filename,
+                "collection": COLLECTION_NAME,
+                "status": "generated_without_saving",
+                "error": "Materiais gerados, mas falha ao salvá-los na matéria",
+                "materiais": materials,
+            }), 207
+
     return jsonify({
         "filename": filename,
         "collection": COLLECTION_NAME,
+        "subject_id": subject_id,
         "status": "indexed",
         "materiais": materials,
     }), 201

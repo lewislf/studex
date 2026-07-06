@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flasgger import Swagger
 
 from database.database import *
 from routes.user_routes import user_bp
@@ -11,9 +12,52 @@ CORS(app)
 HOST = "0.0.0.0"
 SOCKET = 5000
 
+# Swagger UI em http://localhost:5000/docs
+swagger_template = {
+    "info": {
+        "title": "Studex API",
+        "description": (
+            "API do Studex: geração e armazenamento de materiais de estudo "
+            "(resumo, mapa mental, flashcards) a partir de PDFs."
+        ),
+        "version": "v1",
+    },
+}
+Swagger(
+    app,
+    template=swagger_template,
+    config={"hide_top_bar": True, "specs_route": "/docs/"},
+    merge=True,
+)
+
+init_db()
+
 app.register_blueprint(user_bp)
 app.register_blueprint(subject_bp)
 app.register_blueprint(document_bp)
+
+
+@app.get("/routes")
+def list_routes():
+    """
+    Lista todas as rotas registradas na aplicação.
+    ---
+    tags:
+      - Meta
+    responses:
+      200:
+        description: Lista de rotas (rule, endpoint e métodos HTTP)
+    """
+    rotas = [
+        {
+            "rule": rule.rule,
+            "endpoint": rule.endpoint,
+            "methods": sorted(rule.methods - {"HEAD", "OPTIONS"}),
+        }
+        for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule)
+    ]
+    return jsonify(rotas)
+
 
 if __name__ == "__main__":
     app.run(host=HOST, port=SOCKET, debug=True)

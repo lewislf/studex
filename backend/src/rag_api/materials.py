@@ -6,6 +6,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
+from database.database import save_materials_db
 from llama_index.core import SummaryIndex
 from llama_index.core.schema import BaseNode
 
@@ -284,35 +285,40 @@ def generate_materials(nodes: list[BaseNode], fallback_titulo: str = "Documento"
 
     creation_date = date.today().isoformat()
     titulo_base = resumo["titulo"]
+    
+    materials = [
+            {
+                "tipo": "resumo",
+                "titulo": titulo_base,
+                "subject_id": subject_id,
+                "creation_date": creation_date,
+                "conteudo": {
+                    "texto": resumo["conteudo"],
+                    "topicos_chave": resumo["topicos_chave"],
+                },
+            },
+            {
+                "tipo": "mapa_mental",
+                "titulo": f"{titulo_base} — Mapa Mental de Estudo",
+                "subject_id": subject_id,
+                "creation_date": creation_date,
+                "conteudo": {
+                    "nodes": mapa_mental["nodes"],
+                    "edges": mapa_mental["edges"],
+                },
+            },
+            {
+                "tipo": "baralho",
+                "titulo": f"{titulo_base} — Flashcards",
+                "subject_id": subject_id,
+                "creation_date": creation_date,
+                "conteudo": {
+                    "flashcards": flashcards,
+                },
+            },
+        ]
+    
+    if subject_id is not None:
+        save_materials_db(subject_id, materials)
 
-    return [
-        {
-            "tipo": "resumo",
-            "titulo": titulo_base,
-            "subject_id": subject_id,
-            "creation_date": creation_date,
-            "conteudo": {
-                "texto": resumo["conteudo"],
-                "topicos_chave": resumo["topicos_chave"],
-            },
-        },
-        {
-            "tipo": "mapa_mental",
-            "titulo": f"{titulo_base} — Mapa Mental de Estudo",
-            "subject_id": subject_id,
-            "creation_date": creation_date,
-            "conteudo": {
-                "nodes": mapa_mental["nodes"],
-                "edges": mapa_mental["edges"],
-            },
-        },
-        {
-            "tipo": "baralho",
-            "titulo": f"{titulo_base} — Flashcards",
-            "subject_id": subject_id,
-            "creation_date": creation_date,
-            "conteudo": {
-                "flashcards": flashcards,
-            },
-        },
-    ]
+    return materials

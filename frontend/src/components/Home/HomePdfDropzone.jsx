@@ -1,58 +1,78 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { useOutletContext } from 'react-router';
 import { IconCloudUpload, IconX, IconCheck } from '@tabler/icons-react';
-import { Group, Text, useMantineTheme, Loader } from '@mantine/core';
+import { Group, Text, useMantineTheme } from '@mantine/core';
 import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { notifications } from '@mantine/notifications';
 import { usePdfUpload } from '../../hooks/usePdfUpload';
+import SubjectPickerModal from './SubjectPickerModal';
+import UploadProgress from './UploadProgress';
 import classes from '../../styles/Mantine/PdfDropZone.module.css';
 
 export default function HomePdfDropzone() {
     const theme = useMantineTheme();
 
+    // Usuário atual (fornecido pelo Outlet em App.jsx)
+    const user = useOutletContext();
+    const userId = user?.id;
+
     // trigger the file input dialog
     const openRef = useRef(null);
+
+    // Arquivo pendente aguardando a escolha da matéria
+    const [pendingFile, setPendingFile] = useState(null);
+    const [modalOpened, setModalOpened] = useState(false);
 
     // Network logic
     const { uploadPdf, loading, error, success } = usePdfUpload(`${import.meta.env.VITE_API_URL}/documents`);
 
     /**
-     * Event handler triggered whenever a file satisfies the constraint filters.
+     * Ao soltar o arquivo, não enviamos direto: abrimos o menu para o usuário
+     * escolher/criar a matéria onde os artefatos serão salvos.
      * @param {File[]} files - Validated array of native JS file entries.
      */
-    async function handleDrop(files) {
+    function handleDrop(files) {
         if (files.length > 0) {
-            const file = files[0];
-
-            // Logs
-            console.log('--- File Selected ---');
-            console.log('File Name:', file.name);
-            console.log('File Size:', (file.size / (1024 * 1024)).toFixed(2) + ' MB');
-
-            // Dispatching dynamic multipart payload to the target backend cluster
-            const result = await uploadPdf(file);
-
-            if (result) {
-                console.log('Server response:', result);
-
-                // Toast notification via Mantine standard overlay
-                notifications.show({
-                    title: 'Upload concluído',
-                    message: `O arquivo "${file.name}" foi processado com sucesso!`,
-                    color: 'green',
-                    icon: <IconCheck size={16} />,
-                    autoClose: 4000,
-                });
-            } else {
-                // Toast notification if the hook caught an error
-                notifications.show({
-                    title: 'Falha no upload',
-                    message: 'Não foi possível enviar o documento. Tente novamente.',
-                    color: 'red',
-                    icon: <IconX size={16} />,
-                    autoClose: 5000,
-                });
-            }
+            setPendingFile(files[0]);
+            setModalOpened(true);
         }
+    }
+
+    /**
+     * Disparado quando o usuário confirma a matéria no menu.
+     * @param {string|number} subjectId - Matéria (nova ou existente) escolhida.
+     */
+    async function handleSubjectConfirm(subjectId) {
+        setModalOpened(false);
+
+        const file = pendingFile;
+        if (!file) return;
+
+        const result = await uploadPdf(file, { subjectId, userId });
+        setPendingFile(null);
+
+        if (result) {
+            notifications.show({
+                title: 'Upload concluído',
+                message: `O arquivo "${file.name}" foi processado e salvo na matéria!`,
+                color: 'green',
+                icon: <IconCheck size={16} />,
+                autoClose: 4000,
+            });
+        } else {
+            notifications.show({
+                title: 'Falha no upload',
+                message: 'Não foi possível enviar o documento. Tente novamente.',
+                color: 'red',
+                icon: <IconX size={16} />,
+                autoClose: 5000,
+            });
+        }
+    }
+
+    function handleModalClose() {
+        setModalOpened(false);
+        setPendingFile(null);
     }
 
     /**
@@ -77,59 +97,67 @@ export default function HomePdfDropzone() {
 
     return (
         <div className={classes.wrapper}>
-            <Dropzone
-                openRef={openRef}
-                onDrop={handleDrop} 
-                onReject={handleReject}
-                className={classes.dropzone}
-                radius="md"
-                accept={[MIME_TYPES.pdf]}
-                maxSize={250 * 1024 ** 2} // Updated threshold constraint limit to 250MB
-                loading={loading}        // Displays native Mantine loading background overlay during uploads
-                aria-label="Upload PDF"
-            >
-                <div style={{ pointerEvents: 'none' }}>
-                    <Group justify="center">
-                        {loading ? (
-                            <Loader size={40} />
-                        ) : (
-                                <>
-                                    <Dropzone.Accept>
-                                        <IconCloudUpload size={40} color={theme.colors.blue[6]} stroke={1.5} />
-                                    </Dropzone.Accept>
-                                    <Dropzone.Reject>
-                                        <IconX size={40} color={theme.colors.red[6]} stroke={1.5} />
-                                    </Dropzone.Reject>
-                                    <Dropzone.Idle>
-                                        {/* Swap upload icon for a checkmark once successful */}
-                                        {success ? (
-                                            <IconCheck size={40} color={theme.colors.green[6]} stroke={1.5} />
-                                        ) : (
-                                                <IconCloudUpload size={40} stroke={1.5} className={classes.icon} />
-                                            )}
-                                    </Dropzone.Idle>
-                                </>
-                            )}
-                    </Group>
+            <SubjectPickerModal
+                opened={modalOpened}
+                onClose={handleModalClose}
+                userId={userId}
+                fileName={pendingFile?.name}
+                onConfirm={handleSubjectConfirm}
+            />
 
-                    <Text ta="center" fw={600} fz="sm" mt="sm">
-                        <Dropzone.Accept>Solte o arquivo aqui</Dropzone.Accept>
-                        <Dropzone.Reject>Apenas arquivos PDF menores que 50MB</Dropzone.Reject>
-                        <Dropzone.Idle>
-                            {success ? 'Arquivo enviado com sucesso!' : 'Clique ou arraste seu PDF aqui'}
-                        </Dropzone.Idle>
-                    </Text>
-
-                    {/* Dynamic color swap for the description layout depending on network state */}
-                    <Text 
-                        className={classes.description} 
-                        c={error ? 'red.6' : success ? 'green.6' : 'dimmed'}
-                        fw={error || success ? 500 : 400}
-                    >
-                        {error ? `Erro: ${error}` : 'Tamanho máximo suportado: 50MB'}
-                    </Text>
+            {loading ? (
+                // Durante o processamento, o bloco vira o painel de progresso das 3 fases
+                <div className={classes.dropzone}>
+                    <UploadProgress fileName={pendingFile?.name} />
                 </div>
-            </Dropzone>
+            ) : (
+                <Dropzone
+                    openRef={openRef}
+                    onDrop={handleDrop}
+                    onReject={handleReject}
+                    className={classes.dropzone}
+                    radius="md"
+                    accept={[MIME_TYPES.pdf]}
+                    maxSize={250 * 1024 ** 2} // Updated threshold constraint limit to 250MB
+                    aria-label="Upload PDF"
+                >
+                    <div style={{ pointerEvents: 'none' }}>
+                        <Group justify="center">
+                            <Dropzone.Accept>
+                                <IconCloudUpload size={40} color={theme.colors.blue[6]} stroke={1.5} />
+                            </Dropzone.Accept>
+                            <Dropzone.Reject>
+                                <IconX size={40} color={theme.colors.red[6]} stroke={1.5} />
+                            </Dropzone.Reject>
+                            <Dropzone.Idle>
+                                {/* Swap upload icon for a checkmark once successful */}
+                                {success ? (
+                                    <IconCheck size={40} color={theme.colors.green[6]} stroke={1.5} />
+                                ) : (
+                                    <IconCloudUpload size={40} stroke={1.5} className={classes.icon} />
+                                )}
+                            </Dropzone.Idle>
+                        </Group>
+
+                        <Text ta="center" fw={600} fz="sm" mt="sm">
+                            <Dropzone.Accept>Solte o arquivo aqui</Dropzone.Accept>
+                            <Dropzone.Reject>Apenas arquivos PDF menores que 50MB</Dropzone.Reject>
+                            <Dropzone.Idle>
+                                {success ? 'Arquivo enviado com sucesso!' : 'Clique ou arraste seu PDF aqui'}
+                            </Dropzone.Idle>
+                        </Text>
+
+                        {/* Dynamic color swap for the description layout depending on network state */}
+                        <Text
+                            className={classes.description}
+                            c={error ? 'red.6' : success ? 'green.6' : 'dimmed'}
+                            fw={error || success ? 500 : 400}
+                        >
+                            {error ? `Erro: ${error}` : 'Tamanho máximo suportado: 50MB'}
+                        </Text>
+                    </div>
+                </Dropzone>
+            )}
         </div>
     );
 }

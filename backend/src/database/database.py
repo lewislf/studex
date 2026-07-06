@@ -1,7 +1,9 @@
 import hashlib
 import hmac
+import json
 import os
 import sqlite3
+from sqlite3 import Connection
 from pathlib import Path
 from typing import Any
 from cryptography.fernet import Fernet
@@ -11,10 +13,32 @@ from datetime import date
 from user import Usuario
 from materia import Materia
 from resumo import Resumo
+from mapa_mental import MapaMental
 from baralho import Baralho
+from flashcard import Flashcard
+from enums.flashcard_status import FlashcardStatus
 
 DB_PATH = Path("users.db")
 KEY_PATH = Path("db_key.key")
+
+
+def _get_connection(
+    conn: Connection | None,
+    db_path: Path,
+) -> tuple[Connection, bool]:
+    """
+    Returns the connection to use.
+
+    Returns
+    -------
+    conn : sqlite3.Connection
+    own_connection : bool
+        True if this function opened the connection.
+    """
+    if conn is None:
+        return _open_connection(db_path), True
+
+    return conn, False
 
 def _get_or_create_key(key_path: Path = KEY_PATH) -> bytes:
     """
@@ -70,6 +94,8 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
         - users: stores the user_id, name, email and encrypted password.
         - subjects: stores all subjects
         - summaries: stores all summaries of the database
+        - decks: a collection of flashcards
+        - flashcards: revision cards
     """
     _get_or_create_key(key_path)
 
@@ -126,6 +152,37 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
                 novos INTEGER NOT NULL,
                 aprendendo INTEGER NOT NULL,
                 review INTEGER NOT NULL,
+
+                FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+            );
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS flashcards (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                deck_id INTEGER NOT NULL,
+                pergunta TEXT NOT NULL,
+                resposta TEXT NOT NULL,
+                creation_date DATETIME,
+
+                status TEXT NOT NULL
+                    CHECK(status IN ('novo', 'aprendendo', 'review', 'reaprendendo')),
+
+                FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
+            );
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mind_maps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject_id INTEGER NOT NULL,
+                titulo TEXT NOT NULL,
+                conteudo TEXT NOT NULL,
+                creation_date DATETIME,
 
                 FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
             );
@@ -295,6 +352,29 @@ def get_subjects_db(
         
         return subjects
 
+def get_subjects_by_user_db(
+    user_id: int,
+    db_path: Path = DB_PATH,
+) -> list:
+    """
+    Return every subject that belongs to the given user_id.
+
+    Returns a (possibly empty) list of Materia.
+    """
+
+    with _open_connection(db_path) as conn:
+        rows = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain
+                                    FROM subjects
+                                    WHERE user_id = ?
+                                    ORDER BY creation_date DESC""", (user_id,)).fetchall()
+
+        subjects = []
+        for subject_id, user_id, name, desc, creation_date, domain in rows:
+            subjects.append(Materia(user_id, name, desc, domain, creation_date, subject_id))
+
+        return subjects
+
+
 def get_subject_db(
     subject_id: int,
     db_path: Path = DB_PATH,
@@ -345,16 +425,17 @@ def count_subjects_db(user_id: int, db_path: Path = DB_PATH) -> int:
 
 ### SUMMARY ###
 
-def save_summary_db(subject_id: int, titulo: str, conteudo: str, creation_date: date, db_path: Path = DB_PATH) -> int | None:
+def save_summary_db(subject_id: int, titulo: str, conteudo: str, creation_date: date, db_path: Path = DB_PATH, conn: Connection | None = None) -> int | None:
     """
     Register a new summary in the database. 
     
     Returns the summary_id of the new entry.
     """
-    with _open_connection(db_path) as conn:
+    conn, own_conn = _get_connection(conn, db_path)
+
+    try:
         cur = conn.cursor()
 
-        cur.execute("BEGIN")
         ins = """
             INSERT INTO summaries (subject_id, titulo, conteudo, creation_date) 
             VALUES (?, ?, ?, ?)
@@ -364,8 +445,17 @@ def save_summary_db(subject_id: int, titulo: str, conteudo: str, creation_date: 
 
         summary_id = cur.lastrowid
 
-        conn.commit()
+        if own_conn:
+            conn.commit()
+
         return summary_id
+    except:
+        if own_conn:
+            conn.rollback()
+        raise
+    finally:
+        if own_conn:
+            conn.close()
 
 
 def get_summaries_db(
@@ -439,18 +529,127 @@ def count_summaries_db(subject_id: int, db_path: Path = DB_PATH) -> int:
         row = conn.execute("SELECT COUNT(*) FROM summaries WHERE subject_id = ?", (subject_id,),).fetchone()
         return int(row[0]) if row else 0
 
+### MIND MAP ###
+
+def save_mindmap_db(subject_id: int, titulo: str, conteudo: str, creation_date: date, db_path: Path = DB_PATH, conn: Connection | None = None) -> int | None:
+    """
+    Register a new mind map in the database.
+
+    `conteudo` is expected to be a JSON string (nodes/edges).
+
+    Returns the mind_map_id of the new entry.
+    """
+    conn, own_conn = _get_connection(conn, db_path)
+
+    try:
+        cur = conn.cursor()
+
+        ins = """
+            INSERT INTO mind_maps (subject_id, titulo, conteudo, creation_date)
+            VALUES (?, ?, ?, ?)
+        """
+
+        cur.execute(ins, (subject_id, titulo, conteudo, creation_date))
+
+        mind_map_id = cur.lastrowid
+
+        if own_conn:
+            conn.commit()
+
+        return mind_map_id
+    except:
+        if own_conn:
+            conn.rollback()
+        raise
+    finally:
+        if own_conn:
+            conn.close()
+
+
+def get_mindmaps_db(
+    titulo: str,
+    db_path: Path = DB_PATH,
+) -> list | None:
+    """
+    Try to search a mind map with the name
+
+    Returns the list of mind maps with the same name
+    """
+
+    with _open_connection(db_path) as conn:
+        rows = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
+                                    FROM mind_maps
+                                    WHERE titulo LIKE ?""", (f"%{titulo}%",)).fetchall()
+
+        if rows is None:
+            return None
+
+        mind_maps = []
+        for mind_map_id, subject_id, titulo, conteudo, creation_date in rows:
+            mind_maps.append(MapaMental(subject_id, titulo, conteudo, creation_date, mind_map_id))
+
+        return mind_maps
+
+
+def get_mindmap_db(
+    mind_map_id: int,
+    db_path: Path = DB_PATH,
+) -> MapaMental | None:
+    """
+    Try to search a mind map with id
+
+    Returns the mind map, if it exists
+    """
+
+    with _open_connection(db_path) as conn:
+        row = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
+                                    FROM mind_maps
+                                    WHERE id = ?""", (mind_map_id,)).fetchone()
+
+        if row is None:
+            return None
+
+        mind_map_id, subject_id, titulo, conteudo, creation_date = row
+        return MapaMental(subject_id, titulo, conteudo, creation_date, mind_map_id)
+
+
+def delete_mindmap_db(mind_map_id: int, db_path: Path = DB_PATH) -> bool:
+    """
+    Atomic deletion of a mind map by mind_map_id.
+
+    Returns True if a mind map was deleted, False if no such mind_map_id exists.
+    """
+    with _open_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("BEGIN")
+        cur.execute("DELETE FROM mind_maps WHERE id = ?", (int(mind_map_id),))
+        deleted = cur.rowcount > 0
+        conn.commit()
+        return deleted
+
+
+def count_mindmaps_db(subject_id: int, db_path: Path = DB_PATH) -> int:
+    """
+    Returns the total number of registered mind maps in the database with given subject_id.
+    """
+    with _open_connection(db_path) as conn:
+        row = conn.execute("SELECT COUNT(*) FROM mind_maps WHERE subject_id = ?", (subject_id,),).fetchone()
+        return int(row[0]) if row else 0
+
+
 ### DECK ###
 
-def save_deck_db(subject_id: int, titulo: str, acuracia: int, novos: int, aprendendo: int, review: int, creation_date: date, db_path: Path = DB_PATH) -> int | None:
+def save_deck_db(subject_id: int, titulo: str, acuracia: int, novos: int, aprendendo: int, review: int, creation_date: date, db_path: Path = DB_PATH, conn: Connection | None = None) -> int | None:
     """
     Register a new deck in the database. 
     
     Returns the deck_id of the new entry.
     """
-    with _open_connection(db_path) as conn:
+    conn, own_conn = _get_connection(conn, db_path)
+
+    try:
         cur = conn.cursor()
 
-        cur.execute("BEGIN")
         ins = """
             INSERT INTO decks (subject_id, titulo, acuracia, novos, aprendendo, review, creation_date) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -460,8 +659,18 @@ def save_deck_db(subject_id: int, titulo: str, acuracia: int, novos: int, aprend
 
         deck_id = cur.lastrowid
 
-        conn.commit()
+        if own_conn:
+            conn.commit()
+
         return deck_id
+    except:
+        if own_conn:
+            conn.rollback()
+        raise
+
+    finally:
+        if own_conn:
+            conn.close()
 
 
 def get_decks_db(
@@ -534,3 +743,282 @@ def count_deck_db(subject_id: int, db_path: Path = DB_PATH) -> int:
     with _open_connection(db_path) as conn:
         row = conn.execute("SELECT COUNT(*) FROM decks WHERE subject_id = ?", (subject_id,),).fetchone()
         return int(row[0]) if row else 0
+
+
+### FLASHCARDS ###
+
+def save_flashcard_db(
+    deck_id: int | None,
+    pergunta: str,
+    resposta: str,
+    status: str,
+    creation_date: date,
+    db_path: Path = DB_PATH,
+    conn: Connection | None = None
+) -> int | None:
+    """
+    Register a new flashcard in the database.
+
+    Returns the flashcard_id of the new entry.
+    """
+
+    conn, own_conn = _get_connection(conn, db_path)
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            INSERT INTO flashcards (
+                deck_id,
+                pergunta,
+                resposta,
+                status,
+                creation_date
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                deck_id,
+                pergunta,
+                resposta,
+                status,
+                creation_date,
+            ),
+        )
+
+        flashcard_id = cur.lastrowid
+
+        if own_conn:
+            conn.commit()
+
+        return flashcard_id
+    except:
+        if own_conn:
+            conn.rollback()
+        raise
+
+    finally:
+        if own_conn:
+            conn.close()
+
+def get_flashcard_db(
+    flashcard_id: int,
+    db_path: Path = DB_PATH,
+) -> Flashcard | None:
+    """
+    Search a flashcard by id.
+    """
+
+    with _open_connection(db_path) as conn:
+
+        row = conn.execute(
+            """
+            SELECT
+                id,
+                deck_id,
+                pergunta,
+                resposta,
+                status,
+                creation_date
+            FROM flashcards
+            WHERE id = ?
+            """,
+            (flashcard_id,),
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        flashcard_id, deck_id, pergunta, resposta, status, creation_date = row
+
+        return Flashcard(
+            deck_id,
+            pergunta,
+            resposta,
+            status,
+            creation_date,
+            flashcard_id,
+        )
+
+def get_flashcards_db(
+    deck_id: int,
+    db_path: Path = DB_PATH,
+) -> list[Flashcard]:
+    """
+    Returns all flashcards from a deck.
+    """
+
+    with _open_connection(db_path) as conn:
+
+        rows = conn.execute(
+            """
+            SELECT
+                id,
+                deck_id,
+                pergunta,
+                resposta,
+                status,
+                creation_date
+            FROM flashcards
+            WHERE deck_id = ?
+            """,
+            (deck_id,),
+        ).fetchall()
+
+        flashcards = []
+
+        for flashcard_id, deck_id, pergunta, resposta, status, creation_date in rows:
+
+            flashcards.append(
+                Flashcard(
+                    deck_id,
+                    pergunta,
+                    resposta,
+                    status,
+                    creation_date,
+                    flashcard_id,
+                )
+            )
+
+        return flashcards
+
+def delete_flashcard_db(
+    flashcard_id: int,
+    db_path: Path = DB_PATH,
+) -> bool:
+    """
+    Delete a flashcard.
+
+    Returns True if deleted.
+    """
+
+    with _open_connection(db_path) as conn:
+
+        cur = conn.cursor()
+
+        cur.execute("BEGIN")
+
+        cur.execute(
+            """
+            DELETE FROM flashcards
+            WHERE id = ?
+            """,
+            (flashcard_id,),
+        )
+
+        deleted = cur.rowcount > 0
+
+        conn.commit()
+
+        return deleted
+
+def count_flashcards_db(
+    deck_id: int,
+    db_path: Path = DB_PATH,
+) -> int:
+    """
+    Returns the total number of flashcards in a deck.
+    """
+
+    with _open_connection(db_path) as conn:
+
+        row = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM flashcards
+            WHERE deck_id = ?
+            """,
+            (deck_id,),
+        ).fetchone()
+
+        return int(row[0]) if row else 0
+
+
+### MATERIALS ###
+
+
+def save_materials_db(
+    subject_id: int,
+    materials: list[dict],
+    db_path: Path = DB_PATH,
+) -> None:
+    """
+    Saves all materials returned by the LLM.
+
+    Parameters
+    ----------
+    subject_id : int
+        Subject to which the materials belong.
+
+    materials : list[dict]
+        Output produced by the LLM.
+    """
+
+    with _open_connection(db_path) as conn:
+        cur = conn.cursor()
+
+        cur.execute("BEGIN")
+
+        try:
+
+            for material in materials:
+
+                tipo = material["tipo"]
+
+                if tipo == "resumo":
+
+                    save_summary_db(
+                        subject_id=subject_id,
+                        titulo=material["titulo"],
+                        conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
+                        creation_date=material["creation_date"],
+                        db_path=db_path,
+                        conn=conn
+                    )
+
+                elif tipo == "mapa_mental":
+
+                    save_mindmap_db(
+                        subject_id=subject_id,
+                        titulo=material["titulo"],
+                        conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
+                        creation_date=material["creation_date"],
+                        db_path=db_path,
+                        conn=conn
+                    )
+
+                elif tipo == "baralho":
+
+                    deck_id = save_deck_db(
+                        subject_id=subject_id,
+                        titulo=material["titulo"],
+                        acuracia=0,
+                        novos=len(material["conteudo"]["flashcards"]),
+                        aprendendo=0,
+                        review=0,
+                        creation_date=material["creation_date"],
+                        db_path=db_path,
+                        conn=conn
+                    )
+
+                    for flashcard in material["conteudo"]["flashcards"]:
+
+                        save_flashcard_db(
+                            deck_id=deck_id,
+                            pergunta=flashcard["pergunta"],
+                            resposta=flashcard["resposta"],
+                            status=FlashcardStatus.NOVO.value,
+                            creation_date=material["creation_date"],
+                            db_path=db_path,
+                            conn=conn
+                        )
+
+                else:
+                    raise ValueError(f"Unknown material type: {tipo}")
+
+            conn.commit()
+
+        except Exception:
+            conn.rollback()
+            raise
