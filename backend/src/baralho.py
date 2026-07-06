@@ -39,9 +39,27 @@ class Baralho(Material):
         self.novos = novos
         self.aprendendo = aprendendo
         self.review = review
+        self.id = id
 
     def __str__(self):
         """
         Define o formato padrão de impressão de um Baralho
         """
         return super().__str__() + f" Acurácia: {self.acuracia}"
+
+
+    def to_dict(self):
+        """
+        Retorna um baralho no formato de um dicionário, para facilitar respostas JSON
+        """
+        return {
+            "id": self.id,
+            "subtitle": self.titulo,
+            "acuracy": self.acuracia,
+            "color": "#9b5de5",
+            "date": self.date,
+            "new": self.novos,
+            "learning": self.aprendendo,
+            "review": self.review,
+            "total_cards": self.novos + self.aprendendo + self.review
+        }

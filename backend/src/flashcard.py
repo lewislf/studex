@@ -44,3 +44,16 @@ class Flashcard:
         """
         
         return f"Frente: {self.pergunta} - Verso: {self.resposta}; Status: {self.status}"
+    
+    def to_dict(self):
+        """
+        Retorna um dicionario de Flashcards, facilitando o envio de JSONs
+        """
+        return {
+            "id": self.id,
+            "deck_id": self.deck_id,
+            "pergunta": self.pergunta,
+            "resposta": self.resposta,
+            "status": self.status,
+            "creation_date": self.date,
+        }
