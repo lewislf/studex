@@ -22,4 +22,21 @@
 .cardIcon {
     min-width: 30px;
     align-self: center;
+    fill: #ff9f1c;
+    animation: flamePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes flamePulse {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px rgba(255, 159, 28, 0.3));
+    }
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 12px rgba(255, 159, 28, 0.7));
+    }
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px rgba(255, 159, 28, 0.3));
+    }
 }
