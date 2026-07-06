@@ -1,22 +1,63 @@
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from flasgger import Swagger
+
 from database.database import *
+from routes.user_routes import user_bp
+from routes.subject_routes import subject_bp
+from routes.document_routes import document_bp
 
-def main():
-    print("Fluxo de Cadastro\n")
-    email = input("Email: ")
-    name = input("Nome: ")
-    passwd = input("Password: ")
+app = Flask(__name__)
+CORS(app)
+HOST = "0.0.0.0"
+SOCKET = 5000
 
-    init_db()
-    save_user_db(name, passwd, email)
-    print_all_people_db()
+# Swagger UI em http://localhost:5000/docs
+swagger_template = {
+    "info": {
+        "title": "Studex API",
+        "description": (
+            "API do Studex: geração e armazenamento de materiais de estudo "
+            "(resumo, mapa mental, flashcards) a partir de PDFs."
+        ),
+        "version": "v1",
+    },
+}
+Swagger(
+    app,
+    template=swagger_template,
+    config={"hide_top_bar": True, "specs_route": "/docs/"},
+    merge=True,
+)
 
-    print("Procure por um nome!\n")
-    qry_name = input("Nome para busca:")
-    my_users = get_users_db(qry_name)
+init_db()
 
-    print("\nImprimindo usuários correspondentes:")
-    for user in my_users:
-        print(user)
+app.register_blueprint(user_bp)
+app.register_blueprint(subject_bp)
+app.register_blueprint(document_bp)
+
+
+@app.get("/routes")
+def list_routes():
+    """
+    Lista todas as rotas registradas na aplicação.
+    ---
+    tags:
+      - Meta
+    responses:
+      200:
+        description: Lista de rotas (rule, endpoint e métodos HTTP)
+    """
+    rotas = [
+        {
+            "rule": rule.rule,
+            "endpoint": rule.endpoint,
+            "methods": sorted(rule.methods - {"HEAD", "OPTIONS"}),
+        }
+        for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule)
+    ]
+    return jsonify(rotas)
+
 
 if __name__ == "__main__":
-    main()
+    app.run(host=HOST, port=SOCKET, debug=True)
