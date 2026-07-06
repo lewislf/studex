@@ -14,3 +14,12 @@
 .card:hover {
     transform: scale(1.05);
 }
+
+.cardContent {
+    flex: 1;
+}
+
+.cardIcon {
+    min-width: 30px;
+    align-self: center;
+}

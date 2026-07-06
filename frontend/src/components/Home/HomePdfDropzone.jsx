@@ -5,7 +5,7 @@ import { Group, Text, useMantineTheme } from '@mantine/core';
 import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { notifications } from '@mantine/notifications';
 import { usePdfUpload } from '../../hooks/usePdfUpload';
-import SubjectPickerModal from './SubjectPickerModal';
+import SubjectPickerModal from '../Common/SubjectPickerModal';
 import UploadProgress from './UploadProgress';
 import classes from '../../styles/Mantine/PdfDropZone.module.css';
 
