@@ -6,7 +6,7 @@ import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { notifications } from '@mantine/notifications';
 import { usePdfUpload } from '../../hooks/usePdfUpload';
 import SubjectPickerModal from '../Common/SubjectPickerModal';
-import UploadProgress from './UploadProgress';
+import HomeUploadProgress from './HomeUploadProgress';
 import classes from '../../styles/Mantine/PdfDropZone.module.css';
 
 export default function HomePdfDropzone() {
@@ -108,7 +108,7 @@ export default function HomePdfDropzone() {
             {loading ? (
                 // During processing, the block is swapped for a three-phase progress tracker
                 <div className={classes.dropzone}>
-                    <UploadProgress fileName={pendingFile?.name} />
+                    <HomeUploadProgress fileName={pendingFile?.name} />
                 </div>
             ) : (
                 <Dropzone

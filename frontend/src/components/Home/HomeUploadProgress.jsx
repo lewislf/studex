@@ -14,7 +14,7 @@ const PHASES = ['Criando resumo', 'Criando mapa mental', 'Criando flashcards'];
  *
  * @param {string} [fileName] - Name of the file being processed.
  */
-export default function UploadProgress({ fileName }) {
+export default function HomeUploadProgress({ fileName }) {
     const [value, setValue] = useState(6);
 
     useEffect(() => {
