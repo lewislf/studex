@@ -7,25 +7,25 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import { useSubjects } from '../../hooks/useSubjects';
 
 /**
- * Menu exibido ao enviar um arquivo: o usuário escolhe salvar os artefatos
- * (resumo, mapa mental, baralho) numa matéria existente ou criar uma nova.
+ * Modal menu shown during file upload: the user chooses to save the generated artifacts
+ * (summary, mind map, flashcards) into an existing subject or create a new one.
  *
- * @param {boolean} opened - Se o modal está aberto.
- * @param {Function} onClose - Fecha o modal (cancela o upload).
- * @param {string|number} userId - Usuário atual.
- * @param {string} [fileName] - Nome do arquivo sendo enviado (exibido no título).
- * @param {Function} onConfirm - Recebe o subject_id escolhido/criado e dispara o upload.
+ * @param {boolean} opened - Whether the modal is open.
+ * @param {Function} onClose - Action to close the modal (cancelling the upload).
+ * @param {string|number} userId - Current user identifier.
+ * @param {string} [fileName] - Name of the file being uploaded (shown in the title).
+ * @param {Function} onConfirm - Callback invoked with the chosen or created subject_id to trigger the upload.
  */
 export default function SubjectPickerModal({ opened, onClose, userId, fileName, onConfirm }) {
     const { subjects, loading, error, fetchSubjects, createSubject } = useSubjects(userId);
 
     const [mode, setMode] = useState('existente');       // 'existente' | 'nova'
-    const [selectedId, setSelectedId] = useState(null);  // matéria existente escolhida
+    const [selectedId, setSelectedId] = useState(null);  // chosen existing subject
     const [newName, setNewName] = useState('');
     const [newDesc, setNewDesc] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    // Carrega as matérias sempre que o modal abre
+    // Fetch subjects every time the modal is opened
     useEffect(() => {
         if (opened) {
             fetchSubjects();
@@ -45,7 +45,7 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
 
             if (mode === 'nova') {
                 subjectId = await createSubject({ name: newName.trim(), description: newDesc.trim() });
-                if (subjectId === null) return; // erro já sinalizado pelo hook
+                if (subjectId === null) return; // error already notified by the hook
             }
 
             if (subjectId === null || subjectId === undefined) return;
