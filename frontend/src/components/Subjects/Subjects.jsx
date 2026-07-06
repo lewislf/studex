@@ -34,7 +34,7 @@ export default function Subjects() {
 
     return (
         <Container size="xl" className={styles.container}>
-            <Stack gap="xl">
+            <Stack gap="sm">
                 {/* Greeting banner with creation click handler */}
                 <SubjectsTitle onAddClick={() => setModalOpened(true)} />
 

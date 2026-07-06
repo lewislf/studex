@@ -29,7 +29,7 @@ export default function SubjectsTitle({ onAddClick }) {
             <Button
                 leftSection={<IconPlus size={16} />}
                 className={styles.addButton}
-                onClick={onAddClick}
+                onClick={() => onAddClick?.()}
             >
                 Adicionar nova Matéria
             </Button>

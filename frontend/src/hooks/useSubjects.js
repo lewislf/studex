@@ -17,22 +17,24 @@ export function useSubjects(userId) {
 
     /** Fetches the user's existing subjects (GET /subjects?user_id=...). */
     const fetchSubjects = useCallback(async () => {
-        if (userId === undefined || userId === null || userId === '') return;
-
         setLoading(true);
         setError(null);
 
         try {
-            const response = await fetch(`${API_URL}/subjects?user_id=${encodeURIComponent(userId)}`);
+            // For development testing: load mock subjects list directly
+            setSubjects(parseSubjectsListMock(subjectsListMock));
 
-            if (!response.ok) {
-                throw new Error(`Falha ao carregar matérias (status ${response.status})`);
+            /* Bypassed API code:
+            if (userId !== undefined && userId !== null && userId !== '') {
+                const response = await fetch(`${API_URL}/subjects?user_id=${encodeURIComponent(userId)}`);
+                if (response.ok) {
+                    const rawData = await response.json();
+                    setSubjects(parseSubjectsListMock(rawData));
+                }
             }
-
-            const rawData = await response.json();
-            setSubjects(parseSubjectsListMock(rawData));
+            */
         } catch (err) {
-            console.warn('Backend subjects fetch failed, using fallback mock subjects:', err);
+            console.warn('Backend subjects fetch bypassed, using local mock subjects:', err);
             setSubjects(parseSubjectsListMock(subjectsListMock));
         } finally {
             setLoading(false);

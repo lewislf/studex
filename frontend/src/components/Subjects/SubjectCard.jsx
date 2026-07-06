@@ -1,4 +1,4 @@
-import { Text, Group, Stack, Progress, Container } from "@mantine/core";
+import { Text, Group, Stack, Progress, Box } from "@mantine/core";
 import {
     IconGlobe,
     IconRocket,
@@ -49,8 +49,7 @@ export default function SubjectCard({ subject }) {
     const IconComponent = getSubjectIcon(subject.icon);
 
     return (
-        <Container className={styles.subjectCard}>
-            {/* Left color stripe indicating course categorizations */}
+        <Box className={styles.subjectCard}>
             <div
                 className={styles.cardStripe}
                 style={{ backgroundColor: subject.color }}
@@ -114,6 +113,6 @@ export default function SubjectCard({ subject }) {
                     </Text>
                 </Group>
             </div>
-        </Container>
+        </Box>
     );
 }
