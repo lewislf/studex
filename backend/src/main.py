@@ -8,6 +8,7 @@ from routes.subject_routes import subject_bp
 from routes.document_routes import document_bp
 from routes.deck_routes import deck_bp
 from routes.flashcard_routes import flashcard_bp
+from routes.summary_routes import summary_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -37,6 +38,7 @@ app.register_blueprint(subject_bp)
 app.register_blueprint(document_bp)
 app.register_blueprint(deck_bp)
 app.register_blueprint(flashcard_bp)
+app.register_blueprint(summary_bp)
 
 
 @app.get("/routes")
