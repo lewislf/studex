@@ -13,6 +13,9 @@ services:
     volumes:
       # Modelos ficam persistidos: baixa uma vez, sobrevive a rebuild/restart
       - ollama_data:/root/.ollama
+    environment:
+      # Cada slot paralelo custa RAM/VRAM. Suba via env se tiver folga.
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
     # Roda em CPU por default. Para usar GPU NVIDIA, adicione o override:
     #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
 

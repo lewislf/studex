@@ -30,16 +30,19 @@ OLLAMA_LLM_HOST = os.environ.get("OLLAMA_LLM_HOST", OLLAMA_HOST)
 LLM_MODEL = os.environ.get("LLM_MODEL", "llama3.2:latest")
 LLM_CONTEXT_WINDOW = int(os.environ.get("LLM_CONTEXT_WINDOW", "4096"))
 
+# Se os livros forem muito grandes, precisa de mais tempo para processar tudo. Aumentar esse tempo ajuda a LLM conseguir processar.
+LLM_REQUEST_TIMEOUT = float(os.environ.get("LLM_REQUEST_TIMEOUT", "600"))
+
 embed_model = OllamaEmbedding(
     model_name="bge-m3",
     base_url=OLLAMA_EMBED_HOST,
-    request_timeout=300.0,
+    request_timeout=LLM_REQUEST_TIMEOUT,
 )
 
 llm = Ollama(
     model=LLM_MODEL,  # ver modelos disponíveis com `ollama list`
     base_url=OLLAMA_LLM_HOST,
-    request_timeout=300.0,
+    request_timeout=LLM_REQUEST_TIMEOUT,
     temperature=0.1,
     context_window=LLM_CONTEXT_WINDOW,
 )
