@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { parseSubjectsListMock } from '../utils/userHelpers';
-import subjectsListMock from '../config/subjectsListMock.json';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -15,27 +14,29 @@ export function useSubjects(userId) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    /** Fetches the user's existing subjects (GET /subjects?user_id=...). */
+    /** Fetches the user's existing subjects (GET /users/:userId/subjects). */
     const fetchSubjects = useCallback(async () => {
         setLoading(true);
         setError(null);
 
-        try {
-            // For development testing: load mock subjects list directly
-            setSubjects(parseSubjectsListMock(subjectsListMock));
+        if (userId === undefined || userId === null || userId === '') {
+            setSubjects([]);
+            setLoading(false);
+            return;
+        }
 
-            /* Bypassed API code:
-            if (userId !== undefined && userId !== null && userId !== '') {
-                const response = await fetch(`${API_URL}/subjects?user_id=${encodeURIComponent(userId)}`);
-                if (response.ok) {
-                    const rawData = await response.json();
-                    setSubjects(parseSubjectsListMock(rawData));
-                }
+        try {
+            // Busca as matérias reais do usuário. O parser enriquece com ícone/cor
+            // do mock só como fallback visual, mas o id vem do banco (integer).
+            const response = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/subjects`);
+            if (!response.ok) {
+                throw new Error(`Falha ao carregar matérias (status ${response.status})`);
             }
-            */
+            const rawData = await response.json();
+            setSubjects(parseSubjectsListMock(rawData));
         } catch (err) {
-            console.warn('Backend subjects fetch bypassed, using local mock subjects:', err);
-            setSubjects(parseSubjectsListMock(subjectsListMock));
+            setError(err.message || 'Erro ao carregar matérias');
+            setSubjects([]);
         } finally {
             setLoading(false);
         }

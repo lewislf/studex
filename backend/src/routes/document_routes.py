@@ -79,6 +79,15 @@ def upload_document(user_id):
         return jsonify({"error": "Erro: O id do usuário passado na URL não corresponde ao ID passada na requisição"}), 400
 
     subject_id = request.form.get("subject_id")
+    # Valida se o id da matéria é inválido.
+    if subject_id is not None:
+        try:
+            subject_id = int(subject_id)
+        except (TypeError, ValueError):
+            return jsonify({
+                "error": f"subject_id inválido: '{subject_id}'. Envie o id numérico de uma matéria existente."
+            }), 400
+
     doc_metadata = {k: v for k, v in {"user_id": id_user, "subject_id": subject_id}.items() if v is not None}
 
     try:
@@ -104,7 +113,7 @@ def upload_document(user_id):
     # Sem subject_id, apenas devolve os materiais sem salvar.
     if subject_id is not None:
         try:
-            save_materials_db(int(subject_id), materials)
+            save_materials_db(subject_id, materials)
         except Exception:
             logger.exception("Falha ao salvar materiais para a matéria %s", subject_id)
             return jsonify({

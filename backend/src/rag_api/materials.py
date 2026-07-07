@@ -6,7 +6,6 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
-from database.database import save_materials_db
 from llama_index.core import SummaryIndex
 from llama_index.core.schema import BaseNode
 
@@ -17,8 +16,9 @@ logger = logging.getLogger(__name__)
 # Resumo em cascata sobre TODOS os chunks é o maior custo de tempo em documentos
 # grandes (~80% do total). Como o resumo final já comprime tudo em poucos
 # parágrafos, amostrar uma fração representativa dos chunks dá um resultado
-# equivalente em muito menos tempo. 0 = sem limite (resume tudo).
-MAX_CHUNKS_FOR_SUMMARY = int(os.environ.get("MAX_CHUNKS_FOR_SUMMARY", "120"))
+# equivalente em muito menos tempo. Default baixo pra manter o upload rápido,
+# se precisar de mais cobertura pode aumentar. 0 = sem limite (resume tudo).
+MAX_CHUNKS_FOR_SUMMARY = int(os.environ.get("MAX_CHUNKS_FOR_SUMMARY", "60"))
 MAX_CHUNKS_FOR_MIND_MAP = 15
 MAX_CATEGORIAS = 6
 MAX_DETALHES_POR_CATEGORIA = 5
@@ -318,7 +318,4 @@ def generate_materials(nodes: list[BaseNode], fallback_titulo: str = "Documento"
             },
         ]
     
-    if subject_id is not None:
-        save_materials_db(subject_id, materials)
-
     return materials
