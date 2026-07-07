@@ -5,6 +5,7 @@
 
 from datetime import date
 from material import Material
+import json
 
 class MapaMental(Material):
     """
@@ -37,3 +38,12 @@ class MapaMental(Material):
         Define o formato padrão de impressão de um Material
         """
         return super().__str__() + f" Conteúdo: {self.conteudo}"
+    
+    def to_dict(self):
+        return {
+            "tipo": "mapa_mental",
+            "titulo": f"{self.titulo} — Mapa Mental de Estudo",
+            "subject_id": self.subject_id,
+            "creation_date": self.date,
+            "conteudo": self.conteudo
+        }
