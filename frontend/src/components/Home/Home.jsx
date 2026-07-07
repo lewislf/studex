@@ -3,7 +3,7 @@ import HomeTitle from "./HomeTitle";
 import HomeStats from "./HomeStats.jsx";
 import styles from '../../styles/Home/Home.module.css'
 import { useOutletContext } from "react-router";
-import HomeCreationGrid from "./CreationGrid.jsx";
+import HomeCreationGrid from "./HomeCreationGrid.jsx";
 import HomePdfDropzone from "./HomePdfDropzone.jsx";
 
 /**

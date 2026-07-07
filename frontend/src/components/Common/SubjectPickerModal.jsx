@@ -3,72 +3,23 @@ import {
     Modal, SegmentedControl, Select, TextInput, Textarea,
     Button, Stack, Group, Text, Loader, Alert, ActionIcon
 } from '@mantine/core';
-import {
-    IconAlertCircle,
-    IconGlobe,
-    IconRocket,
-    IconSchool,
-    IconUsers,
-    IconDatabase,
-    IconBook,
-    IconCalculator,
-    IconFlask,
-    IconCode,
-    IconLanguage,
-    IconBrain,
-    IconPalette,
-    IconHistory,
-    IconMicroscope,
-    IconHeart,
-    IconScale
-} from '@tabler/icons-react';
+import { IconAlertCircle } from '@tabler/icons-react';
 import { useSubjects } from '../../hooks/useSubjects';
+import SubjectIcon from './SubjectIcon';
 import styles from '../../styles/Common/SubjectPickerModal.module.css';
 
-const ICON_OPTIONS = [
-    { name: 'book', label: 'Livro' },
-    { name: 'globe', label: 'Redes/Globo' },
-    { name: 'rocket', label: 'Foguete' },
-    { name: 'user-teacher', label: 'Professor' },
-    { name: 'users', label: 'Pessoas' },
-    { name: 'database', label: 'Banco de Dados' },
-    { name: 'calculator', label: 'Cálculo/Matemática' },
-    { name: 'flask', label: 'Química/Ciência' },
-    { name: 'code', label: 'Código/Programação' },
-    { name: 'language', label: 'Idiomas' },
-    { name: 'brain', label: 'Mente/Psicologia' },
-    { name: 'palette', label: 'Artes/Design' },
-    { name: 'history', label: 'História' },
-    { name: 'microscope', label: 'Biologia/Ciências' },
-    { name: 'heart', label: 'Saúde' },
-    { name: 'scale', label: 'Direito/Justiça' },
-];
-
-const COLOR_OPTIONS = [
-    '#e63946', // Red
-    '#ffb703', // Yellow
-    '#fb8500', // Orange
-    '#4caf50', // Leaf Green
-    '#4361ee', // Blue
-    '#2ec4b6', // Green
-    '#4cc9f0', // Sky Blue
-    '#7209b7', // Deep Purple
-    '#9b5de5', // Purple
-    '#ff70a6', // Soft Pink
-    '#f72585', // Hot Pink
-];
+import { COLOR_OPTIONS, ICON_OPTIONS, DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLOR } from '../../config/Constants';
 
 /**
- * Modal menu shown during file upload: the user chooses to save the generated artifacts
- * (summary, mind map, flashcards) into an existing subject or create a new one.
- * Supports dynamic icon and color selections when creating a new subject.
+ * Modal menu shown during file upload.
  *
- * @param {boolean} opened - Whether the modal is open.
- * @param {Function} onClose - Action to close the modal (cancelling the upload).
- * @param {string|number} userId - Current user identifier.
- * @param {string} [fileName] - Name of the file being uploaded (shown in the title).
- * @param {Function} onConfirm - Callback invoked with the chosen or created subject_id to trigger the upload.
- * @param {boolean} [onlyCreate] - If true, locks SegmentedControl and displays only the creation form.
+ * @param {Object} props
+ * @param {boolean} props.opened - Whether the modal is open.
+ * @param {Function} props.onClose - Action to close the modal (cancelling the upload).
+ * @param {string|number} props.userId - Current user identifier.
+ * @param {string} [props.fileName] - Name of the file being uploaded (shown in the title).
+ * @param {Function} props.onConfirm - Callback invoked with the chosen or created subject_id to trigger the upload.
+ * @param {boolean} [props.onlyCreate] - If true, locks SegmentedControl and displays only the creation form.
  */
 export default function SubjectPickerModal({ opened, onClose, userId, fileName, onConfirm, onlyCreate = false }) {
     const { subjects, loading, error, fetchSubjects, createSubject } = useSubjects(userId);
@@ -77,8 +28,8 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
     const [selectedId, setSelectedId] = useState(null);  // chosen existing subject
     const [newName, setNewName] = useState('');
     const [newDesc, setNewDesc] = useState('');
-    const [selectedIcon, setSelectedIcon] = useState('book');
-    const [selectedColor, setSelectedColor] = useState('#4361ee');
+    const [selectedIcon, setSelectedIcon] = useState(DEFAULT_SUBJECT_ICON);
+    const [selectedColor, setSelectedColor] = useState(DEFAULT_SUBJECT_COLOR);
     const [submitting, setSubmitting] = useState(false);
 
     // Fetch subjects every time the modal is opened
@@ -89,33 +40,13 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
             setSelectedId(null);
             setNewName('');
             setNewDesc('');
-            setSelectedIcon('book');
-            setSelectedColor('#4361ee');
+            setSelectedIcon(DEFAULT_SUBJECT_ICON);
+            setSelectedColor(DEFAULT_SUBJECT_COLOR);
         }
     }, [opened, fetchSubjects, onlyCreate]);
 
     const hasSubjects = subjects.length > 0;
 
-    const getIconElement = (name, size) => {
-        switch (name) {
-            case 'globe': return <IconGlobe size={size} />;
-            case 'rocket': return <IconRocket size={size} />;
-            case 'user-teacher': return <IconSchool size={size} />;
-            case 'users': return <IconUsers size={size} />;
-            case 'database': return <IconDatabase size={size} />;
-            case 'calculator': return <IconCalculator size={size} />;
-            case 'flask': return <IconFlask size={size} />;
-            case 'code': return <IconCode size={size} />;
-            case 'language': return <IconLanguage size={size} />;
-            case 'brain': return <IconBrain size={size} />;
-            case 'palette': return <IconPalette size={size} />;
-            case 'history': return <IconHistory size={size} />;
-            case 'microscope': return <IconMicroscope size={size} />;
-            case 'heart': return <IconHeart size={size} />;
-            case 'scale': return <IconScale size={size} />;
-            default: return <IconBook size={size} />;
-        }
-    };
 
     async function handleConfirm() {
         setSubmitting(true);
@@ -231,7 +162,7 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
                                             className={styles.iconButton}
                                             aria-label={opt.label}
                                         >
-                                            {getIconElement(opt.name, 20)}
+                                            <SubjectIcon name={opt.name} size={20} />
                                         </ActionIcon>
                                     );
                                 })}

@@ -12,9 +12,9 @@ export function usePdfUpload(endpointUrl) {
     /**
      * Prepares binary files inside a FormData payload and dispatches the HTTP POST request.
      * @param {File} file - The raw binary file instance fetched from the Dropzone.
-     * @param {Object} [options] - Contexto de destino dos materiais.
-     * @param {string|number} [options.subjectId] - Matéria (nova ou existente) onde salvar os artefatos.
-     * @param {string|number} [options.userId] - Usuário dono do upload.
+     * @param {Object} [options] - Target options for the uploaded material.
+     * @param {string|number} [options.subjectId] - Target subject ID to associate the generated materials.
+     * @param {string|number} [options.userId] - The user ID who owns the upload.
      */
     const uploadPdf = async (file, { subjectId, userId } = {}) => {
         if (!file) return null;
@@ -27,7 +27,7 @@ export function usePdfUpload(endpointUrl) {
         const formData = new FormData();
         // 'file' represents the key expected by the backend
         formData.append('file', file);
-        // Matéria escolhida no menu — o backend salva os materiais nela
+        // Target subject - the backend associates generated materials with this subject ID
         if (subjectId !== undefined && subjectId !== null) {
             formData.append('subject_id', subjectId);
         }

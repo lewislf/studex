@@ -12,7 +12,6 @@
 }
 
 .pageTitle {
-    font-weight: 800;
     color: var(--mantine-color-dark-9);
     margin: 0;
 }
@@ -78,10 +77,8 @@
     box-shadow: var(--mantine-shadow-md);
 }
 
-/* Title styling */
 .sectionTitle {
     color: var(--mantine-color-dark-9);
-    font-weight: 700;
     margin-bottom: var(--mantine-spacing-md);
 }
 
@@ -99,7 +96,6 @@
 }
 
 .statValue {
-    font-size: 1.1rem;
     font-weight: 700;
     color: var(--mantine-color-dark-8);
 }
@@ -337,6 +333,7 @@
         opacity: 0;
         transform: translateY(16px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -348,10 +345,12 @@
         transform: scale(1);
         filter: drop-shadow(0 0 2px rgba(255, 159, 28, 0.3));
     }
+
     50% {
         transform: scale(1.1);
         filter: drop-shadow(0 0 16px rgba(255, 159, 28, 0.7));
     }
+
     100% {
         transform: scale(1);
         filter: drop-shadow(0 0 2px rgba(255, 159, 28, 0.3));
@@ -362,9 +361,11 @@
     0% {
         transform: translateY(0);
     }
+
     50% {
         transform: translateY(-12px);
     }
+
     100% {
         transform: translateY(0);
     }

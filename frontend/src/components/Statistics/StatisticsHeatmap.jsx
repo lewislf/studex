@@ -1,5 +1,6 @@
 import { Tooltip, Container, Box, Stack, Text } from "@mantine/core";
 import styles from '../../styles/Statistics/Statistics.module.css';
+import { MONTHS_SHORT } from '../../config/Constants';
 
 /**
  * StatisticsHeatmap renders a contribution-style calendar grid.
@@ -90,12 +91,11 @@ export default function StatisticsHeatmap({ stats }) {
         const firstMonthNum = firstDayOfWeek.getMonth();
         const lastMonthNum = lastDayOfWeek.getMonth();
         
-        const ptMonths = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        let monthName = ptMonths[firstMonthNum];
+        let monthName = MONTHS_SHORT[firstMonthNum];
         
         // If we are on the last week of the calendar and the week spans into the next month
         if (idx === weeks.length - 1 && lastMonthNum !== firstMonthNum) {
-            monthName = ptMonths[lastMonthNum];
+            monthName = MONTHS_SHORT[lastMonthNum];
         }
 
         if (monthName !== lastMonth) {

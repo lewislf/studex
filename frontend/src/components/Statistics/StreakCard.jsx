@@ -2,13 +2,13 @@ import { Container, Stack, Group, Text } from "@mantine/core";
 import { IconFlame, IconCheck } from '@tabler/icons-react';
 import styles from '../../styles/Statistics/Statistics.module.css';
 
+import { WEEKDAYS_TITLE } from '../../config/Constants';
+
 /**
  * StreakCard displays the user's active streak count alongside
  * a visual calendar tracking streak compliance across the current week.
  */
 export default function StreakCard({ user }) {
-    // Weekdays Portuguese abbreviations matching browser local mapping
-    const weekdaysLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const todayIndex = new Date().getDay(); // Current day of the week index (0-6)
 
     return (
@@ -22,7 +22,7 @@ export default function StreakCard({ user }) {
 
                 {/* Weekdays Row displaying status circles */}
                 <Group className={styles.weekdaysContainer} justify="center" gap="md" mb="md" wrap="nowrap">
-                    {weekdaysLabels.map((day, idx) => {
+                    {WEEKDAYS_TITLE.map((day, idx) => {
                         const isActive = idx === todayIndex;
                         return (
                             <Stack key={day} className={styles.weekdayItem} gap={4} align="center">

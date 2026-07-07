@@ -1,5 +1,4 @@
-// Global map representing short names for week days in Portuguese
-const WEEK_DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+import { WEEKDAYS_UPPER } from '../config/Constants';
 
 /**
  * Transforms standard mock date offsets into real dynamic calendar days and names.
@@ -29,7 +28,7 @@ export function getDynamicProjection(projectionData) {
 
         return {
             ...item,
-            day_name: WEEK_DAYS[targetDate.getDay()], // Fetches corresponding weekday string
+            day_name: WEEKDAYS_UPPER[targetDate.getDay()], // Fetches corresponding weekday string
             day_number: targetDate.getDate()          // Fetches dynamic calendar day number
         };
     });

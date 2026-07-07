@@ -1,11 +1,11 @@
-import { Container, Stack, SimpleGrid } from "@mantine/core";
+import { Container, Stack } from "@mantine/core";
 import { useOutletContext } from "react-router";
 import { useState, useEffect } from "react";
 import styles from '../../styles/Subjects/Subjects.module.css';
 import { useSubjects } from '../../hooks/useSubjects';
 import SubjectPickerModal from '../Common/SubjectPickerModal';
 import SubjectsTitle from "./SubjectsTitle.jsx";
-import SubjectCard from "./SubjectCard.jsx";
+import SubjectsGrid from "./SubjectsGrid.jsx";
 
 /**
  * Parent view container for the application subjects (Matérias) route dashboard entry point.
@@ -39,11 +39,7 @@ export default function Subjects() {
                 <SubjectsTitle onAddClick={() => setModalOpened(true)} />
 
                 {/* Grid displaying subject cards */}
-                <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-                    {subjects.map((subject) => (
-                        <SubjectCard key={subject.id} subject={subject} />
-                    ))}
-                </SimpleGrid>
+                <SubjectsGrid subjects={subjects} />
             </Stack>
 
             {/* Creation Picker Modal in onlyCreate mode */}
