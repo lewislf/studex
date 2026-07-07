@@ -2,8 +2,11 @@
     "user_id": "usr_placeholder_id",
     "subjects": [
         {
-            "id": "mat_101",
+            "id": 1,
             "title": "Redes",
+            "user_id": 1,
+            "description": "Descrição redes",
+            "date": "2026-07-05",
             "icon": "globe",
             "color": "#e63946",
             "total_topics": 11,
@@ -16,8 +19,11 @@
             }
         },
         {
-            "id": "mat_102",
+            "id": 2,
             "title": "Projeto Integrado",
+            "user_id": 1,
+            "description": "Descrição PI",
+            "date": "2026-07-05",
             "icon": "rocket",
             "color": "#ffb703",
             "total_topics": 11,
@@ -30,8 +36,11 @@
             }
         },
         {
-            "id": "mat_103",
+            "id": 3,
             "title": "Engenharia de Software 1",
+            "user_id": 1,
+            "description": "Descrição ES1",
+            "date": "2026-07-05",
             "icon": "user-teacher",
             "color": "#fb8500",
             "total_topics": 11,
@@ -44,8 +53,11 @@
             }
         },
         {
-            "id": "mat_104",
+            "id": 4,
             "title": "Engenharia de Software 2",
+            "user_id": 1,
+            "description": "Descrição ES2",
+            "date": "2026-07-05",
             "icon": "users",
             "color": "#4361ee",
             "total_topics": 11,
@@ -58,8 +70,11 @@
             }
         },
         {
-            "id": "mat_105",
+            "id": 5,
             "title": "Banco de Dados",
+            "user_id": 1,
+            "description": "Descrição BD",
+            "date": "2026-07-05",
             "icon": "database",
             "color": "#2ec4b6",
             "total_topics": 11,
