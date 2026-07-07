@@ -6,10 +6,10 @@ import styles from '../../styles/Subjects/Subjects.module.css';
  */
 export default function SubjectCardMastery({ masteryPercentage, color }) {
     return (
-        <Stack gap={4} className={styles.masteryStack}>
-            <Group justify="space-between" align="center">
+        <Stack gap={4}>
+            <Group justify="space-between">
                 <Text size="xs" fw={600} c="dimmed">Domínio</Text>
-                <Text size="xs" fw={700} c="dark.7">{masteryPercentage}%</Text>
+                <Text size="xs" fw={700} c="dimmed">{masteryPercentage}%</Text>
             </Group>
             <Progress
                 value={masteryPercentage}

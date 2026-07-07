@@ -20,11 +20,11 @@ export default function Revisions() {
             {/* Page title and description banner */}
             <RevisionsTitle />
 
-            {/* Split pending details block */}
-            <RevisionsSummary summary={data.summary} />
-
             {/* Decks filtering tab list grid */}
             <RevisionsDeckList decksToday={data.decksToday} />
+
+            {/* Split pending details block */}
+            <RevisionsSummary summary={data.summary} />
 
             {/* Weekly forecast tracker */}
             <RevisionsProjection projection={data.next7DaysProjection} />
