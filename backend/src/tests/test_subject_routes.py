@@ -9,7 +9,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-pytestmark = pytest.mark.skip(reason="skipping all subject route tests")
 from flask import Flask
 
 from routes.subject_routes import subject_bp
@@ -53,7 +52,6 @@ def fake_subject(**kwargs):
     return SimpleNamespace(**base)
 
 
-@pytest.mark.skip(reason="skipping db-dependent test")
 def test_get_subjects(client):
     subjects = [
         fake_subject(id=1, name="Redes"),
@@ -154,6 +152,9 @@ def test_create_subject(client):
 
 def test_delete_subject_success(client):
     with patch(
+        "routes.subject_routes.get_subject_db",
+        return_value=fake_subject(user_id=10),
+    ), patch(
         "routes.subject_routes.match_subject_user_db",
         return_value=True,
     ), patch(
