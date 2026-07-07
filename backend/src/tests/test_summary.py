@@ -132,7 +132,7 @@ def test_search_summary(temp_db):
     )
 
     summaries = get_summaries_db(
-        "Her",
+        subject_id,
         db_path=db_path,
     )
 

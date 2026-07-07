@@ -5,6 +5,7 @@
 
 from datetime import date
 from material import Material
+import json
 
 class Resumo(Material):
     """
@@ -36,3 +37,13 @@ class Resumo(Material):
         Define o formato padrão de impressão de um Material
         """
         return super().__str__() + f" Conteúdo: {self.conteudo}"
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tipo": "resumo",
+            "titulo": self.titulo,
+            "creation_date": self.date,
+            "conteudo": self.conteudo,
+        }
+        

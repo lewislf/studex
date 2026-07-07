@@ -437,7 +437,7 @@ def save_summary_db(subject_id: int, titulo: str, conteudo: str, creation_date: 
 
 
 def get_summaries_db(
-    titulo: str,
+    subject_id: int,
     db_path: Path = DB_PATH,
 ) -> list | None:
     """
@@ -449,7 +449,7 @@ def get_summaries_db(
     with _open_connection(db_path) as conn:
         rows = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
                                     FROM summaries 
-                                    WHERE titulo LIKE ?""", (f"%{titulo}%",)).fetchall()  
+                                    WHERE subject_id = ?""", (subject_id,)).fetchall()  
         
         if rows is None:
             return None

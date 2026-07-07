@@ -33,6 +33,14 @@ services:
         condition: service_started
       ollama:
         condition: service_started
+  docs:
+    build:
+      context: ./backend
+    command: mkdocs serve -a 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
 
   frontend:
     build: ./frontend
