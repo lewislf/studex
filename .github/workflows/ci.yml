@@ -40,7 +40,7 @@ jobs:
         run: npm run test
         working-directory: frontend
 
-  # Job to install dependencies and run unit tests for the backend with Pytest
+  # Job to spin up the Docker environment and run unit tests for the backend with Pytest
   backend-tests:
     name: Backend Tests (Pytest)
     runs-on: ubuntu-latest
@@ -49,24 +49,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Sets up a Python environment with pip caching enabled
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: backend/requirements-docker.txt
+      # Starts the Docker Compose backend service and its dependencies
+      - name: Start Docker Compose backend
+        run: docker compose up -d --build backend
 
-      # Installs backend dependencies from requirements-docker file
-      - name: Install backend dependencies
-        run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements-docker.txt
-
-      # Executes the Pytest test suite using the runners shell
-      - name: Run Pytest tests
-        run: |
-          cd backend
-          export PYTHONPATH=src
-          python -m pytest src/tests
+      # Executes the Pytest suite inside the backend container
+      - name: Run Pytest tests in backend container
+        run: docker compose exec -T backend python -m pytest
