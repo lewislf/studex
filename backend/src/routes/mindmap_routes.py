@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+import json
 
 from database.database import (
     get_subject_db,
@@ -116,82 +117,88 @@ def create_mindmap(user_id, subject_id):
     Cria um novo mapa mental para um usuário.
     ---
     tags:
-    - Mapa Mental
+      - Mapa Mental
+    
     parameters:
-    - in: path
+      - in: path
         name: user_id
         type: integer
         required: true
-    - in: path
+    
+      - in: path
         name: subject_id
         type: integer
         required: true
-    - in: body
+    
+      - in: body
         name: body
         required: true
         schema:
-        type: object
-        required: [tipo, titulo, creation_date, conteudo]
-        properties:
+          type: object
+          required:
+            - tipo
+            - titulo
+            - creation_date
+            - conteudo
+          properties:
             tipo:
-            type: string
-            example: "mapa_mental"
-
+              type: string
+              example: "mapa_mental"
+    
             titulo:
-            type: string
-            example: "Planolândia — Mapa Mental de Estudo"
-
+              type: string
+              example: "Planolândia — Mapa Mental de Estudo"
+    
             creation_date:
-            type: string
-            example: "2026-07-04"
-
+              type: string
+              example: "2026-07-04"
+    
             conteudo:
-            type: object
-            properties:
-
+              type: object
+              properties:
                 nodes:
-                type: array
-                items:
+                  type: array
+                  items:
                     type: object
                     properties:
-                    id:
+                      id:
                         type: string
                         example: "1"
-
-                    type:
+    
+                      type:
                         type: string
                         example: "tema_central"
-
-                    data:
+    
+                      data:
                         type: object
                         properties:
-                        label:
+                          label:
                             type: string
                             example: "Planolândia"
-
-                        conteudo:
+    
+                          conteudo:
                             type: string
                             example: "Narrativa satírica ambientada num mundo bidimensional."
-
+    
                 edges:
-                type: array
-                items:
+                  type: array
+                  items:
                     type: object
                     properties:
-                    id:
+                      id:
                         type: string
                         example: "e1-2"
-
-                    source:
+    
+                      source:
                         type: string
                         example: "1"
-
-                    target:
+    
+                      target:
                         type: string
                         example: "2"
-
+    
     responses:
-    201:
+      201:
         description: Mapa mental criado (retorna o id)
     """
     body = request.get_json()
@@ -203,9 +210,9 @@ def create_mindmap(user_id, subject_id):
     
     mindmap_id = save_mindmap_db(
                         subject_id=subject_id,
-                        titulo=material["titulo"],
-                        conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
-                        creation_date=material["creation_date"],
+                        titulo=body["titulo"],
+                        conteudo=json.dumps(body["conteudo"], ensure_ascii=False),
+                        creation_date=body["creation_date"],
                     )
 
     return jsonify({"id": mindmap_id}), 201
@@ -245,7 +252,7 @@ def delete_mindmap(user_id, subject_id, mindmap_id):
     mindmap = get_mindmap_db(mindmap_id)
 
     if mindmap is not None and subject_id != mindmap.subject_id:
-        return jsonify({"error": "mindmap with id " + mindmap_id + "is not from this subject"}), 404
+        return jsonify({"error": "mindmap with id " + str(mindmap_id) + "is not from this subject"}), 404
 
     if delete_mindmap_db(mindmap_id):
         return "", 204

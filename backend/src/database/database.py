@@ -557,7 +557,7 @@ def get_mindmaps_db(
     with _open_connection(db_path) as conn:
         rows = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
                                     FROM mind_maps
-                                    WHERE titulo LIKE ?""", (subject_id,)).fetchall()
+                                    WHERE subject_id = ?""", (subject_id,)).fetchall()
 
         if rows is None:
             return None
