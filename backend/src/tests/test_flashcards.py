@@ -32,6 +32,8 @@ def test_save_flashcard(temp_db):
         name="Redes",
         desc="Redes de Computadores",
         domain="Computação",
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -92,6 +94,8 @@ def test_delete_flashcard(temp_db):
         name="IA",
         desc="Inteligência Artificial",
         domain="Computação",
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -150,6 +154,8 @@ def test_search_flashcards(temp_db):
         name="POO",
         desc="Programação Orientada a Objetos",
         domain="Computação",
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -214,6 +220,8 @@ def test_count_flashcards(temp_db):
         name="Banco de Dados",
         desc="SQL",
         domain="Computação",
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )

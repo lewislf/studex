@@ -18,6 +18,45 @@ flashcard_bp = Blueprint(
 
 @flashcard_bp.get("")
 def get_flashcards(user_id, subject_id, deck_id):
+    """
+    Lista todos os flashcards de um baralho.
+    ---
+    tags:
+      - Flashcards
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: ID do usuário
+      - in: path
+        name: subject_id
+        type: integer
+        required: true
+        description: ID da matéria
+      - in: path
+        name: deck_id
+        type: integer
+        required: true
+        description: ID do baralho
+    responses:
+      200:
+        description: Lista de flashcards encontrados
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: integer, description: "ID do flashcard"}
+              pergunta: {type: string, description: "Pergunta do flashcard"}
+              resposta: {type: string, description: "Resposta do flashcard"}
+              status: {type: string, description: "Status (novo, aprendendo, review, reaprendendo)"}
+              deck_id: {type: integer, description: "ID do baralho"}
+              deck_name: {type: string, description: "Nome do baralho"}
+              subject_id: {type: integer, description: "ID da matéria"}
+      404:
+        description: Usuário não possui a matéria, baralho não encontrado, ou nenhum flashcard encontrado
+    """
     has_subj = match_subject_user_db(subject_id, user_id)
 
     if has_subj is False:
@@ -52,6 +91,49 @@ def get_flashcards(user_id, subject_id, deck_id):
 
 @flashcard_bp.get("/<int:flashcard_id>")
 def get_flashcard(user_id, subject_id, deck_id, flashcard_id):
+    """
+    Busca um flashcard específico pelo ID.
+    ---
+    tags:
+      - Flashcards
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: ID do usuário
+      - in: path
+        name: subject_id
+        type: integer
+        required: true
+        description: ID da matéria
+      - in: path
+        name: deck_id
+        type: integer
+        required: true
+        description: ID do baralho
+      - in: path
+        name: flashcard_id
+        type: integer
+        required: true
+        description: ID do flashcard a ser buscado
+    responses:
+      200:
+        description: Flashcard encontrado
+        schema:
+          type: object
+          properties:
+            id: {type: integer, description: "ID do flashcard"}
+            pergunta: {type: string, description: "Pergunta"}
+            resposta: {type: string, description: "Resposta"}
+            status: {type: string, description: "Status"}
+            creation_date: {type: string, format: "date-time", description: "Data de criação"}
+            deck_id: {type: integer, description: "ID do baralho"}
+            deck_name: {type: string, description: "Nome do baralho"}
+            subject_id: {type: integer, description: "ID da matéria"}
+      404:
+        description: Usuário não possui a matéria, baralho ou flashcard não encontrado
+    """
     has_subj = match_subject_user_db(subject_id, user_id)
 
     if has_subj is False:
@@ -85,6 +167,48 @@ def get_flashcard(user_id, subject_id, deck_id, flashcard_id):
 
 @flashcard_bp.post("")
 def create_flashcard(user_id, subject_id, deck_id):
+    """
+    Cria um novo flashcard em um baralho.
+    ---
+    tags:
+      - Flashcards
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: ID do usuário
+      - in: path
+        name: subject_id
+        type: integer
+        required: true
+        description: ID da matéria
+      - in: path
+        name: deck_id
+        type: integer
+        required: true
+        description: ID do baralho
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [pergunta, resposta, status, creation_date]
+          properties:
+            pergunta: {type: string, example: "Qual é a capital do Brasil?", description: "Pergunta"}
+            resposta: {type: string, example: "Brasília", description: "Resposta"}
+            status: {type: string, enum: ["novo", "aprendendo", "review", "reaprendendo"], example: "novo", description: "Status inicial"}
+            creation_date: {type: string, format: "date-time", example: "2026-07-07T10:00:00", description: "Data de criação"}
+    responses:
+      201:
+        description: Flashcard criado com sucesso
+        schema:
+          type: object
+          properties:
+            id: {type: integer, description: "ID do novo flashcard"}
+      404:
+        description: Usuário não possui a matéria ou baralho não encontrado
+    """
     has_subj = match_subject_user_db(subject_id, user_id)
 
     if has_subj is False:
@@ -113,6 +237,38 @@ def create_flashcard(user_id, subject_id, deck_id):
 
 @flashcard_bp.delete("/<int:flashcard_id>")
 def delete_flashcard(user_id, subject_id, deck_id, flashcard_id):
+    """
+    Deleta um flashcard pelo ID.
+    ---
+    tags:
+      - Flashcards
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: ID do usuário
+      - in: path
+        name: subject_id
+        type: integer
+        required: true
+        description: ID da matéria
+      - in: path
+        name: deck_id
+        type: integer
+        required: true
+        description: ID do baralho
+      - in: path
+        name: flashcard_id
+        type: integer
+        required: true
+        description: ID do flashcard a ser deletado
+    responses:
+      204:
+        description: Flashcard deletado com sucesso
+      404:
+        description: Usuário não possui a matéria, baralho ou flashcard não encontrado
+    """
     has_subj = match_subject_user_db(subject_id, user_id)
 
     if has_subj is False:

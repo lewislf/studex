@@ -1,10 +1,7 @@
 {
     "id": 1,
-    "profile": {
-        "display_name": "João Silva",
-        "email": "user@example.com",
-        "photo": "../assets/generic-profile.svg"
-    },
+    "name": "João Silva",
+    "email": "user@example.com",
     "gamification": {
         "current_streak": 32,
         "active_yesterday": true

@@ -6,9 +6,8 @@ export function parseUserProfile(json) {
     if (!json) return {};
     return {
         id: json.id || '',
-        name: json.profile?.display_name || 'User',
-        email: json.profile?.email || '',
-        avatar: json.profile?.photo || '',
+        name: json.name || 'User',
+        email: json.email || '',
         gamification: {
             streak: Number(json.gamification?.current_streak) || 0,
             activeYesterday: Boolean(json.gamification?.active_yesterday)

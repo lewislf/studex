@@ -107,7 +107,9 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 email TEXT NOT NULL UNIQUE,
-                passwd_encrypted BLOB NOT NULL 
+                passwd_encrypted BLOB NOT NULL,
+                gamification TEXT,
+                counters TEXT
             );
             """
         )
@@ -120,7 +122,9 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
                 name TEXT NOT NULL,
                 desc TEXT NOT NULL,
                 creation_date DATETIME,
-                domain INTEGER NOT NULL, 
+                domain INTEGER NOT NULL,
+                icon TEXT NOT NULL,
+                color TEXT NOT NULL, 
 
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
@@ -193,7 +197,15 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
     return None
 
 
-def save_user_db(name: str, passwd: str, email: str, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int | None:
+def save_user_db(
+    name: str, 
+    passwd: str, 
+    email: str, 
+    gamification: dict = None,
+    counters: dict = None,
+    db_path: Path = DB_PATH, 
+    key_path: Path = KEY_PATH
+) -> int | None:
     """
     Register a new user in the database. 
     
@@ -202,16 +214,34 @@ def save_user_db(name: str, passwd: str, email: str, db_path: Path = DB_PATH, ke
     key = _get_or_create_key(key_path)
     encrypted_passwd = _encrypt_passwd(passwd, key)
     
+    if gamification is None:
+        gamification = {
+            "current_streak": 0,
+            "active_yesterday": False
+        }
+    
+    if counters is None:
+        counters = {
+            "summaries": 0,
+            "mind_maps": 0,
+            "pending_flashcards_today": 0,
+            "total_flashcards_created": 0
+        }
+    
+    # Convert dicts to JSON strings
+    gamification_json = json.dumps(gamification)
+    counters_json = json.dumps(counters)
+    
     with _open_connection(db_path) as conn:
         cur = conn.cursor()
 
         cur.execute("BEGIN")
         ins = """
-            INSERT INTO users (name, email, passwd_encrypted) 
-            VALUES (?, ?, ?)
+            INSERT INTO users (name, email, passwd_encrypted, gamification, counters) 
+            VALUES (?, ?, ?, ?, ?)
         """
 
-        cur.execute(ins, (name, email, encrypted_passwd))
+        cur.execute(ins, (name, email, encrypted_passwd, gamification_json, counters_json))
 
         user_id = cur.lastrowid
 
@@ -230,7 +260,7 @@ def get_users_db(
     """
 
     with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, name, email, passwd_encrypted 
+        rows = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters 
                                     FROM users 
                                     WHERE name LIKE ?""", (f"%{name}%",)).fetchall()  
         
@@ -238,8 +268,11 @@ def get_users_db(
             return None
 
         users = []
-        for user_id, name, email, hash_passwd in rows:
-            users.append(Usuario(name, email, hash_passwd, user_id))
+        for user_id, name, email, hash_passwd, gamification_json, counters_json in rows:
+            gamification = json.loads(gamification_json) if gamification_json else None
+            counters = json.loads(counters_json) if counters_json else None
+            
+            users.append(Usuario(name, email, hash_passwd, user_id, gamification, counters))
         
         return users
 
@@ -254,7 +287,7 @@ def get_user_db(
     """
 
     with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, name, email, passwd_encrypted 
+        row = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters 
                                     FROM users 
                                     WHERE id = ?""", (user_id,)).fetchone()  
         
@@ -262,8 +295,12 @@ def get_user_db(
             return None
 
         user = None
-        user_id, name, email, hash_passwd = row
-        user = Usuario(name, email, hash_passwd, user_id)
+        user_id, name, email, hash_passwd, gamification_json, counters_json = row
+        
+        gamification = json.loads(gamification_json) if gamification_json else None
+        counters = json.loads(counters_json) if counters_json else None
+        
+        user = Usuario(name, email, hash_passwd, user_id, gamification, counters)
         
         return user
 
@@ -305,7 +342,7 @@ def print_all_people_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> N
 
 ### SUBJECT ###
 
-def save_subject_db(user_id: int, name: str, desc: str, domain: int, creation_date: date, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int | None:
+def save_subject_db(user_id: int, name: str, desc: str, domain: int, icon: str, color: str, creation_date: date, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int | None:
     """
     Register a new subject in the database. 
     
@@ -316,11 +353,11 @@ def save_subject_db(user_id: int, name: str, desc: str, domain: int, creation_da
 
         cur.execute("BEGIN")
         ins = """
-            INSERT INTO subjects (user_id, name, desc, creation_date, domain) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO subjects (user_id, name, desc, creation_date, domain, icon, color) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
-        cur.execute(ins, (user_id, name, desc, creation_date, domain))
+        cur.execute(ins, (user_id, name, desc, creation_date, domain, icon, color))
 
         subject_id = cur.lastrowid
 
@@ -339,7 +376,7 @@ def get_subjects_db(
     """
 
     with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain 
+        rows = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain, icon, color 
                                     FROM subjects 
                                     WHERE user_id = ?
                                     ORDER BY creation_date DESC""", (user_id,)).fetchall()  
@@ -348,8 +385,8 @@ def get_subjects_db(
             return None
 
         subjects = []
-        for subject_id, user_id, name, desc, creation_date, domain in rows:
-            subjects.append(Materia(user_id, name, desc, domain, creation_date, subject_id))
+        for subject_id, user_id, name, desc, creation_date, domain, icon, color in rows:
+            subjects.append(Materia(user_id, name, desc, domain, icon, color, creation_date, subject_id))
         
         return subjects
 
@@ -364,7 +401,7 @@ def get_subject_db(
     """
 
     with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain 
+        row = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain, icon, color 
                                     FROM subjects 
                                     WHERE id = ?""", (subject_id,)).fetchone()  
         
@@ -372,8 +409,8 @@ def get_subject_db(
             return None
 
         subject = None
-        subject_id, user_id, name, desc, creation_date, domain = row
-        subject = Materia(user_id, name, desc, domain, creation_date, subject_id)
+        subject_id, user_id, name, desc, creation_date, domain, icon, color = row
+        subject = Materia(user_id, name, desc, domain, icon, color, creation_date, subject_id)
         
         return subject
 

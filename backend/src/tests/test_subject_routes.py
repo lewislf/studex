@@ -28,6 +28,8 @@ def fake_subject(**kwargs):
         "name": "Redes",
         "description": "Redes de Computadores",
         "domain": 55,
+        "icon": "globe",
+        "color": "#e63946",
         "date": "2026-07-05",
         "to_dict": lambda: {
             "id": 1,
@@ -125,6 +127,8 @@ def test_create_subject(client):
         "name": "Redes",
         "description": "desc",
         "domain": 55,
+        "icon": "globe",
+        "color": "#e63946",
         "date": "2026-07-05",
     }
 
@@ -146,6 +150,8 @@ def test_create_subject(client):
         "Redes",
         "desc",
         55,
+        "globe",
+        "#e63946",
         "2026-07-05",
     )
 

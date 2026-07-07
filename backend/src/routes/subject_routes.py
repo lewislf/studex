@@ -124,12 +124,14 @@ def create_subject(user_id):
         required: true
         schema:
           type: object
-          required: [name, description, domain, date]
+          required: [name, description, domain, icon, color, date]
           properties:
             user_id: {type: integer, example: 1}
             name: {type: string, example: "Redes de Computadores"}
             description: {type: string, example: "Camadas do modelo TCP/IP"}
             domain: {type: integer, example: 0}
+            icon: {type: string, example: "globe"}
+            color: {type: string, example: "#e63946"}
             date: {type: string, example: "2026-07-05"}
     responses:
       201:
@@ -142,6 +144,8 @@ def create_subject(user_id):
         body["name"],
         body["description"],
         body["domain"],
+        body["icon"],
+        body["color"],
         body["date"],
     )
 
