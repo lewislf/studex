@@ -1,0 +1,70 @@
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events for the "main" and "dev" branches
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # Job to install dependencies and run unit tests for the frontend with Vitest
+  frontend-tests:
+    name: Frontend Tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Sets up a Node.js environment with npm caching enabled
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # Installs frontend dependencies using clean install
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # Executes the Vitest test suite using the runners shell
+      - name: Run Vitest tests
+        run: npm run test
+        working-directory: frontend
+
+  # Job to install dependencies and run unit tests for the backend with Pytest
+  backend-tests:
+    name: Backend Tests (Pytest)
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Sets up a Python environment with pip caching enabled
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements-docker.txt
+
+      # Installs backend dependencies from requirements-docker file
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-docker.txt
+
+      # Executes the Pytest test suite using the runners shell
+      - name: Run Pytest tests
+        run: |
+          export PYTHONPATH=backend/src
+          python -m pytest backend/src/tests

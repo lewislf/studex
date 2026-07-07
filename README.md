@@ -184,6 +184,9 @@ Testes unitários utilizando PyTest para o Backend e Vitest para o Front-end
 ```bash
 # Rodar testes unitários do Backend dentro do container (com a stack no ar)
 docker compose exec backend python -m pytest
+
+# Rodar testes unitários do Frontend dentro do container (com a stack no ar)
+docker compose exec frontend npm run test
 ```
 
 ## Tecnologias Utilizadas
@@ -215,10 +218,10 @@ docker compose exec backend python -m pytest
 ### Front-End
 
 - React
+- React Router
 - Vite
 - Mantine
-- Material UI
-- Lucide Icons
+- Tabler Icons
 - Vitest
 
 ## Diagrama de Classes
