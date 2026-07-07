@@ -3,6 +3,10 @@ import styles from '../../styles/Subjects/Subjects.module.css';
 
 /**
  * SubjectCardFooter renders the status indicator and action link.
+ *
+ * @param {Object} props
+ * @param {number} props.pendingInQueue - The count of reviews waiting in the queue.
+ * @param {string} props.color - Theme color string of the bullet dot.
  */
 export default function SubjectCardFooter({ pendingInQueue, color }) {
     return (

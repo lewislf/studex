@@ -3,6 +3,9 @@ import styles from '../../styles/Subjects/Subjects.module.css';
 
 /**
  * SubjectCardCounters renders the numeric summary badges (summaries, mind maps, and flashcards count).
+ *
+ * @param {Object} props
+ * @param {Object} props.counters - The count markers for summaries, maps and flashcards.
  */
 export default function SubjectCardCounters({ counters }) {
     return (

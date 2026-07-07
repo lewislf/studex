@@ -3,6 +3,9 @@ import SubjectCard from "./SubjectCard";
 
 /**
  * SubjectsGrid renders the responsive grid layout presenting all subject card elements.
+ *
+ * @param {Object} props
+ * @param {Array} props.subjects - Collection of raw subject objects.
  */
 export default function SubjectsGrid({ subjects }) {
     return (

@@ -4,6 +4,12 @@ import styles from '../../styles/Revisions/Revisions.module.css';
 
 /**
  * RevisionsDeckCardInfo displays the subject icon, title name, and course details.
+ *
+ * @param {Object} props
+ * @param {string} props.icon - Name of the custom icon.
+ * @param {string} props.color - Hex theme color code.
+ * @param {string} props.subjectName - Title of the course/subject.
+ * @param {string} [props.subtitle] - Supporting description subtext.
  */
 export default function RevisionsDeckCardInfo({ icon, color, subjectName, subtitle }) {
     return (

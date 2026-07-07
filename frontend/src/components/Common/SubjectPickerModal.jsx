@@ -11,16 +11,15 @@ import styles from '../../styles/Common/SubjectPickerModal.module.css';
 import { COLOR_OPTIONS, ICON_OPTIONS, DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLOR } from '../../config/Constants';
 
 /**
- * Modal menu shown during file upload: the user chooses to save the generated artifacts
- * (summary, mind map, flashcards) into an existing subject or create a new one.
- * Supports dynamic icon and color selections when creating a new subject.
+ * Modal menu shown during file upload.
  *
- * @param {boolean} opened - Whether the modal is open.
- * @param {Function} onClose - Action to close the modal (cancelling the upload).
- * @param {string|number} userId - Current user identifier.
- * @param {string} [fileName] - Name of the file being uploaded (shown in the title).
- * @param {Function} onConfirm - Callback invoked with the chosen or created subject_id to trigger the upload.
- * @param {boolean} [onlyCreate] - If true, locks SegmentedControl and displays only the creation form.
+ * @param {Object} props
+ * @param {boolean} props.opened - Whether the modal is open.
+ * @param {Function} props.onClose - Action to close the modal (cancelling the upload).
+ * @param {string|number} props.userId - Current user identifier.
+ * @param {string} [props.fileName] - Name of the file being uploaded (shown in the title).
+ * @param {Function} props.onConfirm - Callback invoked with the chosen or created subject_id to trigger the upload.
+ * @param {boolean} [props.onlyCreate] - If true, locks SegmentedControl and displays only the creation form.
  */
 export default function SubjectPickerModal({ opened, onClose, userId, fileName, onConfirm, onlyCreate = false }) {
     const { subjects, loading, error, fetchSubjects, createSubject } = useSubjects(userId);

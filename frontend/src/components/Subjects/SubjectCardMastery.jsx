@@ -3,6 +3,10 @@ import styles from '../../styles/Subjects/Subjects.module.css';
 
 /**
  * SubjectCardMastery renders the mastery level and percentage progress bar.
+ *
+ * @param {Object} props
+ * @param {number} props.masteryPercentage - Progress percentage of the subject mastery.
+ * @param {string} props.color - Theme color string of the progress bar.
  */
 export default function SubjectCardMastery({ masteryPercentage, color }) {
     return (

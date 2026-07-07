@@ -3,6 +3,12 @@ import styles from '../../styles/Revisions/Revisions.module.css';
 
 /**
  * RevisionsDeckCardAction displays the split review counts, total cards, and the review button.
+ *
+ * @param {Object} props
+ * @param {number} props.newCount - Quantity of new cards.
+ * @param {number} props.learningCount - Quantity of learning cards.
+ * @param {number} props.reviewCount - Quantity of cards to review.
+ * @param {number} props.totalCards - Sum of cards inside this deck.
  */
 export default function RevisionsDeckCardAction({ newCount, learningCount, reviewCount, totalCards }) {
     return (
