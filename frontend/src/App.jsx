@@ -19,7 +19,7 @@ export default function App() {
             <AppShell.Header>
                 <Header 
                     name={user.name} 
-                    avatarUrl={user.avatar || profileImage} 
+                    avatarUrl={profileImage} 
                 />
             </AppShell.Header>
 

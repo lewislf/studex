@@ -66,6 +66,8 @@ def create_user():
             name: {type: string, example: "Maria"}
             password: {type: string, example: "senha123"}
             email: {type: string, example: "maria@email.com"}
+            gamification: {type: object, example: {"current_streak": 0, "active_yesterday": false}}
+            counters: {type: object, example: {"summaries": 0, "mind_maps": 0, "pending_flashcards_today": 0, "total_flashcards_created": 0}}
     responses:
       201:
         description: Usuário criado (retorna o id)
@@ -76,6 +78,8 @@ def create_user():
         body["name"],
         body["password"],
         body["email"],
+        gamification=body.get("gamification"),
+        counters=body.get("counters"),
     )
 
     return jsonify({"id": user_id}), 201

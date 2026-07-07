@@ -107,7 +107,9 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 email TEXT NOT NULL UNIQUE,
-                passwd_encrypted BLOB NOT NULL 
+                passwd_encrypted BLOB NOT NULL,
+                gamification TEXT,
+                counters TEXT
             );
             """
         )
@@ -195,7 +197,15 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
     return None
 
 
-def save_user_db(name: str, passwd: str, email: str, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int | None:
+def save_user_db(
+    name: str, 
+    passwd: str, 
+    email: str, 
+    gamification: dict = None,
+    counters: dict = None,
+    db_path: Path = DB_PATH, 
+    key_path: Path = KEY_PATH
+) -> int | None:
     """
     Register a new user in the database. 
     
@@ -204,16 +214,34 @@ def save_user_db(name: str, passwd: str, email: str, db_path: Path = DB_PATH, ke
     key = _get_or_create_key(key_path)
     encrypted_passwd = _encrypt_passwd(passwd, key)
     
+    if gamification is None:
+        gamification = {
+            "current_streak": 0,
+            "active_yesterday": False
+        }
+    
+    if counters is None:
+        counters = {
+            "summaries": 0,
+            "mind_maps": 0,
+            "pending_flashcards_today": 0,
+            "total_flashcards_created": 0
+        }
+    
+    # Convert dicts to JSON strings
+    gamification_json = json.dumps(gamification)
+    counters_json = json.dumps(counters)
+    
     with _open_connection(db_path) as conn:
         cur = conn.cursor()
 
         cur.execute("BEGIN")
         ins = """
-            INSERT INTO users (name, email, passwd_encrypted) 
-            VALUES (?, ?, ?)
+            INSERT INTO users (name, email, passwd_encrypted, gamification, counters) 
+            VALUES (?, ?, ?, ?, ?)
         """
 
-        cur.execute(ins, (name, email, encrypted_passwd))
+        cur.execute(ins, (name, email, encrypted_passwd, gamification_json, counters_json))
 
         user_id = cur.lastrowid
 
@@ -232,7 +260,7 @@ def get_users_db(
     """
 
     with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, name, email, passwd_encrypted 
+        rows = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters 
                                     FROM users 
                                     WHERE name LIKE ?""", (f"%{name}%",)).fetchall()  
         
@@ -240,8 +268,11 @@ def get_users_db(
             return None
 
         users = []
-        for user_id, name, email, hash_passwd in rows:
-            users.append(Usuario(name, email, hash_passwd, user_id))
+        for user_id, name, email, hash_passwd, gamification_json, counters_json in rows:
+            gamification = json.loads(gamification_json) if gamification_json else None
+            counters = json.loads(counters_json) if counters_json else None
+            
+            users.append(Usuario(name, email, hash_passwd, user_id, gamification, counters))
         
         return users
 
@@ -256,7 +287,7 @@ def get_user_db(
     """
 
     with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, name, email, passwd_encrypted 
+        row = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters 
                                     FROM users 
                                     WHERE id = ?""", (user_id,)).fetchone()  
         
@@ -264,8 +295,12 @@ def get_user_db(
             return None
 
         user = None
-        user_id, name, email, hash_passwd = row
-        user = Usuario(name, email, hash_passwd, user_id)
+        user_id, name, email, hash_passwd, gamification_json, counters_json = row
+        
+        gamification = json.loads(gamification_json) if gamification_json else None
+        counters = json.loads(counters_json) if counters_json else None
+        
+        user = Usuario(name, email, hash_passwd, user_id, gamification, counters)
         
         return user
 
