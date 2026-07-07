@@ -57,7 +57,9 @@ export function parseDailyReviews(json) {
     };
 }
 
+// MOCKING, WILL BE DELETED WHENEVER THE API IS READY
 import subjectsListMock from '../config/subjectsListMock.json';
+import { DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLOR } from '../config/subjectConstants';
 
 /**
  * Parser for: subjectsListMock.json or API subjects list.
@@ -87,8 +89,8 @@ export function parseSubjectsListMock(json) {
             return {
                 id: subject.id,
                 title: titleStr,
-                icon: match.icon || 'book',
-                color: match.color || '#4361ee',
+                icon: match.icon || DEFAULT_SUBJECT_ICON,
+                color: match.color || DEFAULT_SUBJECT_COLOR,
                 lastActivity: subject.last_activity || match.last_activity || '',
                 totalTopics: Number(subject.total_topics || match.total_topics) || 11,
                 masteryPercentage: Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) !== undefined 
@@ -107,8 +109,8 @@ export function parseSubjectsListMock(json) {
         return {
             id: subject.id,
             title: titleStr,
-            icon: subject.icon || 'book',
-            color: subject.color || '#4361ee',
+            icon: subject.icon || DEFAULT_SUBJECT_ICON,
+            color: subject.color || DEFAULT_SUBJECT_COLOR,
             lastActivity: subject.last_activity || '',
             totalTopics: Number(subject.total_topics) || 11,
             masteryPercentage: Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) || 0,

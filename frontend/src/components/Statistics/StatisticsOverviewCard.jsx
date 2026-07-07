@@ -1,12 +1,6 @@
 import { Title, Text, RingProgress, Progress, Container, Stack, Group, Flex } from "@mantine/core";
-import {
-    IconFlame,
-    IconCards,
-    IconSitemap,
-    IconFileText,
-    IconBook
-} from '@tabler/icons-react';
 import styles from '../../styles/Statistics/Statistics.module.css';
+import SubjectIcon from '../Common/SubjectIcon';
 
 /**
  * StatisticsOverviewCard displays primary numeric indicators (such as streak count,
@@ -84,35 +78,35 @@ export default function StatisticsOverviewCard({ user, stats }) {
                         {/* List of Stats */}
                         <Stack className={styles.statList} gap="sm">
                             <Group gap="md" wrap="nowrap">
-                                <IconFlame size={32} color="#ff9f1c" />
+                                <SubjectIcon name="flame" size={32} color="#ff9f1c" />
                                 <Stack gap={2}>
                                     <Text size="xs" className={styles.statLabel}>Total de Dias de Ofensiva</Text>
                                     <Text className={styles.statValue}>{user.gamification?.streak || 0} dias</Text>
                                 </Stack>
                             </Group>
                             <Group gap="md" wrap="nowrap">
-                                <IconCards size={32} color="#2196f3" />
+                                <SubjectIcon name="cards" size={32} color="#2196f3" />
                                 <Stack gap={2}>
                                     <Text size="xs" className={styles.statLabel}>Cartões na Fila Hoje:</Text>
                                     <Text className={styles.statValue}>{user.counters?.pendingFlashcardsToday || 0}</Text>
                                 </Stack>
                             </Group>
                             <Group gap="md" wrap="nowrap">
-                                <IconSitemap size={32} color="#00bcd4" />
+                                <SubjectIcon name="sitemap" size={32} color="#00bcd4" />
                                 <Stack gap={2}>
                                     <Text size="xs" className={styles.statLabel}>Mapas Mentais:</Text>
                                     <Text className={styles.statValue}>{user.counters?.mapsCount || 0}</Text>
                                 </Stack>
                             </Group>
                             <Group gap="md" wrap="nowrap">
-                                <IconFileText size={32} color="#9c27b0" />
+                                <SubjectIcon name="file-text" size={32} color="#9c27b0" />
                                 <Stack gap={2}>
                                     <Text size="xs" className={styles.statLabel}>Resumos:</Text>
                                     <Text className={styles.statValue}>{user.counters?.summariesCount || 0}</Text>
                                 </Stack>
                             </Group>
                             <Group gap="md" wrap="nowrap">
-                                <IconBook size={32} color="#795548" />
+                                <SubjectIcon name="book" size={32} color="#795548" />
                                 <Stack gap={2}>
                                     <Text size="xs" className={styles.statLabel}>Total de Cartões Criados:</Text>
                                     <Text className={styles.statValue}>{formatCount(user.counters?.totalFlashcardsCreated || 0)}</Text>

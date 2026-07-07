@@ -1,53 +1,12 @@
 import { Text, Group, Stack, Progress, Box } from "@mantine/core";
-import {
-    IconGlobe,
-    IconRocket,
-    IconSchool,
-    IconUsers,
-    IconDatabase,
-    IconBook,
-    IconCalculator,
-    IconFlask,
-    IconCode,
-    IconLanguage,
-    IconBrain,
-    IconPalette,
-    IconHistory,
-    IconMicroscope,
-    IconHeart,
-    IconScale
-} from '@tabler/icons-react';
 import styles from '../../styles/Subjects/Subjects.module.css';
+import SubjectIcon from '../Common/SubjectIcon';
 
 /**
  * SubjectCard represents a single course subject item, including status indicators,
  * topic descriptions, mastery percentage progress, and queue statistics.
  */
 export default function SubjectCard({ subject }) {
-    // Dynamic icon resolution based on configuration mock key strings
-    const getSubjectIcon = (iconName) => {
-        switch (iconName) {
-            case 'globe': return IconGlobe;
-            case 'rocket': return IconRocket;
-            case 'user-teacher': return IconSchool;
-            case 'users': return IconUsers;
-            case 'database': return IconDatabase;
-            case 'calculator': return IconCalculator;
-            case 'flask': return IconFlask;
-            case 'code': return IconCode;
-            case 'language': return IconLanguage;
-            case 'brain': return IconBrain;
-            case 'palette': return IconPalette;
-            case 'history': return IconHistory;
-            case 'microscope': return IconMicroscope;
-            case 'heart': return IconHeart;
-            case 'scale': return IconScale;
-            default: return IconBook;
-        }
-    };
-
-    const IconComponent = getSubjectIcon(subject.icon);
-
     return (
         <Box className={styles.subjectCard}>
             <Box
@@ -59,7 +18,7 @@ export default function SubjectCard({ subject }) {
             <Box className={styles.cardContent}>
                 {/* Header block with vertical stack layout matching mockup print */}
                 <Stack gap="xs" className={styles.cardHeader}>
-                    <IconComponent size={36} color={subject.color} />
+                    <SubjectIcon name={subject.icon} size={36} color={subject.color} />
                     <Text className={styles.cardTitle}>{subject.title}</Text>
                     <Text className={styles.cardSubtext}>
                         {subject.totalTopics} tópicos - última atividade ontem
@@ -68,25 +27,25 @@ export default function SubjectCard({ subject }) {
 
                 {/* Sub-counters summary badges row */}
                 <Group gap="xs" wrap="nowrap">
-                    <div className={styles.statBadge}>
-                        <Text className={styles.statBadgeLabel}>Resumos</Text>
-                        <Text className={styles.statBadgeValue}>{subject.counters?.summaries || 0}</Text>
-                    </div>
-                    <div className={styles.statBadge}>
-                        <Text className={styles.statBadgeLabel}>Mapas</Text>
-                        <Text className={styles.statBadgeValue}>{subject.counters?.mindMaps || 0}</Text>
-                    </div>
-                    <div className={styles.statBadge}>
-                        <Text className={styles.statBadgeLabel}>Flashcards</Text>
-                        <Text className={styles.statBadgeValue}>{subject.counters?.flashcards || 0}</Text>
-                    </div>
+                    <Box className={styles.badgeLabel}>
+                        <Text size="xs" fw={700} c="blue.5">{subject.counters?.summaries || 0}</Text>
+                        <Text size="xxs" fw={600} c="dimmed">resumos</Text>
+                    </Box>
+                    <Box className={styles.badgeLabel}>
+                        <Text size="xs" fw={700} c="grape.5">{subject.counters?.mindMaps || 0}</Text>
+                        <Text size="xxs" fw={600} c="dimmed">mapas</Text>
+                    </Box>
+                    <Box className={styles.badgeLabel}>
+                        <Text size="xs" fw={700} c="orange.5">{subject.counters?.flashcards || 0}</Text>
+                        <Text size="xxs" fw={600} c="dimmed">cards</Text>
+                    </Box>
                 </Group>
 
-                {/* Mastery progress levels gauge */}
-                <Stack gap={4}>
-                    <Group justify="space-between">
+                {/* Mastery progress tracker */}
+                <Stack gap={4} className={styles.masteryStack}>
+                    <Group justify="space-between" align="center">
                         <Text size="xs" fw={600} c="dimmed">Domínio</Text>
-                        <Text size="xs" fw={700} c="dimmed">{subject.masteryPercentage}%</Text>
+                        <Text size="xs" fw={700} c="dark.7">{subject.masteryPercentage}%</Text>
                     </Group>
                     <Progress
                         value={subject.masteryPercentage}

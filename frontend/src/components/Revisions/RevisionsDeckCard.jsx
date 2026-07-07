@@ -1,24 +1,6 @@
 import { Text, Group, Button, Box, Stack } from "@mantine/core";
-import {
-    IconGlobe,
-    IconRocket,
-    IconSchool,
-    IconUsers,
-    IconDatabase,
-    IconBook,
-    IconCalculator,
-    IconFlask,
-    IconCode,
-    IconLanguage,
-    IconBrain,
-    IconPalette,
-    IconHistory,
-    IconMicroscope,
-    IconHeart,
-    IconScale,
-    IconAtom
-} from '@tabler/icons-react';
 import styles from '../../styles/Revisions/Revisions.module.css';
+import SubjectIcon from '../Common/SubjectIcon';
 
 /**
  * RevisionsDeckCard renders a single deck card row with dynamic subject indicators,
@@ -29,32 +11,6 @@ import styles from '../../styles/Revisions/Revisions.module.css';
  */
 export default function RevisionsDeckCard({ deck }) {
     if (!deck) return null;
-
-    // Resolve dynamic icon component
-    const getDeckIconComponent = (iconName) => {
-        switch (iconName) {
-            case 'sigma': return () => <span style={{ fontFamily: 'serif', fontSize: '1.25rem', fontWeight: 900 }}>Σ</span>;
-            case 'atom': return IconAtom;
-            case 'globe': return IconGlobe;
-            case 'rocket': return IconRocket;
-            case 'user-teacher': return IconSchool;
-            case 'users': return IconUsers;
-            case 'database': return IconDatabase;
-            case 'calculator': return IconCalculator;
-            case 'flask': return IconFlask;
-            case 'code': return IconCode;
-            case 'language': return IconLanguage;
-            case 'brain': return IconBrain;
-            case 'palette': return IconPalette;
-            case 'history': return IconHistory;
-            case 'microscope': return IconMicroscope;
-            case 'heart': return IconHeart;
-            case 'scale': return IconScale;
-            default: return IconBook;
-        }
-    };
-
-    const IconComponent = getDeckIconComponent(deck.icon);
 
     return (
         <Box className={styles.deckCard}>
@@ -71,7 +27,7 @@ export default function RevisionsDeckCard({ deck }) {
                         className={styles.iconBox}
                         style={{ backgroundColor: `${deck.color}15`, color: deck.color }}
                     >
-                        <IconComponent size={22} />
+                        <SubjectIcon name={deck.icon} size={22} color={deck.color} />
                     </Box>
                     <Stack gap={2}>
                         <Text className={styles.deckTitle}>{deck.subjectName}</Text>
