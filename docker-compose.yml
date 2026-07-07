@@ -5,6 +5,17 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      # Modelos ficam persistidos: baixa uma vez, sobrevive a rebuild/restart
+      - ollama_data:/root/.ollama
+    # Roda em CPU por default. Para usar GPU NVIDIA, adicione o override:
+    #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+
   backend:
     build: ./backend
     ports:
@@ -13,11 +24,14 @@ services:
       - ./backend/src:/app
     environment:
       QDRANT_URL: http://qdrant:6333
-      OLLAMA_HOST: http://host.docker.internal:11434
+      # Default aponta para o serviço no compose; sobrescreva para usar Ollama no host
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       qdrant:
+        condition: service_started
+      ollama:
         condition: service_started
   docs:
     build:
@@ -42,3 +56,4 @@ services:
 
 volumes:
   qdrant_data:
+  ollama_data:

@@ -1,0 +1,48 @@
+#!/bin/sh
+# Instala o nvidia-container-toolkit (se ainda não estiver) e configura o Docker
+# para acessar a GPU NVIDIA. Requer sudo e reinicia o daemon do Docker.
+#
+# Uso (a partir do repositório já clonado):
+#   bash scripts/setup-gpu
+
+set -e
+
+# 1. Instala o toolkit só se ainda não estiver presente.
+if command -v nvidia-ctk >/dev/null 2>&1; then
+    echo "nvidia-container-toolkit já instalado, pulando instalação."
+else
+    if ! command -v apt-get >/dev/null 2>&1; then
+        echo "Este script instala via apt (Debian/Ubuntu). Para outras distros veja:"
+        echo "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html"
+        exit 1
+    fi
+
+    echo "Adicionando o repositório oficial da NVIDIA..."
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+        sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+        sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+        sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null
+
+    echo "Instalando o nvidia-container-toolkit..."
+    sudo apt-get update
+    sudo apt-get install -y nvidia-container-toolkit
+fi
+
+# 2. Configura o runtime do Docker só se ainda não estiver configurado,
+#    para evitar reiniciar o daemon (e derrubar containers) à toa.
+if docker info 2>/dev/null | grep -qi 'runtimes:.*nvidia'; then
+    echo "Runtime nvidia já configurado no Docker, pulando reinício."
+else
+    echo "Configurando o runtime do Docker para a GPU e reiniciando o daemon..."
+    sudo nvidia-ctk runtime configure --runtime=docker
+    sudo systemctl restart docker
+fi
+
+# 3. Verificação: a GPU aparece dentro de um container?
+echo "Verificando acesso da GPU no Docker..."
+if docker run --rm --gpus all ubuntu nvidia-smi >/dev/null 2>&1; then
+    echo "OK! A GPU está acessível dentro do Docker."
+else
+    echo "Aviso: não confirmei a GPU no Docker. Cheque o driver NVIDIA com 'nvidia-smi' no host."
+fi

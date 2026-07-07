@@ -1,0 +1,87 @@
+#!/bin/sh
+# Verifica se miniconda está instalado, cria conda env 'studex', instala dependências.
+#
+# Uso (a partir do repositório já clonado):
+#   bash scripts/install
+
+set -e
+
+# Locais comuns onde o conda pode já estar instalado sem estar no PATH
+CONDA_DIRS="$HOME/miniconda3 $HOME/anaconda3 $HOME/miniforge3 /opt/conda"
+NEED_INIT=0
+
+# 1. Conda já disponível no PATH? Então já está instalado e inicializado.
+if command -v conda >/dev/null 2>&1; then
+    echo "Conda já instalado ($(conda --version)), pulando instalação."
+else
+    # 2. Tenta carregar uma instalação existente fora do PATH.
+    #    Cobre quem tem conda instalado mas nunca rodou 'conda init'.
+    for base in $CONDA_DIRS; do
+        if [ -f "$base/etc/profile.d/conda.sh" ]; then
+            echo "Conda encontrado em $base (fora do PATH), carregando..."
+            # shellcheck disable=SC1091
+            . "$base/etc/profile.d/conda.sh"
+            NEED_INIT=1
+            break
+        fi
+    done
+fi
+
+# 3. Se mesmo assim não achou, instala o Miniconda do zero.
+if ! command -v conda >/dev/null 2>&1; then
+    OS="$(uname -s)"
+    ARCH="$(uname -m)"
+
+    case "$OS" in
+        Linux)  INSTALLER="Miniconda3-latest-Linux-${ARCH}.sh" ;;
+        Darwin) INSTALLER="Miniconda3-latest-MacOSX-${ARCH}.sh" ;;
+        *)
+            echo "Sistema operacional não suportado por este script: $OS"
+            echo "Baixe o instalador manualmente em https://repo.anaconda.com/miniconda/"
+            exit 1
+            ;;
+    esac
+
+    URL="https://repo.anaconda.com/miniconda/${INSTALLER}"
+    TMP_INSTALLER="/tmp/${INSTALLER}"
+
+    echo "Baixando Miniconda de ${URL}..."
+    curl -fsSL "$URL" -o "$TMP_INSTALLER"
+
+    echo "Instalando Miniconda em \$HOME/miniconda3..."
+    bash "$TMP_INSTALLER" -b -p "$HOME/miniconda3"
+    rm -f "$TMP_INSTALLER"
+
+    # shellcheck disable=SC1091
+    . "$HOME/miniconda3/etc/profile.d/conda.sh"
+    NEED_INIT=1
+fi
+
+# 4. Inicializa o shell só se o conda não estava inicializado (recém-instalado
+#    ou carregado de fora do PATH). Evita mexer no ~/.bashrc de quem já usa conda.
+if [ "$NEED_INIT" = "1" ]; then
+    conda init "$(basename "${SHELL:-bash}")"
+fi
+
+# 5. Carrega o conda nesta sessão do script para poder criar/ativar o ambiente.
+# shellcheck disable=SC1091
+. "$(conda info --base)/etc/profile.d/conda.sh"
+
+# 6. Cria o ambiente 'studex' só se ainda não existir.
+if conda env list | grep -q "^studex "; then
+    echo "Ambiente 'studex' já existe, pulando criação."
+else
+    echo "Criando ambiente 'studex' (python 3.11)..."
+    conda create -y -n studex python=3.11
+fi
+
+# 7. Instala as dependências sempre, para garantir que ficam em dia com o
+#    requirements.txt (o pip pula o que já está satisfeito).
+echo "Instalando dependências do requirements.txt no ambiente 'studex'..."
+conda activate studex
+pip install -r "$(dirname "$0")/../requirements.txt"
+
+echo ""
+echo "Pronto! Abra um novo terminal (ou rode 'source ~/.bashrc') e entao:"
+echo "  conda activate studex"
+echo "  cd backend && mkdocs serve"

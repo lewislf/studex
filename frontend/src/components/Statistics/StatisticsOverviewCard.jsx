@@ -129,7 +129,7 @@ export default function StatisticsOverviewCard({ user, stats }) {
                                 sections={[{ value: rank.progressValue, color: rank.color }]}
                                 label={
                                     <Stack gap={0} align="center" justify="center">
-                                        <Text size="5rem" fw={900} c={rank.color} lh={1} className={styles.studexLogoText}>
+                                        <Text size="5rem" fw={900} c={rank.color} lh={1} className={styles.rankGrade}>
                                             {rank.grade}
                                         </Text>
                                         <Text size="xs" fw={700} c="dimmed" tt="uppercase">

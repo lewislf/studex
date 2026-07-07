@@ -2,30 +2,30 @@ import { useEffect, useState } from 'react';
 import { Stack, Text, Progress, Group, ThemeIcon, Loader } from '@mantine/core';
 import { IconCheck } from '@tabler/icons-react';
 
-// As 3 etapas do pipeline de geração (resumo → mapa mental → flashcards).
+// The 3 phases of the generation pipeline (summary → mind map → flashcards).
 const PHASES = ['Criando resumo', 'Criando mapa mental', 'Criando flashcards'];
 
 /**
- * Painel exibido no lugar do dropzone enquanto o backend processa o PDF.
+ * Dashboard pane rendered in place of the dropzone while the backend processes the PDF.
  *
- * O backend responde só ao final (uma requisição única), então o avanço das
- * fases é uma animação no frontend — a barra sobe devagar e desacelera perto
- * do fim, sem chegar a 100% até o upload realmente terminar.
+ * The backend responds only at the end (a single request), so the phase advancement
+ * is simulated on the client-side: the progress bar grows slowly and decelerates as it
+ * approaches the end, never hitting 100% until the upload officially completes.
  *
- * @param {string} [fileName] - Nome do arquivo em processamento.
+ * @param {string} [fileName] - Name of the file being processed.
  */
 export default function UploadProgress({ fileName }) {
     const [value, setValue] = useState(6);
 
     useEffect(() => {
         const id = setInterval(() => {
-            // Cresce em direção a 95% e desacelera (efeito "quase lá")
+            // Expands towards 95% and decelerates ("almost there" effect)
             setValue((v) => (v >= 95 ? 95 : v + Math.max(1, (95 - v) * 0.06)));
         }, 600);
         return () => clearInterval(id);
     }, []);
 
-    // Fase atual derivada do progresso
+    // Current phase derived from progress value
     const phase = value < 38 ? 0 : value < 70 ? 1 : 2;
 
     return (

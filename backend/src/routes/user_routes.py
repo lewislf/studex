@@ -11,6 +11,17 @@ user_bp = Blueprint("users", __name__, url_prefix="/users")
 
 @user_bp.get("")
 def get_users():
+    """
+    Busca todos os usuários do banco de dados.
+    ---
+    tags:
+      - Usuários
+    responses:
+      200:
+        description: Usuário encontrado
+      404:
+        description: Usuário não encontrado
+    """
     users = get_users_db("")
 
     if users is None:
