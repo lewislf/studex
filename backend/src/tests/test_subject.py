@@ -105,7 +105,7 @@ def test_search_subject(temp_db):
     )
 
     subjects = get_subjects_db(
-        "Rede",
+        user_id,
         db_path=db_path,
     )
 

@@ -56,29 +56,69 @@ export function parseDailyReviews(json) {
     };
 }
 
+import subjectsListMock from '../config/subjectsListMock.json';
+
 /**
- * Parser for: subjectsListMock.json
- * Maps the wrapper object containing the user ID and the array of subjects.
+ * Parser for: subjectsListMock.json or API subjects list.
+ * Maps the raw subjects array and enriches it with visual configurations (colors, icons, counters).
  */
 export function parseSubjectsListMock(json) {
-    // Validates that json exists and subjects is a proper array
-    if (!json || !Array.isArray(json.subjects)) return [];
+    if (!json) return [];
     
-    return json.subjects.map(subject => ({
-        id: subject.id,
-        title: subject.title || 'Untitled',
-        icon: subject.icon || 'book',
-        color: subject.color || '#gray',
-        lastActivity: subject.last_activity || '',
-        totalTopics: Number(subject.total_topics) || 0,
-        masteryPercentage: Number(subject.mastery_percentage) || 0,
-        pendingInQueue: Number(subject.pending_in_queue) || 0,
-        counters: {
-            summaries: Number(subject.counters?.summaries) || 0,
-            mindMaps: Number(subject.counters?.mind_maps) || 0,
-            flashcards: Number(subject.counters?.flashcards) || 0,
+    // Support both API response array or wrapper object containing subjects array
+    const rawSubjects = Array.isArray(json) 
+        ? json 
+        : (Array.isArray(json.subjects) ? json.subjects : []);
+
+    const mockSubjects = subjectsListMock.subjects || [];
+
+    return rawSubjects.map(subject => {
+        // Normalize property mapping to support database fields (e.g. name -> title)
+        const titleStr = subject.title || subject.name || 'Untitled';
+        
+        // Find matching mock subject by title (case-insensitive) or ID
+        const match = mockSubjects.find(
+            m => String(m.id) === String(subject.id) ||
+                 m.title?.toLowerCase() === titleStr.toLowerCase()
+        );
+
+        if (match) {
+            return {
+                id: subject.id,
+                title: titleStr,
+                icon: match.icon || 'book',
+                color: match.color || '#4361ee',
+                lastActivity: subject.last_activity || match.last_activity || '',
+                totalTopics: Number(subject.total_topics || match.total_topics) || 11,
+                masteryPercentage: Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) !== undefined 
+                    ? Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) 
+                    : (Number(match.mastery_percentage) || 0),
+                pendingInQueue: Number(subject.pending_in_queue !== undefined ? subject.pending_in_queue : match.pending_in_queue) || 0,
+                counters: {
+                    summaries: Number(subject.counters?.summaries !== undefined ? subject.counters?.summaries : match.counters?.summaries) || 0,
+                    mindMaps: Number(subject.counters?.mind_maps !== undefined ? subject.counters?.mind_maps : match.counters?.mind_maps) || 0,
+                    flashcards: Number(subject.counters?.flashcards !== undefined ? subject.counters?.flashcards : match.counters?.flashcards) || 0,
+                }
+            };
         }
-    }));
+
+        // Default layout mapping for new/custom subjects
+        return {
+            id: subject.id,
+            title: titleStr,
+            icon: subject.icon || 'book',
+            color: subject.color || '#4361ee',
+            lastActivity: subject.last_activity || '',
+            totalTopics: Number(subject.total_topics) || 11,
+            masteryPercentage: Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) || 0,
+            pendingInQueue: Number(subject.pending_in_queue) || 0,
+            counters: {
+                summaries: Number(subject.counters?.summaries) || 0,
+                mindMaps: Number(subject.counters?.mind_maps) || 0,
+                flashcards: Number(subject.counters?.flashcards) || 0,
+            }
+        };
+    });
 }
 
 /**

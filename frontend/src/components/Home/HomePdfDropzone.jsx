@@ -5,30 +5,30 @@ import { Group, Text, useMantineTheme } from '@mantine/core';
 import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { notifications } from '@mantine/notifications';
 import { usePdfUpload } from '../../hooks/usePdfUpload';
-import SubjectPickerModal from './SubjectPickerModal';
+import SubjectPickerModal from '../Common/SubjectPickerModal';
 import UploadProgress from './UploadProgress';
 import classes from '../../styles/Mantine/PdfDropZone.module.css';
 
 export default function HomePdfDropzone() {
     const theme = useMantineTheme();
 
-    // Usuário atual (fornecido pelo Outlet em App.jsx)
+    // Current user (provided by Outlet context in App.jsx)
     const user = useOutletContext();
     const userId = user?.id;
 
     // trigger the file input dialog
     const openRef = useRef(null);
 
-    // Arquivo pendente aguardando a escolha da matéria
+    // Pending file awaiting subject selection
     const [pendingFile, setPendingFile] = useState(null);
     const [modalOpened, setModalOpened] = useState(false);
 
     // Network logic
-    const { uploadPdf, loading, error, success } = usePdfUpload(`${import.meta.env.VITE_API_URL}/documents`);
+    const { uploadPdf, loading, error, success } = usePdfUpload(`${import.meta.env.VITE_API_URL}/users/${encodeURIComponent(userId)}/documents`);
 
     /**
-     * Ao soltar o arquivo, não enviamos direto: abrimos o menu para o usuário
-     * escolher/criar a matéria onde os artefatos serão salvos.
+     * On file drop, do not upload directly: open a menu for the user
+     * to choose or create a subject where artifacts will be saved.
      * @param {File[]} files - Validated array of native JS file entries.
      */
     function handleDrop(files) {
@@ -39,8 +39,8 @@ export default function HomePdfDropzone() {
     }
 
     /**
-     * Disparado quando o usuário confirma a matéria no menu.
-     * @param {string|number} subjectId - Matéria (nova ou existente) escolhida.
+     * Invoked when the user confirms the subject selection in the menu.
+     * @param {string|number} subjectId - Chosen subject ID (either new or existing).
      */
     async function handleSubjectConfirm(subjectId) {
         setModalOpened(false);
@@ -76,8 +76,8 @@ export default function HomePdfDropzone() {
     }
 
     /**
-     * Catch-all fallback interceptor handling runtime drag/drop validation rejections
-     * @param {Object[]} fileRejections - Array mapping rejection events and failure codes
+     * Catch-all fallback interceptor handling drag/drop validation rejections.
+     * @param {Object[]} fileRejections - Array mapping rejection events and failure codes.
      */
     function handleReject(fileRejections) {
         console.error('File rejected:', fileRejections);
@@ -106,7 +106,7 @@ export default function HomePdfDropzone() {
             />
 
             {loading ? (
-                // Durante o processamento, o bloco vira o painel de progresso das 3 fases
+                // During processing, the block is swapped for a three-phase progress tracker
                 <div className={classes.dropzone}>
                     <UploadProgress fileName={pendingFile?.name} />
                 </div>

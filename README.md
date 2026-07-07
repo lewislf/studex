@@ -70,43 +70,35 @@ sistema.
 
 ## Execução
 
-A aplicação é executada com **Docker Compose**, que sobe três serviços: o
-banco vetorial **Qdrant**, o **backend** (Flask, na porta `5000`) e o
-**frontend** (Vite, na porta `5173`).
+A aplicação é executada com **Docker Compose**, que sobe quatro serviços: o
+banco vetorial **Qdrant**, a **LLM (Ollama)**, o **backend** (Flask, na porta
+`5000`) e o **frontend** (Vite, na porta `5173`).
 
-A **LLM roda separadamente**, através do **Ollama** instalado diretamente na
-máquina host (não dentro do Docker). O backend acessa o Ollama via
-`host.docker.internal:11434`. Essa separação permite que o Ollama use a GPU
-da máquina e evita reprocessar os modelos a cada rebuild dos containers.
+Por default o Ollama roda em **CPU**, então funciona em qualquer máquina. Se
+tiver **GPU NVIDIA**, dá para **AUMENTAR BASTANTE A VELOCIDADE DE RESPOSTA DA LLM**.
+Os modelos ficam num volume persistente (`ollama_data`), então só são baixados
+uma vez.
 
 ### Pré-requisitos
 
 - [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/)
-- [Ollama](https://ollama.com/download) instalado no host
-
-### 1. Suba a LLM (Ollama) no host
 
 ```bash
-# Inicie o servidor do Ollama (caso não esteja rodando como serviço)
-ollama serve
-
-# Em outro terminal, baixe os modelos utilizados pelo RAG
-ollama pull bge-m3        # modelo de embeddings
-ollama pull llama3.2      # modelo de geração (LLM)
-```
-
-> Você pode trocar o modelo de geração via variável de ambiente `LLM_MODEL`
-> (padrão: `llama3.2:latest`). Confira os modelos disponíveis com `ollama list`.
-
-### 2. Suba a aplicação com Docker
-
-```bash
-# Clone o repositório
+# 1. Clone o repositório
 git clone https://github.com/lewislf/studex.git
 cd studex
 
-# Construa e suba os containers (Qdrant + backend + frontend)
+# Escolha entre rodar com GPU ou CPU.
+# 2. Suba a aplicação (GPU)
+# bash scripts/setup-gpu
+# docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+
+# 2. Suba a aplicação (CPU)
 docker compose up --build
+
+# 3. Baixe os modelos (só na primeira vez)
+docker compose exec ollama ollama pull bge-m3     # embeddings
+docker compose exec ollama ollama pull llama3.2   # geração (LLM)
 ```
 
 Após subir:
@@ -115,39 +107,61 @@ Após subir:
 - Backend (API): http://localhost:5000
 - Qdrant: http://localhost:6333
 
-Para rodar em segundo plano use `docker compose up --build -d`, e para
-encerrar `docker compose down`.
+Para rodar em segundo plano use `docker compose up --build -d` e, para encerrar,
+`docker compose down` (use `docker compose down -v` só se quiser apagar também os
+modelos e dados persistidos).
+
 
 ### Variáveis de ambiente relevantes (backend)
 
-| Variável            | Padrão                              | Descrição                                  |
-| ------------------- | ----------------------------------- | ------------------------------------------ |
-| `OLLAMA_HOST`       | `http://host.docker.internal:11434` | Endereço do servidor Ollama no host        |
-| `OLLAMA_EMBED_HOST` | valor de `OLLAMA_HOST`              | Host do modelo de embeddings (se separado) |
-| `OLLAMA_LLM_HOST`   | valor de `OLLAMA_HOST`              | Host do modelo de geração (se separado)    |
-| `LLM_MODEL`         | `llama3.2:latest`                   | Modelo de geração usado pela LLM           |
-| `QDRANT_URL`        | `http://qdrant:6333`                | URL do banco vetorial Qdrant               |
+| Variável            | Padrão                  | Descrição                                  |
+| ------------------- | ----------------------- | ------------------------------------------ |
+| `OLLAMA_HOST`       | `http://ollama:11434`   | Endereço do servidor Ollama                |
+| `OLLAMA_EMBED_HOST` | valor de `OLLAMA_HOST`  | Host do modelo de embeddings (se separado) |
+| `OLLAMA_LLM_HOST`   | valor de `OLLAMA_HOST`  | Host do modelo de geração (se separado)    |
+| `LLM_MODEL`         | `llama3.2:latest`       | Modelo de geração usado pela LLM           |
+| `QDRANT_URL`        | `http://qdrant:6333`    | URL do banco vetorial Qdrant               |
 
-> As variáveis já vêm configuradas no `docker-compose.yml` para o cenário
-> padrão (Docker + Ollama no host). Só é necessário ajustá-las se o Ollama
-> estiver em outra máquina ou porta.
+### Rodar o Ollama no host em vez do container (opcional)
+
+Para usar o Ollama instalado direto no host (reaproveitando modelos já
+baixados), remova o serviço `ollama` e o `depends_on: ollama` do backend no
+`docker-compose.yml`, e suba apontando a variável para o host:
+
+```bash
+OLLAMA_HOST=http://host.docker.internal:11434 docker compose up --build
+```
 
 ## Documentação do Código
 
-A documentação do projeto será gerada automaticamente através das ferramentas JSDoc e MkDocs.
+A documentação do projeto será gerada automaticamente através das ferramentas JSDoc (front-end) e MkDocs (back-end).
 
-- Como gerar documentação para o front-end:
+### Pré-requisito
+Verifica se miniconda está instalado, cria conda env 'studex' e instala dependências.
 
 ```bash
+# A partir da raiz do repositório "studex/"
+bash scripts/install
+```
+
+### Como gerar documentação para o front-end
+
+```bash
+# A partir da raiz do repositório "studex/"
 cd frontend
 npm run docs
 # Abra a documentação no navegador de sua preferência (Chrome, Firefox, Brave, etc.)
 firefox docs/index.html
 ```
 
-- Como gerar documentação para o back-end:
+### Como gerar documentação para o back-end
 
 ```bash
+# Lembre-se de ativar o Conda
+conda init
+source ~/.bashrc
+
+# A partir da raiz do repositório "studex/"
 cd backend
 # Você pode gerar os arquivos estáticos na pasta site/
 mkdocs build
