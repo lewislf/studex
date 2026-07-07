@@ -1,6 +1,8 @@
 import { Text, Box } from "@mantine/core";
 import styles from '../../styles/Revisions/Revisions.module.css';
 
+import { WEEKDAYS_UPPER } from '../../config/Constants';
+
 /**
  * RevisionsProjection renders a 7-day preview forecast, dynamically mapping relative
  * weekday tags and date integers, presenting proportional density horizontal lines.
@@ -12,10 +14,9 @@ export default function RevisionsProjection({ projection = [] }) {
     // Generate relative weekday string labels (e.g. HOJE, SEG, TER)
     const getDayLabel = (offset) => {
         if (offset === 0) return 'HOJE';
-        const weekdays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
         const targetDate = new Date();
         targetDate.setDate(targetDate.getDate() + offset);
-        return weekdays[targetDate.getDay()];
+        return WEEKDAYS_UPPER[targetDate.getDay()];
     };
 
     // Calculate relative day of the month numbers (e.g. 11, 12, 13)

@@ -3,7 +3,7 @@ import { ActionIcon, Container, Group, Title } from '@mantine/core';
 import { Link, useLocation } from 'react-router';
 import classes from '../../styles/Mantine/Footer.module.css';
 
-import { links } from '../../config/Constants';
+import { LINKS } from '../../config/Constants';
 
 /**
  * Global application footer
@@ -12,7 +12,7 @@ export default function Footer() {
     const location = useLocation();
 
     // Map internal application navigation items using
-    const items = links.map((link) => (
+    const items = LINKS.map((link) => (
         <Link
             key={link.label}
             to={link.link}

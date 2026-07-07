@@ -6,7 +6,7 @@
             "title": "Redes",
             "icon": "globe",
             "color": "#e63946",
-            "total_topics": 11,
+            "total_topics": 4,
             "mastery_percentage": 55,
             "pending_in_queue": 10,
             "counters": {
@@ -20,7 +20,7 @@
             "title": "Projeto Integrado",
             "icon": "rocket",
             "color": "#ffb703",
-            "total_topics": 11,
+            "total_topics": 32,
             "mastery_percentage": 99,
             "pending_in_queue": 20,
             "counters": {
@@ -34,7 +34,7 @@
             "title": "Engenharia de Software 1",
             "icon": "user-teacher",
             "color": "#fb8500",
-            "total_topics": 11,
+            "total_topics": 9,
             "mastery_percentage": 67,
             "pending_in_queue": 10,
             "counters": {
@@ -48,7 +48,7 @@
             "title": "Engenharia de Software 2",
             "icon": "users",
             "color": "#4361ee",
-            "total_topics": 11,
+            "total_topics": 1,
             "mastery_percentage": 38,
             "pending_in_queue": 15,
             "counters": {
@@ -62,7 +62,7 @@
             "title": "Banco de Dados",
             "icon": "database",
             "color": "#2ec4b6",
-            "total_topics": 11,
+            "total_topics": 9,
             "mastery_percentage": 67,
             "pending_in_queue": 10,
             "counters": {

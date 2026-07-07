@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { Stack, Text, Progress, Group, ThemeIcon, Loader } from '@mantine/core';
 import { IconCheck } from '@tabler/icons-react';
 
-// The 3 phases of the generation pipeline (summary → mind map → flashcards).
-const PHASES = ['Criando resumo', 'Criando mapa mental', 'Criando flashcards'];
+import { UPLOAD_PHASES } from '../../config/Constants';
 
 /**
  * Dashboard pane rendered in place of the dropzone while the backend processes the PDF.
@@ -35,7 +34,7 @@ export default function HomeUploadProgress({ fileName }) {
             </Text>
 
             <Stack gap="xs" maw={320} mx="auto" w="100%">
-                {PHASES.map((label, i) => {
+                {UPLOAD_PHASES.map((label, i) => {
                     const done = i < phase;
                     const current = i === phase;
 

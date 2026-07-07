@@ -38,9 +38,36 @@ export const COLOR_OPTIONS = [
     '#f72585', // Hot Pink
 ];
 
-export const links = [
+export const LINKS = [
     { link: '/', label: 'Home' },
     { link: '/revisoes', label: 'Revisões' },
     { link: '/materias', label: 'Matérias' },
     { link: '/estatisticas', label: 'Estatísticas' },
 ];
+
+export const CREATION_OPTIONS = [
+    {
+        icon: 'file-text',
+        title: 'Resumo',
+        description: 'Estruturado, com tópicos e marcadores',
+        color: 'blue',
+    },
+    {
+        icon: 'sitemap',
+        title: 'Mapa Mental',
+        description: 'Navegável, com visão',
+        color: 'grape',
+    },
+    {
+        icon: 'cards',
+        title: 'Flashcards',
+        description: 'Revisão espaçada',
+        color: 'orange',
+    },
+];
+
+export const UPLOAD_PHASES = ['Criando resumo', 'Criando mapa mental', 'Criando flashcards'];
+
+export const WEEKDAYS_UPPER = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+export const WEEKDAYS_TITLE = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+export const MONTHS_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];

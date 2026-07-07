@@ -2,7 +2,7 @@ import { Container, Group, Title, Avatar } from '@mantine/core';
 import { Link, useLocation } from 'react-router';
 import classes from '../../styles/Mantine/Header.module.css';
 
-import { links } from '../../config/Constants';
+import { LINKS } from '../../config/Constants';
 
 /**
  * Main application header navigation bar.
@@ -10,7 +10,7 @@ import { links } from '../../config/Constants';
  */
 export default function Header({name, avatarUrl}) { const location = useLocation();
 
-    const items = links.map((link) => (
+    const items = LINKS.map((link) => (
         <Link
             key={link.label}
             to={link.link}
