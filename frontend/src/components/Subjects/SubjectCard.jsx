@@ -50,13 +50,13 @@ export default function SubjectCard({ subject }) {
 
     return (
         <Box className={styles.subjectCard}>
-            <div
+            <Box
                 className={styles.cardStripe}
                 style={{ backgroundColor: subject.color }}
             />
 
             {/* Main card contents container */}
-            <div className={styles.cardContent}>
+            <Box className={styles.cardContent}>
                 {/* Header block with vertical stack layout matching mockup print */}
                 <Stack gap="xs" className={styles.cardHeader}>
                     <IconComponent size={36} color={subject.color} />
@@ -100,7 +100,7 @@ export default function SubjectCard({ subject }) {
                 {/* Card footer: Pending counts status and action links */}
                 <Group justify="space-between" align="center">
                     <Group gap={6} align="center">
-                        <div
+                        <Box
                             className={styles.bulletDot}
                             style={{ backgroundColor: subject.color }}
                         />
@@ -112,7 +112,7 @@ export default function SubjectCard({ subject }) {
                         abrir &gt;
                     </Text>
                 </Group>
-            </div>
+            </Box>
         </Box>
     );
 }
