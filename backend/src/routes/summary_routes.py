@@ -170,7 +170,7 @@ def create_summary(user_id, subject_id):
 
     summary_id = save_summary_db(
         subject_id,
-        body["title"],
+        body["titulo"],
         conteudo_json_in_str,
         body["creation_date"],
     )
