@@ -158,6 +158,9 @@ def test_create_subject(client):
 
 def test_delete_subject_success(client):
     with patch(
+        "routes.subject_routes.get_subject_db",
+        return_value=fake_subject(user_id=10),
+    ), patch(
         "routes.subject_routes.match_subject_user_db",
         return_value=True,
     ), patch(
