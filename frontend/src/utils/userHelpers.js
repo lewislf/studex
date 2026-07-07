@@ -43,6 +43,7 @@ export function parseDailyReviews(json) {
             subjectName: deck.subject_name || 'Untitled',
             subtitle: deck.subtitle || '',
             color: deck.color || '#gray',
+            icon: deck.icon || 'book',
             new: Number(deck.new) || 0,
             learning: Number(deck.learning) || 0,
             review: Number(deck.review) || 0,
