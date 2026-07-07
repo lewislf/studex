@@ -36,7 +36,7 @@
 
 @media (max-width: 48em) {
     .image {
-        font-size: 6rem; /* Reduz o tamanho nos dispositivos móveis */
+        font-size: 6rem;
     }
 }
 
@@ -49,7 +49,6 @@
     max-width: 600px;
     z-index: 1;
     text-align: center;
-    /* padding-top de 220px removido */
 }
 
 @media (max-width: 48em) {

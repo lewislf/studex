@@ -59,7 +59,7 @@ export function parseDailyReviews(json) {
 
 // MOCKING, WILL BE DELETED WHENEVER THE API IS READY
 import subjectsListMock from '../config/subjectsListMock.json';
-import { DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLOR } from '../config/subjectConstants';
+import { DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLOR } from '../config/Constants';
 
 /**
  * Parser for: subjectsListMock.json or API subjects list.

@@ -8,7 +8,7 @@ import { useSubjects } from '../../hooks/useSubjects';
 import SubjectIcon from './SubjectIcon';
 import styles from '../../styles/Common/SubjectPickerModal.module.css';
 
-import { COLOR_OPTIONS, ICON_OPTIONS, DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLOR } from '../../config/subjectConstants';
+import { COLOR_OPTIONS, ICON_OPTIONS, DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLOR } from '../../config/Constants';
 
 /**
  * Modal menu shown during file upload: the user chooses to save the generated artifacts

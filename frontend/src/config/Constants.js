@@ -1,6 +1,5 @@
 /**
- * Global constant options and fallback defaults for course subjects 
- * visual customization (colors and icons).
+ * Global constants and fallback configurations for Studex frontend.
  */
 
 export const DEFAULT_SUBJECT_COLOR = '#4361ee';
@@ -37,4 +36,11 @@ export const COLOR_OPTIONS = [
     '#9b5de5', // Purple
     '#ff70a6', // Soft Pink
     '#f72585', // Hot Pink
+];
+
+export const links = [
+    { link: '/', label: 'Home' },
+    { link: '/revisoes', label: 'Revisões' },
+    { link: '/materias', label: 'Matérias' },
+    { link: '/estatisticas', label: 'Estatísticas' },
 ];

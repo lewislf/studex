@@ -2,13 +2,7 @@ import { Container, Group, Title, Avatar } from '@mantine/core';
 import { Link, useLocation } from 'react-router';
 import classes from '../../styles/Mantine/Header.module.css';
 
-// Routing Configuration
-const links = [
-    { link: '/', label: 'Home' },
-    { link: '/revisoes', label: 'Revisões' },
-    { link: '/materias', label: 'Matérias' },
-    { link: '/estatisticas', label: 'Estatísticas' },
-];
+import { links } from '../../config/Constants';
 
 /**
  * Main application header navigation bar.
