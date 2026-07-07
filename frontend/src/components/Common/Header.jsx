@@ -1,4 +1,5 @@
-import { Container, Group, Title, Avatar } from '@mantine/core';
+import { Container, Group, Title, Avatar, Menu, UnstyledButton } from '@mantine/core';
+import { IconLogout } from '@tabler/icons-react';
 import { Link, useLocation } from 'react-router';
 import classes from '../../styles/Mantine/Header.module.css';
 
@@ -8,7 +9,7 @@ import { LINKS } from '../../config/Constants';
  * Main application header navigation bar.
  * Provides sticky/top accessibility across all view segments and tracks current active location.
  */
-export default function Header({name, avatarUrl}) { const location = useLocation();
+export default function Header({name, avatarUrl, onLogout}) { const location = useLocation();
 
     const items = LINKS.map((link) => (
         <Link
@@ -33,7 +34,22 @@ export default function Header({name, avatarUrl}) { const location = useLocation
                 </Group>
                 <Group>
                     <Title order={4} className={classes.profile}>{name}</Title>
-                    <Avatar src={avatarUrl} alt={name} radius="xl" size="md" />
+                    <Menu shadow="md" width={160} position="bottom-end">
+                        <Menu.Target>
+                            <UnstyledButton aria-label="Menu do usuário">
+                                <Avatar src={avatarUrl} alt={name} radius="xl" size="md" style={{ cursor: 'pointer' }} />
+                            </UnstyledButton>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                            <Menu.Item
+                                color="red"
+                                leftSection={<IconLogout size={16} />}
+                                onClick={onLogout}
+                            >
+                                Sair
+                            </Menu.Item>
+                        </Menu.Dropdown>
+                    </Menu>
                 </Group>
             </Container>
         </header>

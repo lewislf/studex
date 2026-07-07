@@ -1,7 +1,6 @@
 import { Container, Stack } from "@mantine/core";
 import { useOutletContext } from "react-router";
 import styles from '../../styles/Statistics/Statistics.module.css';
-import userStatsMock from '../../config/userStatsMock.json';
 import { parseUserStats } from '../../utils/userHelpers.js';
 
 import StatisticsTitle from "./StatisticsTitle.jsx";
@@ -16,7 +15,9 @@ import StatisticsHeatmap from "./StatisticsHeatmap.jsx";
 export default function Statistics() {
     // Consume global profile entities streamed down from the root route layout context
     const user = useOutletContext();
-    const stats = parseUserStats(userStatsMock);
+    // No statistics endpoint on the backend yet: a new account starts empty
+    // (heatmap with no activity, empty distribution) until the route exists.
+    const stats = parseUserStats({});
 
     return (
         <Container size="xl" className={styles.container}>

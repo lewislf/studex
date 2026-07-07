@@ -1,3 +1,5 @@
+import sqlite3
+
 from flask import Blueprint, jsonify, request
 
 from database.database import (
@@ -5,6 +7,7 @@ from database.database import (
     get_users_db,
     save_user_db,
     delete_user_db,
+    login_user_db,
 )
 
 user_bp = Blueprint("users", __name__, url_prefix="/users")
@@ -82,18 +85,65 @@ def create_user():
     responses:
       201:
         description: Usuário criado (retorna o id)
+      409:
+        description: Email já cadastrado
     """
     body = request.get_json()
 
-    user_id = save_user_db(
-        body["name"],
-        body["password"],
-        body["email"],
-        gamification=body.get("gamification"),
-        counters=body.get("counters"),
-    )
+    try:
+        user_id = save_user_db(
+            body["name"],
+            body["password"],
+            body["email"],
+            gamification=body.get("gamification"),
+            counters=body.get("counters"),
+        )
+    except sqlite3.IntegrityError:
+        # Coluna email é UNIQUE: cadastro duplicado retorna 409 em vez de estourar.
+        return jsonify({"error": "Email já cadastrado"}), 409
 
     return jsonify({"id": user_id}), 201
+
+
+@user_bp.post("/login")
+def login_user():
+    """
+    Autentica um usuário por email e senha.
+    ---
+    tags:
+      - Usuários
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [email, password]
+          properties:
+            email: {type: string, example: "maria@email.com"}
+            password: {type: string, example: "senha123"}
+    responses:
+      200:
+        description: Autenticado (retorna id, name e email)
+      400:
+        description: Email ou senha ausentes
+      401:
+        description: Credenciais inválidas
+    """
+    body = request.get_json(silent=True) or {}
+
+    email = body.get("email")
+    password = body.get("password")
+
+    if not email or not password:
+        return jsonify({"error": "Email e senha são obrigatórios"}), 400
+
+    user = login_user_db(email, password)
+
+    if user is None:
+        return jsonify({"error": "Email ou senha inválidos"}), 401
+
+    return jsonify(user.to_dict()), 200
 
 
 @user_bp.delete("/<int:user_id>")
