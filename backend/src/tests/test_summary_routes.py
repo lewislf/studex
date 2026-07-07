@@ -105,7 +105,7 @@ def test_get_summaries_not_found(client):
 
 def test_create_summary(client):
     payload = {
-        "title": "Planolândia",
+        "titulo": "Planolândia",
         "creation_date": "2026-07-04",
         "conteudo": {
             "texto": "Resumo",
