@@ -19,7 +19,8 @@ import {
     IconFlame,
     IconCards,
     IconSitemap,
-    IconFileText
+    IconFileText,
+    IconSum
 } from '@tabler/icons-react';
 
 /**
@@ -33,23 +34,7 @@ import {
 export default function SubjectIcon({ name, size = 24, color, ...props }) {
     switch (name) {
         case 'sigma':
-            return (
-                <span 
-                    style={{ 
-                        fontFamily: 'serif', 
-                        fontSize: `${size * 0.9}px`, 
-                        fontWeight: 900,
-                        color: color,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        lineHeight: 1
-                    }}
-                    {...props}
-                >
-                    Σ
-                </span>
-            );
+            return <IconSum size={size} color={color} {...props} />;
         case 'atom':
             return <IconAtom size={size} color={color} {...props} />;
         case 'globe':
