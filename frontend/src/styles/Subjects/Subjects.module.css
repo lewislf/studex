@@ -11,8 +11,6 @@
 }
 
 .pageTitle {
-    font-size: 2.2rem;
-    font-weight: 800;
     color: var(--mantine-color-dark-9);
     margin: 0;
 }

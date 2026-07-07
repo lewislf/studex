@@ -12,7 +12,6 @@
 }
 
 .pageTitle {
-    font-weight: 800;
     color: var(--mantine-color-dark-9);
     margin: 0;
 }
@@ -78,10 +77,8 @@
     box-shadow: var(--mantine-shadow-md);
 }
 
-/* Title styling */
 .sectionTitle {
     color: var(--mantine-color-dark-9);
-    font-weight: 700;
     margin-bottom: var(--mantine-spacing-md);
 }
 
@@ -99,7 +96,6 @@
 }
 
 .statValue {
-    font-size: 1.1rem;
     font-weight: 700;
     color: var(--mantine-color-dark-8);
 }
