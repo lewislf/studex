@@ -30,6 +30,8 @@ def test_save_summary(temp_db):
         name="Redes",
         desc="Redes de Computadores",
         domain=55,
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -74,6 +76,8 @@ def test_delete_summary(temp_db):
         name="IA",
         desc="Inteligência Artificial",
         domain=55,
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -117,6 +121,8 @@ def test_search_summary(temp_db):
         name="POO",
         desc="Programação Orientada a Objetos",
         domain=55,
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -158,6 +164,8 @@ def test_count_summary(temp_db):
         name="POO",
         desc="Programação Orientada a Objetos",
         domain=55,
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )

@@ -30,6 +30,8 @@ def test_save_subject(temp_db):
         name="Redes",
         desc="Matéria de Redes",
         domain=55,
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -67,6 +69,8 @@ def test_delete_subject(temp_db):
         name="IA",
         desc="Inteligência Artificial",
         domain=55,
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -100,6 +104,8 @@ def test_search_subject(temp_db):
         name="Redes de Computadores",
         desc="Descrição",
         domain=55,
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )
@@ -122,6 +128,8 @@ def test_subject_invalid_user(temp_db):
             name="Redes",
             desc="Descrição",
             domain=55,
+            icon="globe",
+            color="#e63946",
             creation_date=date.today(),
             db_path=db_path,
         )
@@ -144,6 +152,8 @@ def test_count_subject(temp_db):
         name="Redes de Computadores",
         desc="Descrição",
         domain=55,
+        icon="globe",
+        color="#e63946",
         creation_date=date.today(),
         db_path=db_path,
     )

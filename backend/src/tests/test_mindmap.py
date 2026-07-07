@@ -25,7 +25,7 @@ def _user_and_subject(db_path, key_path):
     )
     subject_id = save_subject_db(
         user_id=user_id, name="Redes", desc="Redes de Computadores",
-        domain=55, creation_date=date.today(), db_path=db_path,
+        domain=55, icon="globe", color="#e63946", creation_date=date.today(), db_path=db_path,
     )
     return user_id, subject_id
 

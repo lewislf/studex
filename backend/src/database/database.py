@@ -120,7 +120,9 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
                 name TEXT NOT NULL,
                 desc TEXT NOT NULL,
                 creation_date DATETIME,
-                domain INTEGER NOT NULL, 
+                domain INTEGER NOT NULL,
+                icon TEXT NOT NULL,
+                color TEXT NOT NULL, 
 
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
@@ -305,7 +307,7 @@ def print_all_people_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> N
 
 ### SUBJECT ###
 
-def save_subject_db(user_id: int, name: str, desc: str, domain: int, creation_date: date, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int | None:
+def save_subject_db(user_id: int, name: str, desc: str, domain: int, icon: str, color: str, creation_date: date, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int | None:
     """
     Register a new subject in the database. 
     
@@ -316,11 +318,11 @@ def save_subject_db(user_id: int, name: str, desc: str, domain: int, creation_da
 
         cur.execute("BEGIN")
         ins = """
-            INSERT INTO subjects (user_id, name, desc, creation_date, domain) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO subjects (user_id, name, desc, creation_date, domain, icon, color) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
-        cur.execute(ins, (user_id, name, desc, creation_date, domain))
+        cur.execute(ins, (user_id, name, desc, creation_date, domain, icon, color))
 
         subject_id = cur.lastrowid
 
@@ -339,7 +341,7 @@ def get_subjects_db(
     """
 
     with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain 
+        rows = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain, icon, color 
                                     FROM subjects 
                                     WHERE user_id = ?
                                     ORDER BY creation_date DESC""", (user_id,)).fetchall()  
@@ -348,8 +350,8 @@ def get_subjects_db(
             return None
 
         subjects = []
-        for subject_id, user_id, name, desc, creation_date, domain in rows:
-            subjects.append(Materia(user_id, name, desc, domain, creation_date, subject_id))
+        for subject_id, user_id, name, desc, creation_date, domain, icon, color in rows:
+            subjects.append(Materia(user_id, name, desc, domain, icon, color, creation_date, subject_id))
         
         return subjects
 
@@ -364,7 +366,7 @@ def get_subject_db(
     """
 
     with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain 
+        row = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain, icon, color 
                                     FROM subjects 
                                     WHERE id = ?""", (subject_id,)).fetchone()  
         
@@ -372,8 +374,8 @@ def get_subject_db(
             return None
 
         subject = None
-        subject_id, user_id, name, desc, creation_date, domain = row
-        subject = Materia(user_id, name, desc, domain, creation_date, subject_id)
+        subject_id, user_id, name, desc, creation_date, domain, icon, color = row
+        subject = Materia(user_id, name, desc, domain, icon, color, creation_date, subject_id)
         
         return subject
 
