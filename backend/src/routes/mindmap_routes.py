@@ -224,7 +224,7 @@ def delete_mindmap(user_id, subject_id, mindmap_id):
     Remove um Mapa mental pelo id.
     ---
     tags:
-      - Mapa mental
+      - Mapa Mental
     parameters:
       - in: path
         name: user_id
