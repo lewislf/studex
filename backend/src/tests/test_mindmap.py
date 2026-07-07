@@ -85,7 +85,7 @@ def test_search_mindmap(temp_db):
         db_path=db_path,
     )
 
-    mind_maps = get_mindmaps_db("Her", db_path=db_path)
+    mind_maps = get_mindmaps_db(subject_id, db_path=db_path)
 
     assert mind_maps is not None
     assert len(mind_maps) == 1
