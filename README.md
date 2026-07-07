@@ -149,10 +149,13 @@ firefox docs/index.html
 
 ```bash
 cd backend
-# Você pode gerar os arquivos estáticos na pasta site/
+# Você pode gerar os arquivos estáticos na pasta site/ (Lembre-se de ativar o ambiente virtual)
 mkdocs build
 # Ou Servir localmente com hot-reload (abre em http://127.0.0.1:8000)
 mkdocs serve
+
+# Ou com Docker
+docker compose up docs
 ```
 
 A documentação gerada pelo MkDocs (com o plugin `mkdocstrings`) é derivada das

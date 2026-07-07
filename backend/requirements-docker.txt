@@ -12,3 +12,10 @@ nest-asyncio
 qdrant-client
 requests
 pytest
+mkdocs==1.6.1
+mkdocs-autorefs==1.4.4
+mkdocs-get-deps==0.2.2
+mkdocs-material==9.7.6
+mkdocs-material-extensions==1.3.1
+mkdocstrings==1.0.4
+mkdocstrings-python==2.0.5
