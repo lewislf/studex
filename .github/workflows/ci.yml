@@ -60,11 +60,13 @@ jobs:
       # Installs backend dependencies from requirements-docker file
       - name: Install backend dependencies
         run: |
+          cd backend
           python -m pip install --upgrade pip
-          pip install -r backend/requirements-docker.txt
+          pip install -r requirements-docker.txt
 
       # Executes the Pytest test suite using the runners shell
       - name: Run Pytest tests
         run: |
-          export PYTHONPATH=backend/src
-          python -m pytest backend/src/tests
+          cd backend
+          export PYTHONPATH=src
+          python -m pytest src/tests
