@@ -1,0 +1,35 @@
+.iconButton {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    min-width: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.iconButton:hover {
+    transform: scale(1.05);
+}
+
+.colorCircle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: transform 0.1s ease, border-color 0.1s ease;
+    box-shadow: var(--mantine-shadow-xs);
+}
+
+.colorCircle:hover {
+    transform: scale(1.15);
+}
+
+.activeColorCircle {
+    border-color: #212529;
+    transform: scale(1.15);
+}
