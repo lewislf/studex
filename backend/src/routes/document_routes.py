@@ -1,5 +1,6 @@
 import logging
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from werkzeug.utils import secure_filename
 
@@ -93,13 +94,30 @@ def upload_document(user_id):
     try:
         docs = load_documents([saved_path], metadata=doc_metadata)
         nodes = split_into_nodes(docs)
-        build_vector_index(nodes, collection_name=COLLECTION_NAME)
     except Exception:
         logger.exception("Falha ao indexar documento %s", filename)
         return jsonify({"error": "Falha ao indexar o documento"}), 500
 
+    index_error = None
+    def _index():
+        nonlocal index_error
+        try:
+            build_vector_index(nodes, collection_name=COLLECTION_NAME)
+        except Exception as exc:
+            index_error = exc
+            logger.exception("Falha ao indexar documento %s", filename)
+
     try:
-        materials = generate_materials(nodes, fallback_titulo=Path(filename).stem, subject_id=subject_id)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_index = executor.submit(_index)
+            future_materials = executor.submit(
+                generate_materials,
+                nodes,
+                fallback_titulo=Path(filename).stem,
+                subject_id=subject_id,
+            )
+            materials = future_materials.result()
+            future_index.result()
     except Exception:
         logger.exception("Falha ao gerar materiais para %s", filename)
         return jsonify({
@@ -108,6 +126,9 @@ def upload_document(user_id):
             "status": "indexed_without_materials",
             "error": "Documento indexado, mas falha ao gerar os materiais de estudo",
         }), 207
+
+    if index_error is not None:
+        return jsonify({"error": "Falha ao indexar o documento"}), 500
 
     # Persiste os materiais na matéria escolhida (nova ou existente).
     # Sem subject_id, apenas devolve os materiais sem salvar.

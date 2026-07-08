@@ -18,11 +18,11 @@ logger = logging.getLogger(__name__)
 # parágrafos, amostrar uma fração representativa dos chunks dá um resultado
 # equivalente em muito menos tempo. Default baixo pra manter o upload rápido,
 # se precisar de mais cobertura pode aumentar. 0 = sem limite (resume tudo).
-MAX_CHUNKS_FOR_SUMMARY = int(os.environ.get("MAX_CHUNKS_FOR_SUMMARY", "60"))
-MAX_CHUNKS_FOR_MIND_MAP = 15
-MAX_CATEGORIAS = 6
-MAX_DETALHES_POR_CATEGORIA = 5
-ENTITY_EXTRACTION_WORKERS = 5
+MAX_CHUNKS_FOR_SUMMARY = int(os.environ.get("MAX_CHUNKS_FOR_SUMMARY", "0"))
+MAX_CHUNKS_FOR_MIND_MAP = int(os.environ.get("MAX_CHUNKS_FOR_MIND_MAP", "50"))
+MAX_CATEGORIAS = 10
+MAX_DETALHES_POR_CATEGORIA = 8
+ENTITY_EXTRACTION_WORKERS = int(os.environ.get("ENTITY_EXTRACTION_WORKERS", "20"))
 
 
 def _sample_evenly(items: list, max_count: int) -> list:
@@ -277,11 +277,23 @@ Resumo:
 def generate_materials(nodes: list[BaseNode], fallback_titulo: str = "Documento", subject_id=None) -> list[dict]:
     """Roda o pipeline completo do documento e retorna [resumo, mapa_mental,
     baralho], cada um no mesmo formato: {tipo, titulo, subject_id,
-    creation_date, conteudo}."""
-    summary_text = generate_summary_text(nodes)
-    resumo = generate_resumo(summary_text, fallback_titulo)
-    mapa_mental = generate_mind_map(nodes, resumo["titulo"])
-    flashcards = generate_flashcards(summary_text)
+    creation_date, conteudo}.
+
+    Fase 1 (paralelo): summary_text e mind_map são independentes entre si.
+    Fase 2 (paralelo): resumo e flashcards dependem de summary_text mas não
+    um do outro.
+    """
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_summary = executor.submit(generate_summary_text, nodes)
+        future_mind_map = executor.submit(generate_mind_map, nodes, fallback_titulo)
+        summary_text = future_summary.result()
+        mapa_mental = future_mind_map.result()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_resumo = executor.submit(generate_resumo, summary_text, fallback_titulo)
+        future_flashcards = executor.submit(generate_flashcards, summary_text)
+        resumo = future_resumo.result()
+        flashcards = future_flashcards.result()
 
     creation_date = date.today().isoformat()
     titulo_base = resumo["titulo"]
