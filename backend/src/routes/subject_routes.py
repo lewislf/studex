@@ -4,6 +4,7 @@ from routes.deck_routes import get_decks
 from database.database import (
     count_flashcards_db,
     count_summaries_db,
+    count_mindmaps_db,
     get_subject_db,
     get_subjects_db,
     get_decks_db,
@@ -56,9 +57,9 @@ def get_subject(user_id, subject_id):
         for deck in decks:
             total_flashcards += count_flashcards_db(deck.id)
 
-    return jsonify(subject.to_dict() | {"total_topics": 11, "pending_in_queue": 10, "counters": {
+    return jsonify(subject.to_dict() | {"total_topics": 0, "pending_in_queue": 0, "counters": {
                 "summaries": count_summaries_db(subject_id),
-                "mind_maps": 2,
+                "mind_maps": count_mindmaps_db(subject_id),
                 "flashcards": total_flashcards }
             })
 
@@ -97,9 +98,9 @@ def get_subjects(user_id):
             for deck in decks:
                 total_flashcards += count_flashcards_db(deck.id,)
         
-        response.append(subject.to_dict() | {"total_topics": 11, "pending_in_queue": 10, "counters": {
+        response.append(subject.to_dict() | {"total_topics": 0, "pending_in_queue": 0, "counters": {
                 "summaries": count_summaries_db(subject.id,),
-                "mind_maps": 2,
+                "mind_maps": count_mindmaps_db(subject.id,),
                 "flashcards": total_flashcards }
         })
         

@@ -49,9 +49,15 @@ export default function RevisionsDeckList({ decksToday = [] }) {
 
             {/* List rendered rows */}
             <Box className={styles.deckList}>
-                {filteredDecks.map(deck => (
-                    <RevisionsDeckCard key={deck.subjectId} deck={deck} />
-                ))}
+                {filteredDecks.length === 0 ? (
+                    <Text c="dimmed" ta="center" py="lg">
+                        Nenhuma revisão por aqui ainda. Envie um material para gerar baralhos.
+                    </Text>
+                ) : (
+                    filteredDecks.map(deck => (
+                        <RevisionsDeckCard key={deck.subjectId} deck={deck} />
+                    ))
+                )}
             </Box>
         </Box>
     );

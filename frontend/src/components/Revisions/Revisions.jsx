@@ -1,6 +1,5 @@
 import { Container } from "@mantine/core";
 import styles from '../../styles/Revisions/Revisions.module.css';
-import dailyReviewsMock from '../../config/dailyReviewsMock.json';
 import { parseDailyReviews } from '../../utils/userHelpers.js';
 import RevisionsTitle from "./RevisionsTitle";
 import RevisionsSummary from "./RevisionsSummary";
@@ -12,8 +11,9 @@ import RevisionsProjection from "./RevisionsProjection";
  * Orchestrates subcomponents representing daily schedules, metrics splits, and forecast projections.
  */
 export default function Revisions() {
-    // Parse structured review metrics directly from local configuration mocks using pre-defined parser
-    const data = parseDailyReviews(dailyReviewsMock);
+    // No reviews endpoint on the backend yet: a new account starts with no queue.
+    // Empty structure (zeroed queues, empty lists) until the route exists.
+    const data = parseDailyReviews({});
 
     return (
         <Container size="xl" className={styles.container}>

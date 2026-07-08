@@ -305,6 +305,65 @@ def get_user_db(
         return user
 
 
+def get_user_by_email_db(
+    email: str,
+    db_path: Path = DB_PATH,
+) -> Usuario | None:
+    """
+    Busca um usuário pelo email (coluna única).
+
+    Retorna o usuário com a senha ainda criptografada em `hash_password`,
+    ou None se não existir.
+    """
+    with _open_connection(db_path) as conn:
+        row = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters
+                                    FROM users
+                                    WHERE email = ?""", (email,)).fetchone()
+
+        if row is None:
+            return None
+
+        user_id, name, email, hash_passwd, gamification_json, counters_json = row
+
+        gamification = json.loads(gamification_json) if gamification_json else None
+        counters = json.loads(counters_json) if counters_json else None
+
+        return Usuario(name, email, hash_passwd, user_id, gamification, counters)
+
+
+def login_user_db(
+    email: str,
+    passwd: str,
+    db_path: Path = DB_PATH,
+    key_path: Path = KEY_PATH,
+) -> Usuario | None:
+    """
+    Autentica um usuário por email + senha.
+
+    A senha é guardada com Fernet (criptografia reversível e não
+    determinística), então a verificação decripta o valor armazenado
+    e compara com a senha informada.
+
+    Retorna o usuário autenticado ou None se email/senha não conferem.
+    """
+    user = get_user_by_email_db(email, db_path=db_path)
+
+    if user is None:
+        return None
+
+    key = _get_or_create_key(key_path)
+
+    try:
+        stored_passwd = _decrypt_passwd(user.hash_password, key)
+    except Exception:
+        return None
+
+    if stored_passwd != passwd:
+        return None
+
+    return user
+
+
 def delete_user_db(user_id: int, db_path: Path = DB_PATH) -> bool:
     """
     Atomic deletion of a user by user_id. (LGPD - Right to be forgotten)

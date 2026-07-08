@@ -47,9 +47,11 @@ export function useSubjects(userId) {
      * @param {Object} params - Creation attributes.
      * @param {string} params.name - Title/Name of the subject.
      * @param {string} params.description - Optional description of the subject.
+     * @param {string} [params.icon] - Icon key chosen for the subject.
+     * @param {string} [params.color] - Color chosen for the subject.
      * @returns {Promise<number|null>} Created subject ID, or null on error.
      */
-    const createSubject = useCallback(async ({ name, description }) => {
+    const createSubject = useCallback(async ({ name, description, icon = 'book', color = '#4361ee' }) => {
         setError(null);
 
         try {
@@ -61,6 +63,8 @@ export function useSubjects(userId) {
                     name,
                     description,
                     domain: 0,
+                    icon,
+                    color,
                     date: new Date().toISOString().slice(0, 10),
                 }),
             });
