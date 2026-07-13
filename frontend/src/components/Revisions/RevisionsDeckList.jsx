@@ -54,8 +54,11 @@ export default function RevisionsDeckList({ decksToday = [] }) {
                         Nenhuma revisão por aqui ainda. Envie um material para gerar baralhos.
                     </Text>
                 ) : (
-                    filteredDecks.map(deck => (
-                        <RevisionsDeckCard key={deck.subjectId} deck={deck} />
+                    filteredDecks.map((deck, index) => (
+                        // deck.id is the deck's own primary key (a subject can have
+                        // multiple decks); fall back to a composite key only if it's
+                        // ever missing, so keys stay unique either way.
+                        <RevisionsDeckCard key={deck.id ?? `${deck.subjectId}-${index}`} deck={deck} />
                     ))
                 )}
             </Box>

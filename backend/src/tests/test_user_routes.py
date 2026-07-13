@@ -14,6 +14,7 @@ def fake_user(**kwargs):
     base.update(kwargs)
 
     return SimpleNamespace(
+        id=base["id"],
         to_dict=lambda: {
             "id": base["id"],
             "name": base["name"],
@@ -23,10 +24,15 @@ def fake_user(**kwargs):
 
 
 def test_login_success(client):
+    fake_counters = {"summaries": 2, "mind_maps": 1}
+
     with patch(
         "routes.user_routes.login_user_db",
         return_value=fake_user(),
-    ) as mock_login:
+    ) as mock_login, patch(
+        "routes.user_routes._live_counters",
+        return_value=fake_counters,
+    ) as mock_counters:
 
         response = client.post(
             "/users/login",
@@ -37,8 +43,14 @@ def test_login_success(client):
 
     body = response.get_json()
 
-    assert body == {"id": 1, "name": "Maria", "email": "maria@email.com"}
+    assert body == {
+        "id": 1,
+        "name": "Maria",
+        "email": "maria@email.com",
+        "counters": fake_counters,
+    }
     mock_login.assert_called_once_with("maria@email.com", "senha123")
+    mock_counters.assert_called_once_with(1)
 
 
 def test_login_invalid_credentials(client):

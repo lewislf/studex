@@ -12,6 +12,35 @@ from database.database import (
 
 user_bp = Blueprint("users", __name__, url_prefix="/users")
 
+
+def _live_counters(user_id: int) -> dict:
+    """
+    Calcula os contadores do usuário ao vivo, agregando pelas matérias, em vez
+    de ler o blob "counters" salvo na tabela users (que nunca é atualizado
+    depois da criação da conta e sempre ficaria zerado).
+
+    Sem uma fila de revisão de verdade (SRS) ainda, "pending_flashcards_today"
+    e "total_flashcards_created" contam o mesmo total de flashcards criados.
+    """
+    subjects = get_subjects_db(user_id) or []
+
+    summaries = 0
+    mind_maps = 0
+    flashcards = 0
+
+    for subject in subjects:
+        summaries += count_summaries_db(subject.id)
+        mind_maps += count_mindmaps_db(subject.id)
+        for deck in (get_decks_db(subject.id) or []):
+            flashcards += count_flashcards_db(deck.id)
+
+    return {
+        "summaries": summaries,
+        "mind_maps": mind_maps,
+        "pending_flashcards_today": flashcards,
+        "total_flashcards_created": flashcards,
+    }
+
 @user_bp.get("")
 def get_users():
     """
@@ -32,7 +61,9 @@ def get_users():
 
     response = []
     for user in users:
-        response.append(user.to_dict())
+        data = user.to_dict()
+        data["counters"] = _live_counters(user.id)
+        response.append(data)
 
     return jsonify(response)
 
@@ -59,7 +90,9 @@ def get_user(user_id):
     if user is None:
         return jsonify({"error": "User not found"}), 404
 
-    return jsonify(user.to_dict())
+    data = user.to_dict()
+    data["counters"] = _live_counters(user_id)
+    return jsonify(data)
 
 
 @user_bp.post("")
@@ -143,7 +176,9 @@ def login_user():
     if user is None:
         return jsonify({"error": "Email ou senha inválidos"}), 401
 
-    return jsonify(user.to_dict()), 200
+    data = user.to_dict()
+    data["counters"] = _live_counters(user.id)
+    return jsonify(data), 200
 
 
 @user_bp.delete("/<int:user_id>")

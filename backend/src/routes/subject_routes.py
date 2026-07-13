@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, request
 
-from routes.deck_routes import get_decks
 from database.database import (
     count_flashcards_db,
     count_summaries_db,
@@ -12,7 +11,6 @@ from database.database import (
     delete_subject_db,
     match_subject_user_db,
 )
-
 
 subject_bp = Blueprint("subjects", __name__, url_prefix="/users/<int:user_id>/subjects")
 
@@ -47,7 +45,7 @@ def get_subject(user_id, subject_id):
     has_subj = match_subject_user_db(subject_id, user_id)
 
     if has_subj is False:
-        return jsonify({"error:" "User does not have this subject!"}), 404
+        return jsonify({"error": "User does not have this subject!"}), 404
 
     decks = get_decks_db(subject_id)
     
@@ -137,12 +135,22 @@ def create_subject(user_id):
     responses:
       201:
         description: Matéria criada (retorna o id)
+      409:
+        description: Já existe uma matéria com esse nome para esse usuário
     """
     body = request.get_json()
+    name = body["name"]
+
+    # Nomes duplicados confundem o usuário (não dá pra distinguir duas
+    # matérias com o mesmo nome na tela de "Suas Matérias"), então o nome é
+    # único por usuário, comparado sem diferenciar maiúsculas/espaços nas bordas.
+    existentes = get_subjects_db(user_id) or []
+    if any(s.name.strip().lower() == name.strip().lower() for s in existentes):
+        return jsonify({"error": f"Você já tem uma matéria chamada '{name}'"}), 409
 
     subject_id = save_subject_db(
         user_id,
-        body["name"],
+        name,
         body["description"],
         body["domain"],
         body["icon"],
@@ -180,7 +188,7 @@ def delete_subject(user_id, subject_id):
     has_subj = match_subject_user_db(subject_id, user_id)
 
     if has_subj is False:
-        return jsonify({"error:" "User does not have this subject!"}), 404
+        return jsonify({"error": "User does not have this subject!"}), 404
     
     if subject is not None and user_id != subject.user_id:
         return jsonify({"error": "Mismatch between user_id from URL and user_id from subject"}), 404

@@ -38,6 +38,7 @@ export function parseDailyReviews(json) {
             }
         },
         decksToday: (json.decks_today || []).map(deck => ({
+            id: deck.id,
             subjectId: deck.subject_id,
             subjectName: deck.subject_name || 'Untitled',
             subtitle: deck.subtitle || '',
@@ -56,71 +57,37 @@ export function parseDailyReviews(json) {
     };
 }
 
-// MOCKING, WILL BE DELETED WHENEVER THE API IS READY
-import subjectsListMock from '../config/subjectsListMock.json';
 import { DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLOR } from '../config/Constants';
 
 /**
- * Parser for: subjectsListMock.json or API subjects list.
- * Maps the raw subjects array and enriches it with visual configurations (colors, icons, counters).
+ * Parser for the API's subjects list response. Every field comes straight
+ * from the backend, with sane zero-defaults for a brand-new subject, no
+ * mock-data fallback (a previous version filled gaps by name-matching a
+ * bundled mock file, which could silently swap in fake numbers for a real
+ * subject that happened to share a name with a mock entry).
  */
-export function parseSubjectsListMock(json) {
+export function parseSubjectsList(json) {
     if (!json) return [];
-    
+
     // Support both API response array or wrapper object containing subjects array
-    const rawSubjects = Array.isArray(json) 
-        ? json 
+    const rawSubjects = Array.isArray(json)
+        ? json
         : (Array.isArray(json.subjects) ? json.subjects : []);
 
-    const mockSubjects = subjectsListMock.subjects || [];
-
-    return rawSubjects.map(subject => {
-        // Normalize property mapping to support database fields (e.g. name -> title)
-        const titleStr = subject.title || subject.name || 'Untitled';
-        
-        // Find matching mock subject by title (case-insensitive) or ID
-        const match = mockSubjects.find(
-            m => String(m.id) === String(subject.id) ||
-                 m.title?.toLowerCase() === titleStr.toLowerCase()
-        );
-
-        if (match) {
-            return {
-                id: subject.id,
-                title: titleStr,
-                icon: match.icon || DEFAULT_SUBJECT_ICON,
-                color: match.color || DEFAULT_SUBJECT_COLOR,
-                lastActivity: subject.last_activity || match.last_activity || '',
-                totalTopics: Number(subject.total_topics || match.total_topics) || 11,
-                masteryPercentage: Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) !== undefined 
-                    ? Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) 
-                    : (Number(match.mastery_percentage) || 0),
-                pendingInQueue: Number(subject.pending_in_queue !== undefined ? subject.pending_in_queue : match.pending_in_queue) || 0,
-                counters: {
-                    summaries: Number(subject.counters?.summaries !== undefined ? subject.counters?.summaries : match.counters?.summaries) || 0,
-                    mindMaps: Number(subject.counters?.mind_maps !== undefined ? subject.counters?.mind_maps : match.counters?.mind_maps) || 0,
-                    flashcards: Number(subject.counters?.flashcards !== undefined ? subject.counters?.flashcards : match.counters?.flashcards) || 0,
-                }
-            };
+    return rawSubjects.map(subject => ({
+        id: subject.id,
+        title: subject.title || subject.name || 'Untitled',
+        icon: subject.icon || DEFAULT_SUBJECT_ICON,
+        color: subject.color || DEFAULT_SUBJECT_COLOR,
+        lastActivity: subject.last_activity || '',
+        masteryPercentage: Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) || 0,
+        pendingInQueue: Number(subject.pending_in_queue) || 0,
+        counters: {
+            summaries: Number(subject.counters?.summaries) || 0,
+            mindMaps: Number(subject.counters?.mind_maps) || 0,
+            flashcards: Number(subject.counters?.flashcards) || 0,
         }
-
-        // Default layout mapping for new/custom subjects
-        return {
-            id: subject.id,
-            title: titleStr,
-            icon: subject.icon || DEFAULT_SUBJECT_ICON,
-            color: subject.color || DEFAULT_SUBJECT_COLOR,
-            lastActivity: subject.last_activity || '',
-            totalTopics: Number(subject.total_topics) || 11,
-            masteryPercentage: Number(subject.mastery_percentage !== undefined ? subject.mastery_percentage : subject.domain) || 0,
-            pendingInQueue: Number(subject.pending_in_queue) || 0,
-            counters: {
-                summaries: Number(subject.counters?.summaries) || 0,
-                mindMaps: Number(subject.counters?.mind_maps) || 0,
-                flashcards: Number(subject.counters?.flashcards) || 0,
-            }
-        };
-    });
+    }));
 }
 
 /**

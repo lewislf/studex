@@ -1,7 +1,7 @@
 """
 Testes unitários das rotas de matéria (subject).
 
-As funções de banco (`*_db`) são substituídas por mocks — nenhum teste toca
+As funções de banco (`*_db`) são substituídas por mocks: nenhum teste toca
 banco real ou rede. O test_client do Flask roda in-process.
 """
 
