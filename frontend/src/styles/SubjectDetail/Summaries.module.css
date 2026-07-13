@@ -1,0 +1,36 @@
+.reader {
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-md);
+    background-color: var(--mantine-color-white);
+    padding: var(--mantine-spacing-xl);
+    box-shadow: var(--mantine-shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--mantine-spacing-md);
+}
+
+.readerTitle {
+    color: var(--mantine-color-dark-9);
+    margin: 0;
+}
+
+.readerDate {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--mantine-color-gray-6);
+}
+
+.badgeRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.paragraph {
+    font-size: 1.05rem;
+    line-height: 1.75;
+    color: var(--mantine-color-dark-7);
+    max-width: 70ch;
+}

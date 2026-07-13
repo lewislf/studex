@@ -19,6 +19,7 @@
     "@mantinex/dev-icons": "^2.0.0",
     "@mantinex/mantine-logo": "^2.0.0",
     "@tabler/icons-react": "^3.44.0",
+    "@xyflow/react": "^12.11.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router": "^8.1.0"

@@ -8,6 +8,7 @@ import SubjectCardFooter from "./SubjectCardFooter";
 /**
  * SubjectCard represents a single course subject item, including status indicators,
  * topic descriptions, mastery percentage progress, and queue statistics.
+ * The subject detail page is opened via the "abrir >" link in the footer.
  */
 export default function SubjectCard({ subject }) {
     return (
@@ -19,12 +20,11 @@ export default function SubjectCard({ subject }) {
 
             {/* Main card contents container */}
             <Box className={styles.cardContent}>
-                {/* Header: Title, Icon, Topics */}
+                {/* Header: Title, Icon */}
                 <SubjectCardHeader
                     icon={subject.icon}
                     color={subject.color}
                     title={subject.title}
-                    totalTopics={subject.totalTopics}
                 />
 
                 {/* Badges: summaries, mind maps, and flashcards */}
@@ -38,6 +38,7 @@ export default function SubjectCard({ subject }) {
 
                 {/* Footer: dot indicator, pending, open link */}
                 <SubjectCardFooter
+                    subjectId={subject.id}
                     pendingInQueue={subject.pendingInQueue}
                     color={subject.color}
                 />

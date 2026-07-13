@@ -1,0 +1,240 @@
+/* Single white card wrapping every section, mirroring Subjects.module.css's .container. */
+.page {
+    padding: var(--mantine-spacing-xl);
+    background-color: var(--mantine-color-white);
+    border-radius: var(--mantine-radius-lg);
+}
+
+/* Breadcrumb rendered at the same size/weight as a page h1 (e.g. Subjects.jsx's
+   "Suas Matérias" title), so the trail reads as the page heading, not a small label. */
+.breadcrumbTitle {
+    color: var(--mantine-color-dark-9);
+    margin: 0 0 var(--mantine-spacing-lg) 0;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    gap: 10px;
+    min-width: 0;
+}
+
+/* Earlier crumbs ("Suas Matérias", the subject name) never shrink or wrap:
+   they stay short and fully readable no matter how long the current page's
+   title is. */
+.breadcrumbCrumb {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* The current (last, non-link) crumb takes whatever space is left and
+   truncates with an ellipsis instead of wrapping to a second line. */
+.breadcrumbCurrentWrap {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.breadcrumbCurrent {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.breadcrumbLink {
+    color: var(--mantine-color-blue-6);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.breadcrumbLink:hover {
+    text-decoration: underline;
+}
+
+.breadcrumbSeparator {
+    color: var(--mantine-color-gray-5);
+    flex-shrink: 0;
+}
+
+/* Material type icon badge: a colored rounded square, same color for a given
+   type (resumo/mapa/flashcards) across every subject, independent of the
+   subject's own accent color used for card stripes. */
+.materialIconBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--mantine-radius-md);
+    flex-shrink: 0;
+}
+
+.section {
+    padding: var(--mantine-spacing-lg) 0;
+}
+
+.section + .section {
+    border-top: 1px solid var(--mantine-color-gray-2);
+}
+
+.sectionTitle {
+    color: var(--mantine-color-dark-9);
+}
+
+.emptyText {
+    padding: var(--mantine-spacing-md) 0;
+}
+
+/* Material card: mirrors .subjectCard from Subjects.module.css */
+
+.materialCard {
+    display: flex;
+    flex-direction: row;
+    background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-md);
+    overflow: hidden;
+    box-shadow: var(--mantine-shadow-sm);
+    text-decoration: none;
+    color: inherit;
+    min-height: 190px;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.materialCard:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--mantine-shadow-md);
+}
+
+/* Preview-only card: no viewer page yet, so no hover lift/pointer cursor. */
+.materialCardDisabled {
+    cursor: default;
+}
+
+.materialCardDisabled:hover {
+    transform: none;
+    box-shadow: var(--mantine-shadow-sm);
+}
+
+.materialCardStripe {
+    width: 6px;
+    flex-shrink: 0;
+}
+
+.materialCardContent {
+    flex: 1;
+    padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.materialCardIcon {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.materialCardTitle {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--mantine-color-dark-9);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.materialCardBody {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: center;
+}
+
+.materialCardPreview {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--mantine-color-gray-6);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.materialCardMeta {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--mantine-color-gray-6);
+}
+
+.materialCardFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.materialCardDate {
+    font-size: 0.8rem;
+    color: var(--mantine-color-gray-6);
+    font-weight: 500;
+}
+
+.materialCardOpen {
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: opacity 0.2s ease;
+}
+
+.materialCard:hover .materialCardOpen {
+    opacity: 0.75;
+}
+
+/* Flashcard flip tile */
+
+.flashcard {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-md);
+    box-shadow: var(--mantine-shadow-sm);
+    padding: var(--mantine-spacing-lg);
+    cursor: pointer;
+    min-height: 120px;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.flashcard:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--mantine-shadow-md);
+}
+
+.flashcardLabel {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--mantine-color-blue-6);
+}
+
+.flashcardText {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--mantine-color-dark-9);
+    flex: 1;
+}
+
+.flashcardHint {
+    font-size: 0.7rem;
+    color: var(--mantine-color-gray-5);
+}
