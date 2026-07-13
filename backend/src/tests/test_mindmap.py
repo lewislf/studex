@@ -10,6 +10,7 @@ from database.database import (
     delete_mindmap_db,
     count_mindmaps_db,
 )
+from mapa_mental import MapaMental
 
 
 CONTEUDO = {
@@ -108,3 +109,22 @@ def test_count_mindmap(temp_db):
     )
 
     assert count_mindmaps_db(subject_id, db_path) == 2
+
+
+def test_mapa_mental_to_dict_inclui_id_e_nao_duplica_sufixo():
+    """Regressão: to_dict() precisa trazer 'id' e o título (que já vem com o
+    sufixo "— Mapa Mental de Estudo" do pipeline) não pode ser duplicado."""
+    titulo = "TCP/IP — Mapa Mental de Estudo"
+    mapa = MapaMental(
+        subject_id=3,
+        titulo=titulo,
+        conteudo=json.dumps(CONTEUDO, ensure_ascii=False),
+        creation_date=date.today(),
+        id=42,
+    )
+
+    data = mapa.to_dict()
+
+    assert data["id"] == 42
+    assert data["titulo"] == titulo
+    assert data["titulo"].count("— Mapa Mental de Estudo") == 1

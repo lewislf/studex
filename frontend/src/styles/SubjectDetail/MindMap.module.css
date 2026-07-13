@@ -1,0 +1,132 @@
+.canvasWrapper {
+    position: relative;
+    height: 70vh;
+    width: 100%;
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-md);
+    overflow: hidden;
+    background-color: var(--mantine-color-gray-0);
+}
+
+.minimap {
+    background-color: var(--mantine-color-white);
+}
+
+.emptyIcon {
+    color: var(--mantine-color-gray-4);
+}
+
+/* Node types: pill-shaped, colored per branch via inline data.color (see
+ * MindMapLayout.js). Rounding stays fixed at 999px so any width still reads
+ * as an oval/pill instead of a rectangle with rounded corners. */
+
+.temaCentralNode {
+    min-width: 200px;
+    padding: 18px 30px;
+    border-radius: 999px;
+    color: var(--mantine-color-white);
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-align: center;
+    box-shadow: var(--mantine-shadow-md);
+    cursor: pointer;
+}
+
+.categoriaNode {
+    min-width: 150px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    color: var(--mantine-color-white);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-align: center;
+    box-shadow: var(--mantine-shadow-sm);
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.categoriaNode:hover {
+    box-shadow: var(--mantine-shadow-md);
+    transform: translateY(-1px);
+}
+
+.detalheNode {
+    min-width: 120px;
+    max-width: 190px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    color: var(--mantine-color-dark-8);
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.detalheNode:hover {
+    box-shadow: var(--mantine-shadow-sm);
+    transform: translateY(-1px);
+}
+
+/* Node click side panel */
+
+.detailPanel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 340px;
+    max-width: 90%;
+    padding: 20px;
+    background-color: var(--mantine-color-body);
+    border-left: 1px solid var(--mantine-color-gray-2);
+    box-shadow: -2px 0 12px rgba(0, 0, 0, 0.08);
+    overflow-y: auto;
+    z-index: 5;
+}
+
+.detailPanelClose {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+.detailPanelTitle {
+    margin: 0 32px 12px 0;
+    font-size: 1.05rem;
+}
+
+.detailPanelBody {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--mantine-color-dimmed);
+    white-space: pre-wrap;
+}
+
+/* Relation ("relacao") edges */
+
+.relacaoEdgePath {
+    /* stroke set inline per edge, from its branch color */
+    stroke-dasharray: 6 4;
+    fill: none;
+}
+
+.relacaoEdgeLabel {
+    position: absolute;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background-color: var(--mantine-color-white);
+    border: 1px solid;
+    color: var(--mantine-color-dark-7);
+    font-size: 0.65rem;
+    font-weight: 600;
+    white-space: nowrap;
+    /* Matches LABEL_MAX_WIDTH in MindMapLayout.js: capping the box a label can
+       claim gives the anti-overlap declutter pass room to work in a busy
+       graph. Full text is one hover away via the native title tooltip. */
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: auto;
+}

@@ -40,9 +40,11 @@ class MapaMental(Material):
         return super().__str__() + f" Conteúdo: {self.conteudo}"
     
     def to_dict(self):
+        # titulo já vem com o sufixo do pipeline, não anexar de novo
         return {
+            "id": self.id,
             "tipo": "mapa_mental",
-            "titulo": f"{self.titulo} — Mapa Mental de Estudo",
+            "titulo": self.titulo,
             "subject_id": self.subject_id,
             "creation_date": self.date,
             "conteudo": self.conteudo
