@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flasgger import Swagger
@@ -16,6 +18,18 @@ app = Flask(__name__)
 CORS(app)
 HOST = "0.0.0.0"
 SOCKET = 5000
+
+# Debug/autoreload liga por padrão (modo dev da plataforma). Em produção,
+# setar FLASK_DEBUG=0 no ambiente.
+FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "1") == "1"
+
+# Mesmo limite de tamanho de upload que o client já aplica.
+app.config["MAX_CONTENT_LENGTH"] = 250 * 1024 * 1024
+
+
+@app.errorhandler(413)
+def handle_payload_too_large(error):
+    return jsonify({"error": "Arquivo excede o tamanho máximo permitido (250MB)."}), 413
 
 # Swagger UI em http://localhost:5000/docs
 swagger_template = {
@@ -69,4 +83,4 @@ def list_routes():
 
 if __name__ == "__main__":
     init_db()
-    app.run(host=HOST, port=SOCKET, debug=True)
+    app.run(host=HOST, port=SOCKET, debug=FLASK_DEBUG)

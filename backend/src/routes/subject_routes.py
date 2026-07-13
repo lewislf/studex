@@ -1,3 +1,5 @@
+import logging
+
 from flask import Blueprint, jsonify, request
 
 from database.database import (
@@ -11,6 +13,10 @@ from database.database import (
     delete_subject_db,
     match_subject_user_db,
 )
+from qdrant.qdrant_server import delete_vectors_by_metadata
+
+logger = logging.getLogger(__name__)
+
 
 subject_bp = Blueprint("subjects", __name__, url_prefix="/users/<int:user_id>/subjects")
 
@@ -194,6 +200,11 @@ def delete_subject(user_id, subject_id):
         return jsonify({"error": "Mismatch between user_id from URL and user_id from subject"}), 404
 
     if delete_subject_db(subject_id):
+        try:
+            delete_vectors_by_metadata(subject_id=subject_id)
+        except Exception:
+            logger.exception("Falha ao limpar vetores órfãos da matéria %s no Qdrant", subject_id)
+
         return "", 204
 
     return jsonify({"error": "Subject not found"}), 404

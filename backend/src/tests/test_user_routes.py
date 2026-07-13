@@ -90,3 +90,41 @@ def test_create_user_duplicate_email(client):
         )
 
     assert response.status_code == 409
+
+
+def test_delete_user_success(client):
+    with patch(
+        "routes.user_routes.delete_user_db",
+        return_value=True,
+    ), patch(
+        "routes.user_routes.delete_vectors_by_metadata",
+    ) as mock_delete_vectors:
+
+        response = client.delete("/users/1")
+
+    assert response.status_code == 204
+    mock_delete_vectors.assert_called_once_with(user_id=1)
+
+
+def test_delete_user_not_found(client):
+    with patch(
+        "routes.user_routes.delete_user_db",
+        return_value=False,
+    ):
+        response = client.delete("/users/1")
+
+    assert response.status_code == 404
+
+
+def test_delete_user_qdrant_failure_does_not_block_204(client):
+    """Erro na limpeza do Qdrant não pode impedir o delete de completar."""
+    with patch(
+        "routes.user_routes.delete_user_db",
+        return_value=True,
+    ), patch(
+        "routes.user_routes.delete_vectors_by_metadata",
+        side_effect=Exception("qdrant indisponível"),
+    ):
+        response = client.delete("/users/1")
+
+    assert response.status_code == 204
