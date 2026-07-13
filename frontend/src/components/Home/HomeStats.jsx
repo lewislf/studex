@@ -6,7 +6,7 @@ import SubjectIcon from "../Common/SubjectIcon";
 /**
  * Orchestrator block tracking system gamification and milestones.
  */
-export default function HomeStats({ streak, summaries, mind_maps, today }) {
+export default function HomeStats({ streak, summaries, mind_maps, totalFlashcards }) {
     return (
         <Group justify="center" grow className={styles.stats}>
             <HomeCard
@@ -17,7 +17,7 @@ export default function HomeStats({ streak, summaries, mind_maps, today }) {
             />
             <HomeCard title="RESUMOS" text={summaries}/>
             <HomeCard title="MAPAS MENTAIS" text={mind_maps}/>
-            <HomeCard title="NA FILA" text={today}/>
+            <HomeCard title="FLASHCARDS" text={totalFlashcards}/>
         </Group>
     );
 }

@@ -6,6 +6,17 @@ import SubjectIcon from '../Common/SubjectIcon';
  * StatisticsOverviewCard displays primary numeric indicators (such as streak count,
  * flashcards created, maps created) and maps them to a gamified progress rating rank (E-S).
  */
+// Rank tiers ordered from lowest to highest, each with the score threshold
+// where it starts and the score span used to compute the ring's progress.
+const RANK_TIERS = [
+    { grade: "E", min: 0, span: 500, color: "gray.5" },
+    { grade: "D", min: 500, span: 700, color: "orange.5" },
+    { grade: "C", min: 1200, span: 1000, color: "yellow.5" },
+    { grade: "B", min: 2200, span: 1300, color: "green.5" },
+    { grade: "A", min: 3500, span: 1500, color: "blue.5" },
+    { grade: "S", min: 5000, span: 3000, color: "grape.6" },
+];
+
 export default function StatisticsOverviewCard({ user, stats }) {
     // Helper function to format thousands (e.g. 1500 -> 1.5k)
     const formatCount = (val) => {
@@ -25,40 +36,16 @@ export default function StatisticsOverviewCard({ user, stats }) {
         // Weights: flashcards created weight 2, streak weight 25, maps/summaries weight 10
         const score = (flashcards * 2) + (streak * 25) + (maps * 10) + (summaries * 10);
 
-        let grade = "E";
-        let progressValue = 0;
-        let color = "gray.5";
-
-        if (score < 500) {
-            grade = "E";
-            progressValue = (score / 500) * 100;
-            color = "gray.5";
-        } else if (score < 1200) {
-            grade = "D";
-            progressValue = ((score - 500) / 700) * 100;
-            color = "orange.5";
-        } else if (score < 2200) {
-            grade = "C";
-            progressValue = ((score - 1200) / 1000) * 100;
-            color = "yellow.5";
-        } else if (score < 3500) {
-            grade = "B";
-            progressValue = ((score - 2200) / 1300) * 100;
-            color = "green.5";
-        } else if (score < 5000) {
-            grade = "A";
-            progressValue = ((score - 3500) / 1500) * 100;
-            color = "blue.5";
-        } else {
-            grade = "S";
-            progressValue = Math.min(((score - 5000) / 3000) * 100 + 50, 100);
-            color = "grape.6";
-        }
+        // Highest tier whose threshold the score has reached (RANK_TIERS is ascending).
+        const tier = [...RANK_TIERS].reverse().find((t) => score >= t.min) ?? RANK_TIERS[0];
+        const progressValue = tier.grade === "S"
+            ? Math.min(((score - tier.min) / tier.span) * 100 + 50, 100)
+            : ((score - tier.min) / tier.span) * 100;
 
         return {
-            grade,
+            grade: tier.grade,
             progressValue: Math.round(progressValue),
-            color
+            color: tier.color
         };
     };
 

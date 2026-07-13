@@ -25,6 +25,7 @@ def fake_user(**kwargs):
 
 def test_login_success(client):
     fake_counters = {"summaries": 2, "mind_maps": 1}
+    fake_gamification = {"current_streak": 3, "streak": 3}
 
     with patch(
         "routes.user_routes.login_user_db",
@@ -32,7 +33,10 @@ def test_login_success(client):
     ) as mock_login, patch(
         "routes.user_routes._live_counters",
         return_value=fake_counters,
-    ) as mock_counters:
+    ) as mock_counters, patch(
+        "routes.user_routes._gamification_with_streak",
+        return_value=fake_gamification,
+    ) as mock_gamification:
 
         response = client.post(
             "/users/login",
@@ -48,9 +52,11 @@ def test_login_success(client):
         "name": "Maria",
         "email": "maria@email.com",
         "counters": fake_counters,
+        "gamification": fake_gamification,
     }
     mock_login.assert_called_once_with("maria@email.com", "senha123")
     mock_counters.assert_called_once_with(1)
+    mock_gamification.assert_called_once()
 
 
 def test_login_invalid_credentials(client):

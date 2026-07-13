@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any
 from cryptography.fernet import Fernet
 import numpy as np
-from datetime import date
+import logging
+from datetime import date, timedelta
 
 from user import Usuario
 from materia import Materia
@@ -20,6 +21,8 @@ from enums.flashcard_status import FlashcardStatus
 
 DB_PATH = Path("users.db")
 KEY_PATH = Path("db_key.key")
+
+logger = logging.getLogger(__name__)
 
 
 def _get_connection(
@@ -212,6 +215,18 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
                 creation_date DATETIME,
 
                 FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+            );
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_days (
+                user_id INTEGER NOT NULL,
+                day TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 1,
+                PRIMARY KEY (user_id, day),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             """
         )
@@ -1171,6 +1186,64 @@ def count_flashcards_db(
         return int(row[0]) if row else 0
 
 
+def count_due_flashcards_db(
+    user_id: int,
+    today: date | None = None,
+    db_path: Path = DB_PATH,
+) -> int:
+    """
+    Conta os flashcards pendentes de revisão hoje em todos os baralhos do
+    usuário: cards novos + cards vencidos (due_date <= hoje). Mesma definição
+    da fila de estudo (get_user_study_queue_db), sem o limite.
+    """
+    if today is None:
+        today = date.today()
+
+    today_iso = today.isoformat() if isinstance(today, date) else str(today)
+
+    with _open_connection(db_path) as conn:
+
+        row = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM flashcards f
+            JOIN decks d ON d.id = f.deck_id
+            JOIN subjects s ON s.id = d.subject_id
+            WHERE s.user_id = ?
+              AND (
+                f.status = 'novo'
+                OR (f.status != 'novo' AND f.due_date IS NOT NULL AND f.due_date <= ?)
+              )
+            """,
+            (user_id, today_iso),
+        ).fetchone()
+
+        return int(row[0]) if row else 0
+
+
+def count_flashcards_by_user_db(
+    user_id: int,
+    db_path: Path = DB_PATH,
+) -> int:
+    """
+    Conta o total de flashcards criados em todos os baralhos do usuário.
+    """
+    with _open_connection(db_path) as conn:
+
+        row = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM flashcards f
+            JOIN decks d ON d.id = f.deck_id
+            JOIN subjects s ON s.id = d.subject_id
+            WHERE s.user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+
+        return int(row[0]) if row else 0
+
+
 def update_flashcard_review_db(
     flashcard_id: int,
     status: str,
@@ -1541,3 +1614,98 @@ def match_subject_user_db(subject_id:int, user_id:int, db_path: Path = DB_PATH):
             return False
 
         return row[0] == user_id
+
+
+### ACTIVITY (streak/heatmap) ###
+
+def record_activity_db(
+    user_id: int,
+    day: str,
+    db_path: Path = DB_PATH,
+    conn: Connection | None = None,
+) -> None:
+    """
+    Registra 1 atividade do usuário no dia (revisão de flashcard ou envio de
+    arquivo). Incrementa o contador se o dia já existir.
+
+    Nunca levanta exceção: um erro aqui não pode derrubar a rota chamadora.
+    """
+    conn_ = None
+    own_conn = False
+
+    try:
+        conn_, own_conn = _get_connection(conn, db_path)
+        cur = conn_.cursor()
+
+        cur.execute(
+            """
+            INSERT INTO activity_days (user_id, day, count)
+            VALUES (?, ?, 1)
+            ON CONFLICT(user_id, day) DO UPDATE SET count = count + 1
+            """,
+            (user_id, day),
+        )
+
+        if own_conn:
+            conn_.commit()
+    except Exception:
+        logger.exception("Falha ao registrar atividade do usuário %s no dia %s", user_id, day)
+        if own_conn and conn_ is not None:
+            try:
+                conn_.rollback()
+            except Exception:
+                pass
+    finally:
+        if own_conn and conn_ is not None:
+            try:
+                conn_.close()
+            except Exception:
+                pass
+
+
+def get_activity_days_db(
+    user_id: int,
+    since_day: str,
+    db_path: Path = DB_PATH,
+) -> dict:
+    """
+    Retorna {day: count} com todos os dias de atividade do usuário a partir
+    de `since_day` (inclusive).
+    """
+    with _open_connection(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT day, count
+            FROM activity_days
+            WHERE user_id = ? AND day >= ?
+            ORDER BY day ASC
+            """,
+            (user_id, since_day),
+        ).fetchall()
+
+        return {day: count for day, count in rows}
+
+
+def compute_streak(days_set: set[str], today: date) -> int:
+    """
+    Calcula a ofensiva (streak) de dias consecutivos ativos terminando hoje.
+
+    Se hoje ainda não está em `days_set`, o streak não zera antes do dia
+    acabar: conta os dias consecutivos terminando ontem.
+    """
+    today_iso = today.isoformat()
+
+    if today_iso in days_set:
+        cursor = today
+    else:
+        cursor = today - timedelta(days=1)
+
+        if cursor.isoformat() not in days_set:
+            return 0
+
+    streak = 0
+    while cursor.isoformat() in days_set:
+        streak += 1
+        cursor -= timedelta(days=1)
+
+    return streak
