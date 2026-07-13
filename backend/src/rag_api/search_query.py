@@ -33,10 +33,19 @@ LLM_CONTEXT_WINDOW = int(os.environ.get("LLM_CONTEXT_WINDOW", "4096"))
 # Se os livros forem muito grandes, precisa de mais tempo para processar tudo. Aumentar esse tempo ajuda a LLM conseguir processar.
 LLM_REQUEST_TIMEOUT = float(os.environ.get("LLM_REQUEST_TIMEOUT", "600"))
 
+# Teto de tokens gerados por chamada. Sem isso, modelos com "thinking" (ex: qwen3)
+# geram milhares de tokens de raciocínio e uma única chamada leva minutos.
+LLM_MAX_OUTPUT_TOKENS = int(os.environ.get("LLM_MAX_OUTPUT_TOKENS", "2048"))
+
+# embed_batch_size alto: bge-m3 é um modelo leve e a GPU tem VRAM de sobra,
+# então o gargalo é o número de round-trips HTTP ao Ollama, não o tamanho do
+# batch. Subir de 10 (default da lib) pra 64 reduz drasticamente as chamadas
+# num documento com muitos chunks (ex: 66 chunks vira 2 chamadas em vez de 7).
 embed_model = OllamaEmbedding(
     model_name="bge-m3",
     base_url=OLLAMA_EMBED_HOST,
     request_timeout=LLM_REQUEST_TIMEOUT,
+    embed_batch_size=64,
 )
 
 llm = Ollama(
@@ -45,6 +54,8 @@ llm = Ollama(
     request_timeout=LLM_REQUEST_TIMEOUT,
     temperature=0.1,
     context_window=LLM_CONTEXT_WINDOW,
+    thinking=False,
+    additional_kwargs={"num_predict": LLM_MAX_OUTPUT_TOKENS},
 )
 
 Settings.embed_model = embed_model
@@ -52,7 +63,7 @@ Settings.llm = llm
 
 
 def _load_pdf(file_path: Path, metadata: dict | None = None) -> list[Document]:
-    """Extrai o texto com PyMuPDF — o leitor padrão (baseado em pypdf) gera
+    """Extrai o texto com PyMuPDF: o leitor padrão (baseado em pypdf) gera
     texto corrompido em PDFs com certas codificações de fonte."""
     with fitz.open(file_path) as pdf:
         text = "\n".join(page.get_text() for page in pdf)
@@ -100,7 +111,7 @@ def load_documents(input_files, metadata: dict | None = None) -> list[Document]:
 
 def split_into_nodes(docs: list[Document]) -> list[BaseNode]:
     """Divide os documentos em chunks uma única vez, para reaproveitar entre
-    indexação, resumo em cascata e extração do mapa mental — em vez de cada
+    indexação, resumo em cascata e extração do mapa mental, em vez de cada
     etapa re-dividir o mesmo texto do zero."""
     splitter = SentenceSplitter(chunk_size=1024, chunk_overlap=20)
     return splitter.get_nodes_from_documents(docs)
