@@ -174,10 +174,23 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
                 status TEXT NOT NULL
                     CHECK(status IN ('novo', 'aprendendo', 'review', 'reaprendendo')),
 
+                embedding TEXT,
+
                 FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
             );
             """
         )
+
+        # ALTER TABLE tolerante: bancos criados antes desta coluna existir
+        # ganham ela aqui; o "duplicate column" é ignorado se já existir.
+        for coluna_sql in (
+            "ALTER TABLE flashcards ADD COLUMN embedding TEXT;",
+        ):
+            try:
+                conn.execute(coluna_sql)
+            except sqlite3.OperationalError as exc:
+                if "duplicate column" not in str(exc).lower():
+                    raise
 
         conn.execute(
             """
@@ -828,10 +841,14 @@ def save_flashcard_db(
     status: str,
     creation_date: date,
     db_path: Path = DB_PATH,
-    conn: Connection | None = None
+    conn: Connection | None = None,
+    embedding: list[float] | None = None,
 ) -> int | None:
     """
     Register a new flashcard in the database.
+
+    `embedding` (se já calculado pelo dedup) é gravado junto, evitando
+    recálculo depois.
 
     Returns the flashcard_id of the new entry.
     """
@@ -841,6 +858,8 @@ def save_flashcard_db(
     try:
         cur = conn.cursor()
 
+        embedding_json = json.dumps(embedding) if embedding is not None else None
+
         cur.execute(
             """
             INSERT INTO flashcards (
@@ -848,9 +867,10 @@ def save_flashcard_db(
                 pergunta,
                 resposta,
                 status,
-                creation_date
+                creation_date,
+                embedding
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 deck_id,
@@ -858,6 +878,7 @@ def save_flashcard_db(
                 resposta,
                 status,
                 creation_date,
+                embedding_json,
             ),
         )
 
@@ -894,7 +915,8 @@ def get_flashcard_db(
                 pergunta,
                 resposta,
                 status,
-                creation_date
+                creation_date,
+                embedding
             FROM flashcards
             WHERE id = ?
             """,
@@ -904,7 +926,7 @@ def get_flashcard_db(
         if row is None:
             return None
 
-        flashcard_id, deck_id, pergunta, resposta, status, creation_date = row
+        flashcard_id, deck_id, pergunta, resposta, status, creation_date, embedding_json = row
 
         return Flashcard(
             deck_id,
@@ -913,6 +935,7 @@ def get_flashcard_db(
             status,
             creation_date,
             flashcard_id,
+            embedding=json.loads(embedding_json) if embedding_json else None,
         )
 
 def get_flashcards_db(
@@ -933,7 +956,8 @@ def get_flashcards_db(
                 pergunta,
                 resposta,
                 status,
-                creation_date
+                creation_date,
+                embedding
             FROM flashcards
             WHERE deck_id = ?
             """,
@@ -942,7 +966,7 @@ def get_flashcards_db(
 
         flashcards = []
 
-        for flashcard_id, deck_id, pergunta, resposta, status, creation_date in rows:
+        for flashcard_id, deck_id, pergunta, resposta, status, creation_date, embedding_json in rows:
 
             flashcards.append(
                 Flashcard(
@@ -952,10 +976,92 @@ def get_flashcards_db(
                     status,
                     creation_date,
                     flashcard_id,
+                    embedding=json.loads(embedding_json) if embedding_json else None,
                 )
             )
 
         return flashcards
+
+
+def get_flashcards_by_subject_db(
+    subject_id: int,
+    db_path: Path = DB_PATH,
+) -> list[Flashcard]:
+    """
+    Returns all flashcards from every deck of a subject (join com decks).
+
+    Usado pelo dedup semântico: compara os cards novos contra todos os cards
+    já existentes na matéria, não só os do baralho sendo criado.
+    """
+
+    with _open_connection(db_path) as conn:
+
+        rows = conn.execute(
+            """
+            SELECT
+                f.id,
+                f.deck_id,
+                f.pergunta,
+                f.resposta,
+                f.status,
+                f.creation_date,
+                f.embedding
+            FROM flashcards f
+            JOIN decks d ON d.id = f.deck_id
+            WHERE d.subject_id = ?
+            """,
+            (subject_id,),
+        ).fetchall()
+
+        flashcards = []
+
+        for flashcard_id, deck_id, pergunta, resposta, status, creation_date, embedding_json in rows:
+
+            flashcards.append(
+                Flashcard(
+                    deck_id,
+                    pergunta,
+                    resposta,
+                    status,
+                    creation_date,
+                    flashcard_id,
+                    embedding=json.loads(embedding_json) if embedding_json else None,
+                )
+            )
+
+        return flashcards
+
+
+def update_flashcard_embedding_db(
+    flashcard_id: int,
+    embedding: list[float],
+    db_path: Path = DB_PATH,
+    conn: Connection | None = None,
+) -> None:
+    """
+    Grava o embedding de um flashcard já existente (migração preguiçosa:
+    calculado na primeira vez que o dedup semântico o encontra sem embedding).
+    """
+
+    conn, own_conn = _get_connection(conn, db_path)
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute(
+            "UPDATE flashcards SET embedding = ? WHERE id = ?",
+            (json.dumps(embedding), flashcard_id),
+        )
+
+        if own_conn:
+            conn.commit()
+    except:
+        if own_conn:
+            conn.rollback()
+        raise
+    finally:
+        if own_conn:
+            conn.close()
 
 def delete_flashcard_db(
     flashcard_id: int,
@@ -1085,7 +1191,10 @@ def save_materials_db(
                             status=FlashcardStatus.NOVO.value,
                             creation_date=material["creation_date"],
                             db_path=db_path,
-                            conn=conn
+                            conn=conn,
+                            # embedding já calculado pelo dedup (rag_api/dedup.py),
+                            # não recalcula aqui
+                            embedding=flashcard.get("embedding"),
                         )
 
                 else:
@@ -1100,10 +1209,10 @@ def save_materials_db(
 def match_subject_user_db(subject_id:int, user_id:int, db_path: Path = DB_PATH):
     with _open_connection(db_path) as conn:
         row = conn.execute("""SELECT user_id
-                                    FROM subjects 
-                                    WHERE id = ?""", (subject_id,)).fetchone()  
-        
+                                    FROM subjects
+                                    WHERE id = ?""", (subject_id,)).fetchone()
+
         if row is None:
             return False
-        
+
         return row[0] == user_id

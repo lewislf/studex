@@ -9,14 +9,98 @@ from flask import Blueprint, jsonify, request
 
 from database.database import (
     save_materials_db,
+    get_flashcards_by_subject_db,
+    update_flashcard_embedding_db,
     match_subject_user_db,
+    get_summaries_db,
+    get_mindmaps_db,
 )
 
 logger = logging.getLogger(__name__)
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "rag_api"))
-from search_query import load_documents, split_into_nodes, build_vector_index, COLLECTION_NAME
+from search_query import load_documents, split_into_nodes, build_vector_index, COLLECTION_NAME, embed_model
 from materials import generate_materials
+from dedup import (
+    deduplicar_flashcards,
+    deve_criar_baralho,
+    DEDUP_MIN_CARDS_NOVOS,
+    filtrar_materiais_duplicados,
+)
+
+# getter do banco pra buscar os materiais já existentes na matéria, por tipo,
+# no mesmo estilo que as rotas de summary/mindmap já usam (nenhuma função
+# nova em database.py)
+_MATERIAL_DEDUP_GETTERS = {
+    "resumo": get_summaries_db,
+    "mapa_mental": get_mindmaps_db,
+}
+
+
+def _embed_textos(textos: list[str]) -> list[list[float]]:
+    """Wrapper fino sobre o embed_model (bge-m3), injetado no dedup.
+    Batch: uma única chamada pro Ollama em vez de uma por texto."""
+    return embed_model.get_text_embedding_batch(textos)
+
+
+def _dedup_baralho(materials: list[dict], subject_id: int, filename: str) -> list[dict]:
+    """
+    Aplica o funil de deduplicação de flashcards (rag_api/dedup.py) no
+    material tipo "baralho", se houver. Com menos de DEDUP_MIN_CARDS_NOVOS
+    cards sobrando após o dedup, remove o baralho da lista de materiais
+    (resumo e mapa mental seguem normal).
+    """
+    baralho = next((m for m in materials if m["tipo"] == "baralho"), None)
+    if baralho is None:
+        return materials
+
+    cards_novos = baralho["conteudo"]["flashcards"]
+    existentes = get_flashcards_by_subject_db(subject_id)
+
+    cards_dedup = deduplicar_flashcards(
+        cards_novos,
+        existentes,
+        embed_fn=_embed_textos,
+        persist_embedding_fn=update_flashcard_embedding_db,
+    )
+
+    if not deve_criar_baralho(cards_dedup):
+        logger.info(
+            "Baralho descartado para %s (matéria %s): %d cards novos após dedup, mínimo é %d",
+            filename, subject_id, len(cards_dedup), DEDUP_MIN_CARDS_NOVOS,
+        )
+        return [m for m in materials if m["tipo"] != "baralho"]
+
+    baralho["conteudo"]["flashcards"] = cards_dedup
+    return materials
+
+
+def _dedup_resumo_mapa(materials: list[dict], subject_id: int, filename: str) -> list[dict]:
+    """
+    Aplica o dedup lexical (rag_api/dedup.py) aos materiais tipo "resumo" e
+    "mapa_mental" contra os já existentes na matéria. Reenviar o mesmo PDF
+    hoje não pode duplicar resumo/mapa mental (o dedup de baralho, acima, só
+    cobre flashcards). Sem mudança de schema: busca os existentes com as
+    mesmas funções que as rotas de summary/mindmap já usam.
+    """
+    resultado = list(materials)
+    for tipo, getter in _MATERIAL_DEDUP_GETTERS.items():
+        novo = next((m for m in resultado if m["tipo"] == tipo), None)
+        if novo is None:
+            continue
+
+        existentes = getter(subject_id) or []
+        if filtrar_materiais_duplicados([novo], existentes, tipo=tipo):
+            continue  # sobreviveu ao dedup, mantém no resultado
+
+        logger.info(
+            "%s descartado para %s (matéria %s): duplicado de material já existente",
+            tipo, filename, subject_id,
+        )
+        resultado = [m for m in resultado if m["tipo"] != tipo]
+
+    return resultado
+
 
 document_bp = Blueprint("documents", __name__, url_prefix="/users/<int:user_id>/documents")
 
@@ -53,7 +137,9 @@ def upload_document(user_id):
       201:
         description: Documento indexado e materiais gerados/salvos
       207:
-        description: Indexado, mas falha ao gerar ou salvar os materiais
+        description: >
+          Indexado, mas falha ao gerar ou salvar os materiais, ou todos os
+          materiais gerados eram duplicados dos já existentes na matéria
       400:
         description: Arquivo ausente ou extensão inválida
       500:
@@ -154,6 +240,43 @@ def upload_document(user_id):
     # Persiste os materiais na matéria escolhida (nova ou existente).
     # Sem subject_id, apenas devolve os materiais sem salvar.
     if subject_id is not None:
+        tinha_materiais_antes_do_dedup = bool(materials)
+        try:
+            materials = _dedup_baralho(materials, subject_id, filename)
+        except Exception:
+            # dedup não pode impedir de salvar resumo/mapa: loga e segue com
+            # o baralho original se o dedup falhar
+            logger.exception("Falha ao deduplicar flashcards para a matéria %s", subject_id)
+
+        try:
+            materials = _dedup_resumo_mapa(materials, subject_id, filename)
+        except Exception:
+            # mesmo princípio: dedup de resumo/mapa não pode impedir salvar
+            logger.exception("Falha ao deduplicar resumo/mapa mental para a matéria %s", subject_id)
+
+        # Caso especial: TODOS os materiais que a geração de fato produziu
+        # foram descartados por dedup (duplicados dos já existentes na
+        # matéria, ou baralho abaixo do mínimo de cards novos). Sem essa
+        # checagem, cairia no fluxo normal e salvaria uma matéria "vazia"
+        # silenciosamente. Sem nada descartado por dedup (ex. LLM falhou
+        # antes do dedup entrar), materials já estava vazio antes, então
+        # tinha_materiais_antes_do_dedup é False e cai no fluxo normal.
+        if tinha_materiais_antes_do_dedup and not materials:
+            logger.info(
+                "Upload descartado por dedup: %s (matéria %s)",
+                filename, subject_id,
+            )
+            return jsonify({
+                "filename": filename,
+                "collection": COLLECTION_NAME,
+                "subject_id": subject_id,
+                "status": "duplicate_materials",
+                "error": (
+                    "Os materiais gerados são duplicados dos já existentes nesta "
+                    "matéria; nenhum material novo foi salvo."
+                ),
+            }), 207
+
         try:
             save_materials_db(subject_id, materials)
         except Exception:

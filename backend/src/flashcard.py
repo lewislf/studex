@@ -19,7 +19,8 @@ class Flashcard:
         resposta: str,
         status: FlashcardStatus = FlashcardStatus.NOVO,
         creation_date: date = date.today(),
-        id = None
+        id = None,
+        embedding: list[float] | None = None,
     ):
         """Construtor Flashcard
 
@@ -30,6 +31,9 @@ class Flashcard:
             status (FlashcardStatus): ENUM definido em FlashcardStatus
             creation_date (date): Data de criação
             id (int): id do Flashcard
+            embedding (list[float] | None): embedding de "pergunta\\nresposta"
+                usado na deduplicação semântica. None se ainda não calculado
+                (migração preguiçosa na primeira comparação).
         """
         self.deck_id = deck_id
         self.pergunta = pergunta
@@ -37,6 +41,7 @@ class Flashcard:
         self.status = status
         self.date = creation_date
         self.id = id
+        self.embedding = embedding
 
     def __str__(self):
         """
