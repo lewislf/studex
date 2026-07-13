@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { parseSubjectsListMock } from '../utils/userHelpers';
+import { parseSubjectsList } from '../utils/userHelpers';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -33,7 +33,7 @@ export function useSubjects(userId) {
                 throw new Error(`Falha ao carregar matérias (status ${response.status})`);
             }
             const rawData = await response.json();
-            setSubjects(parseSubjectsListMock(rawData));
+            setSubjects(parseSubjectsList(rawData));
         } catch (err) {
             setError(err.message || 'Erro ao carregar matérias');
             setSubjects([]);
@@ -70,7 +70,10 @@ export function useSubjects(userId) {
             });
 
             if (!response.ok) {
-                throw new Error(`Falha ao criar matéria (status ${response.status})`);
+                // 409 (nome duplicado) já vem com uma mensagem específica do
+                // backend; repassa ela em vez de um erro genérico de status.
+                const body = await response.json().catch(() => null);
+                throw new Error(body?.error || `Falha ao criar matéria (status ${response.status})`);
             }
 
             const data = await response.json();
