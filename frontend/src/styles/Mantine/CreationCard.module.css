@@ -23,11 +23,38 @@
     }
 }
 .card {
-    transition: transform 150ms ease, box-shadow 150ms ease;
+    position: relative;
+    transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease, filter 150ms ease, border-color 150ms ease;
     cursor: pointer;
+    outline: none;
 }
 
 .card:hover {
     transform: translateY(-4px);
     box-shadow: var(--mantine-shadow-md);
+}
+
+.card:focus-visible {
+    outline: 2px solid var(--creation-card-color, var(--mantine-color-blue-6));
+    outline-offset: 2px;
+}
+
+.cardSelected {
+    border-color: var(--creation-card-color, var(--mantine-color-blue-6));
+}
+
+.cardUnselected {
+    opacity: 0.55;
+    filter: saturate(0.6);
+}
+
+.cardUnselected:hover {
+    opacity: 0.8;
+}
+
+.checkBadge {
+    position: absolute;
+    top: calc(var(--mantine-spacing-xl) * -0.35);
+    right: calc(var(--mantine-spacing-xl) * -0.35);
+    box-shadow: var(--mantine-shadow-sm);
 }

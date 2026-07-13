@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router';
-import { IconCloudUpload, IconX, IconCheck } from '@tabler/icons-react';
+import { IconCloudUpload, IconX, IconCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { Group, Text, useMantineTheme } from '@mantine/core';
 import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { notifications } from '@mantine/notifications';
@@ -9,15 +9,30 @@ import SubjectPickerModal from '../Common/SubjectPickerModal';
 import HomeUploadProgress from './HomeUploadProgress';
 import classes from '../../styles/Mantine/PdfDropZone.module.css';
 
-export default function HomePdfDropzone() {
+/**
+ * @param {Set<string>} [selectedMaterials] - Values from CREATION_OPTIONS (resumo,
+ *   mapa_mental, flashcards) the user picked in HomeCreationGrid. Drives both what
+ *   gets sent to the backend and which phases the progress checklist shows.
+ */
+export default function HomePdfDropzone({ selectedMaterials }) {
     const theme = useMantineTheme();
 
     // Current user (provided by Outlet context in App.jsx)
-    const user = useOutletContext();
+    const { refreshUser, ...user } = useOutletContext();
     const userId = user?.id;
 
     // trigger the file input dialog
     const openRef = useRef(null);
+
+    // Uploads can take minutes; if the user navigates away before it
+    // finishes, handleSubjectConfirm must not touch state after unmount.
+    const isMountedRef = useRef(true);
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     // Pending file awaiting subject selection
     const [pendingFile, setPendingFile] = useState(null);
@@ -26,16 +41,76 @@ export default function HomePdfDropzone() {
     // Network logic
     const { uploadPdf, loading, error, success } = usePdfUpload(`${import.meta.env.VITE_API_URL}/users/${encodeURIComponent(userId)}/documents`);
 
+    // Real (not simulated) per-phase progress: polled from the backend while
+    // an upload is in flight, so HomeUploadProgress can show which materials
+    // have actually finished, not a timed guess.
+    const [uploadProgress, setUploadProgress] = useState(null);
+
+    // The hook's own `loading` flips to false the instant the HTTP request
+    // resolves, which can race ahead of the last poll (progress is also
+    // cleared server-side the moment the request ends), so the checklist
+    // could disappear without ever showing its final state. `holdCompletion`
+    // keeps the panel up a bit longer, showing the REAL final state (derived
+    // from the materials the response actually returned, not a guess).
+    const [holdCompletion, setHoldCompletion] = useState(false);
+    const [displayFileName, setDisplayFileName] = useState(null);
+    // Snapshot of what was selected when the upload started: the checklist
+    // must keep showing exactly those phases even if the user toggles the
+    // cards above while the upload is still in flight.
+    const [activePhases, setActivePhases] = useState(null);
+    const showProgressPanel = loading || holdCompletion;
+
+    useEffect(() => {
+        // Nothing to poll: leave uploadProgress as-is and clear it only when
+        // an in-flight poll loop actually stops (see cleanup below), instead
+        // of setting state synchronously here.
+        if (!loading || !userId) return;
+
+        let cancelled = false;
+        const API_URL = import.meta.env.VITE_API_URL;
+
+        async function poll() {
+            try {
+                const res = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/documents/progress`);
+                if (!res.ok || cancelled) return;
+                const data = await res.json();
+                setUploadProgress(data.active ? data : null);
+            } catch {
+                // rede instável durante o polling não deve derrubar a tela de progresso
+            }
+        }
+
+        poll();
+        const id = setInterval(poll, 1500);
+        return () => {
+            cancelled = true;
+            clearInterval(id);
+            setUploadProgress(null);
+        };
+    }, [loading, userId]);
+
     /**
      * On file drop, do not upload directly: open a menu for the user
      * to choose or create a subject where artifacts will be saved.
      * @param {File[]} files - Validated array of native JS file entries.
      */
     function handleDrop(files) {
-        if (files.length > 0) {
-            setPendingFile(files[0]);
-            setModalOpened(true);
+        if (files.length === 0) return;
+
+        // Nothing selected in the "Criar a partir de um material" grid: there's
+        // nothing to generate, so stop before even asking which subject to use.
+        if (!selectedMaterials || selectedMaterials.size === 0) {
+            notifications.show({
+                title: 'Nenhum material selecionado',
+                message: 'Selecione ao menos um tipo de material acima antes de enviar o arquivo.',
+                color: 'orange',
+                icon: <IconAlertTriangle size={16} />,
+            });
+            return;
         }
+
+        setPendingFile(files[0]);
+        setModalOpened(true);
     }
 
     /**
@@ -48,17 +123,54 @@ export default function HomePdfDropzone() {
         const file = pendingFile;
         if (!file) return;
 
-        const result = await uploadPdf(file, { subjectId, userId });
-        setPendingFile(null);
+        setDisplayFileName(file.name);
+        setHoldCompletion(true);
+
+        const materials = selectedMaterials ? Array.from(selectedMaterials) : undefined;
+        setActivePhases(selectedMaterials ? new Set(selectedMaterials) : null);
+        const result = await uploadPdf(file, { subjectId, userId, materials });
+        // Upload can take minutes; the user may have navigated away by now.
+        if (isMountedRef.current) setPendingFile(null);
 
         if (result) {
-            notifications.show({
-                title: 'Upload concluído',
-                message: `O arquivo "${file.name}" foi processado e salvo na matéria!`,
-                color: 'green',
-                icon: <IconCheck size={16} />,
-                autoClose: 4000,
-            });
+            // Estado final real, tirado dos materiais que a resposta de fato
+            // trouxe (não um chute): se o mapa mental foi omitido (ex: sem
+            // entidades suficientes), o checklist reflete isso corretamente.
+            const tipos = new Set((result.materiais || []).map((m) => m.tipo));
+            if (isMountedRef.current) {
+                setUploadProgress({
+                    resumo: tipos.has('resumo'),
+                    mapa_mental: tipos.has('mapa_mental'),
+                    flashcards: tipos.has('baralho'),
+                });
+            }
+            await refreshUser();
+            // Segura o checklist completo visível um instante antes de
+            // trocar pra tela de sucesso, senão a troca é instantânea demais
+            // pro usuário perceber que tudo terminou.
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Backend answers 207 (present as an `error` field even though
+            // uploadPdf still returns the parsed body) when the document was
+            // indexed but some material failed to generate or save. That's
+            // not a full success: warn instead of showing the green toast.
+            if (result.error) {
+                notifications.show({
+                    title: 'Upload concluído com falhas parciais',
+                    message: `O arquivo "${file.name}" foi processado, mas: ${result.error}`,
+                    color: 'orange',
+                    icon: <IconAlertTriangle size={16} />,
+                    autoClose: 6000,
+                });
+            } else {
+                notifications.show({
+                    title: 'Upload concluído',
+                    message: `O arquivo "${file.name}" foi processado e salvo na matéria!`,
+                    color: 'green',
+                    icon: <IconCheck size={16} />,
+                    autoClose: 4000,
+                });
+            }
         } else {
             notifications.show({
                 title: 'Falha no upload',
@@ -67,6 +179,13 @@ export default function HomePdfDropzone() {
                 icon: <IconX size={16} />,
                 autoClose: 5000,
             });
+        }
+
+        if (isMountedRef.current) {
+            setHoldCompletion(false);
+            setUploadProgress(null);
+            setDisplayFileName(null);
+            setActivePhases(null);
         }
     }
 
@@ -105,10 +224,15 @@ export default function HomePdfDropzone() {
                 onConfirm={handleSubjectConfirm}
             />
 
-            {loading ? (
-                // During processing, the block is swapped for a three-phase progress tracker
+            {showProgressPanel ? (
+                // During processing (and briefly after, to show the final
+                // state), the block is swapped for the progress tracker
                 <div className={classes.dropzone}>
-                    <HomeUploadProgress fileName={pendingFile?.name} />
+                    <HomeUploadProgress
+                        fileName={displayFileName || pendingFile?.name}
+                        progress={uploadProgress}
+                        phases={activePhases}
+                    />
                 </div>
             ) : (
                 <Dropzone

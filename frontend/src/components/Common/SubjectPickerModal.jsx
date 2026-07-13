@@ -32,10 +32,14 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
     const [selectedColor, setSelectedColor] = useState(DEFAULT_SUBJECT_COLOR);
     const [submitting, setSubmitting] = useState(false);
 
-    // Fetch subjects every time the modal is opened
+    // Fetch subjects and reset the form every time the modal is opened.
     useEffect(() => {
         if (opened) {
             fetchSubjects();
+            // Resetting the form on open is intentional: it must run exactly
+            // when `opened` flips, and the modal content is not remounted
+            // (no key-based reset available without restructuring).
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setMode(onlyCreate ? 'nova' : 'existente');
             setSelectedId(null);
             setNewName('');
