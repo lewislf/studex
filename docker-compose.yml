@@ -5,6 +5,13 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+    healthcheck:
+      # Imagem do qdrant não tem curl/wget, só bash: checa se a porta HTTP responde
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   ollama:
     image: ollama/ollama:latest
@@ -13,12 +20,21 @@ services:
     volumes:
       # Modelos ficam persistidos: baixa uma vez, sobrevive a rebuild/restart
       - ollama_data:/root/.ollama
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       # Cada slot paralelo custa RAM/VRAM. Suba via env se tiver folga.
       OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-4}
       OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-4096}
       OLLAMA_FLASH_ATTENTION: ${OLLAMA_FLASH_ATTENTION:-false}
       OLLAMA_KV_CACHE_TYPE: ${OLLAMA_KV_CACHE_TYPE:-f16}
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/11434' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     # Roda em CPU por default. Para usar GPU NVIDIA, adicione o override:
     #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
 
@@ -35,8 +51,16 @@ services:
       LLM_MODEL: ${LLM_MODEL:-llama3.2:latest}
       LLM_CONTEXT_WINDOW: ${LLM_CONTEXT_WINDOW:-4096}
       LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-2048}
+      # FLASK_DEBUG=1 mantém o autoreload (dev). Sobrescreva com 0 em produção.
+      FLASK_DEBUG: ${FLASK_DEBUG:-1}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/routes', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
       qdrant:
         condition: service_started
@@ -60,6 +84,12 @@ services:
       - /app/node_modules
     environment:
       VITE_API_URL: http://localhost:5000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       - backend
 

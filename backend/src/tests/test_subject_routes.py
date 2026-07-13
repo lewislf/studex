@@ -166,11 +166,14 @@ def test_delete_subject_success(client):
     ), patch(
         "routes.subject_routes.delete_subject_db",
         return_value=True,
-    ):
+    ), patch(
+        "routes.subject_routes.delete_vectors_by_metadata",
+    ) as mock_delete_vectors:
 
         response = client.delete("/users/10/subjects/1")
 
     assert response.status_code == 204
+    mock_delete_vectors.assert_called_once_with(subject_id=1)
 
 
 def test_delete_subject_not_found(client):
@@ -185,3 +188,24 @@ def test_delete_subject_not_found(client):
         response = client.delete("/users/10/subjects/1")
 
     assert response.status_code == 404
+
+
+def test_delete_subject_qdrant_failure_does_not_block_204(client):
+    """Erro na limpeza do Qdrant não pode impedir o delete de completar."""
+    with patch(
+        "routes.subject_routes.get_subject_db",
+        return_value=fake_subject(user_id=10),
+    ), patch(
+        "routes.subject_routes.match_subject_user_db",
+        return_value=True,
+    ), patch(
+        "routes.subject_routes.delete_subject_db",
+        return_value=True,
+    ), patch(
+        "routes.subject_routes.delete_vectors_by_metadata",
+        side_effect=Exception("qdrant indisponível"),
+    ):
+
+        response = client.delete("/users/10/subjects/1")
+
+    assert response.status_code == 204

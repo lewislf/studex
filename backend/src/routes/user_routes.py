@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from datetime import date, timedelta
 
@@ -17,6 +18,10 @@ from database.database import (
     get_activity_days_db,
     compute_streak,
 )
+from qdrant.qdrant_server import delete_vectors_by_metadata
+
+logger = logging.getLogger(__name__)
+
 user_bp = Blueprint("users", __name__, url_prefix="/users")
 
 ACTIVITY_WINDOW_DAYS = 400
@@ -233,6 +238,11 @@ def delete_user(user_id):
         description: Usuário não encontrado
     """
     if delete_user_db(user_id):
+        try:
+            delete_vectors_by_metadata(user_id=user_id)
+        except Exception:
+            logger.exception("Falha ao limpar vetores órfãos do usuário %s no Qdrant", user_id)
+
         return "", 204
 
     return jsonify({"error": "User not found"}), 404
