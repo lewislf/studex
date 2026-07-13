@@ -690,3 +690,106 @@ def test_generate_materials_defaults_do_contrato():
     assinatura = inspect.signature(materials.generate_materials)
     assert assinatura.parameters["fallback_titulo"].default == "Documento"
     assert assinatura.parameters["subject_id"].default is None
+    assert assinatura.parameters["tipos"].default is None
+
+
+# ---------------------------------------------------------------------------
+# generate_materials(tipos=...): geração parcial (subconjunto de materiais)
+# ---------------------------------------------------------------------------
+
+def test_generate_materials_tipos_none_gera_os_tres(mock_llm):
+    """tipos=None (default) continua gerando os três materiais, sem
+    diferença de comportamento em relação a antes do parâmetro existir."""
+    resumo_json = json.dumps({"titulo": "T", "topicos_chave": [], "texto": "resumo"})
+    grafo_json = json.dumps({
+        "entidades": [{"nome": "TCP", "tipo": "Protocolo", "descricao": "d"}],
+        "relacoes": [],
+        "temas": [{"titulo": "Tema", "entidades": ["TCP"]}],
+    })
+
+    def _side_effect(prompt):
+        if _is_flashcard_prompt(prompt):
+            return llm_response(flashcards_block(5))
+        if _is_grafo_prompt(prompt):
+            return llm_response(grafo_json)
+        return llm_response(resumo_json)
+
+    mock_llm.complete.side_effect = _side_effect
+
+    materiais = materials.generate_materials(make_nodes(10), tipos=None)
+
+    assert {m["tipo"] for m in materiais} == {"resumo", "mapa_mental", "baralho"}
+
+
+def test_generate_materials_tipos_so_resumo_doc_pequeno(mock_llm):
+    """tipos={"resumo"}: só a chamada de resumo roda (nem grafo, nem
+    flashcards), e on_phase_done só dispara pra "resumo"."""
+    resumo_json = json.dumps({"titulo": "T", "topicos_chave": ["a"], "texto": "resumo"})
+    mock_llm.complete.return_value = llm_response(resumo_json)
+
+    fases_disparadas = []
+    materiais = materials.generate_materials(
+        make_nodes(10), tipos={"resumo"}, on_phase_done=fases_disparadas.append
+    )
+
+    assert len(materiais) == 1
+    assert materiais[0]["tipo"] == "resumo"
+    assert fases_disparadas == ["resumo"]
+    # nenhuma chamada de grafo (pediria "entidades") nem de flashcards
+    prompts = [c.args[0] if c.args else c.kwargs["prompt"] for c in mock_llm.complete.call_args_list]
+    assert all(not _is_grafo_prompt(p) and not _is_flashcard_prompt(p) for p in prompts)
+    assert len(prompts) == 1
+
+
+def test_generate_materials_tipos_so_flashcards_nao_roda_analise(mock_llm):
+    """tipos={"flashcards"}: não roda a análise do documento (nem mega-
+    chamada nem map-reduce), só as chamadas de flashcard. on_phase_done só
+    dispara "flashcards"."""
+    mock_llm.complete.return_value = llm_response(flashcards_block(5))
+
+    fases_disparadas = []
+    materiais = materials.generate_materials(
+        make_nodes(10), tipos={"flashcards"}, on_phase_done=fases_disparadas.append
+    )
+
+    assert len(materiais) == 1
+    assert materiais[0]["tipo"] == "baralho"
+    assert fases_disparadas == ["flashcards"]
+    prompts = [c.args[0] if c.args else c.kwargs["prompt"] for c in mock_llm.complete.call_args_list]
+    # todas as chamadas foram de flashcard, nenhuma leu o documento pra análise
+    assert all(_is_flashcard_prompt(p) for p in prompts)
+
+
+def test_generate_materials_tipos_so_flashcards_doc_grande_nao_roda_lotes(mock_llm):
+    """Mesmo caso, mas no caminho de documento grande: os lotes map-reduce
+    (que só servem resumo/mapa_mental) também não devem rodar."""
+    mock_llm.complete.return_value = llm_response(flashcards_block(5))
+
+    n_nodes = 60
+    materiais = materials.generate_materials(make_nodes(n_nodes), tipos={"flashcards"})
+
+    assert {m["tipo"] for m in materiais} == {"baralho"}
+    prompts = [c.args[0] if c.args else c.kwargs["prompt"] for c in mock_llm.complete.call_args_list]
+    # sem lotes de análise: nenhum prompt carrega o marcador de chunk bruto
+    # fora do formato de flashcard (todas as chamadas são de flashcard aqui)
+    assert all(_is_flashcard_prompt(p) for p in prompts)
+
+
+def test_generate_materials_tipos_so_mapa_mental(mock_llm):
+    """tipos={"mapa_mental"}: só a chamada de grafo roda, resumo e
+    flashcards ficam de fora do retorno e das notificações."""
+    grafo_json = json.dumps({
+        "entidades": [{"nome": "TCP", "tipo": "Protocolo", "descricao": "d"}],
+        "relacoes": [],
+        "temas": [{"titulo": "Tema", "entidades": ["TCP"]}],
+    })
+    mock_llm.complete.return_value = llm_response(grafo_json)
+
+    fases_disparadas = []
+    materiais = materials.generate_materials(
+        make_nodes(10), tipos={"mapa_mental"}, on_phase_done=fases_disparadas.append
+    )
+
+    assert len(materiais) == 1
+    assert materiais[0]["tipo"] == "mapa_mental"
+    assert fases_disparadas == ["mapa_mental"]

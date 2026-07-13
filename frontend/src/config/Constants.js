@@ -47,18 +47,21 @@ export const LINKS = [
 
 export const CREATION_OPTIONS = [
     {
+        value: 'resumo',
         icon: 'file-text',
         title: 'Resumo',
         description: 'Estruturado, com tópicos e marcadores',
         color: 'blue',
     },
     {
+        value: 'mapa_mental',
         icon: 'sitemap',
         title: 'Mapa Mental',
         description: 'Navegável, com visão',
         color: 'grape',
     },
     {
+        value: 'flashcards',
         icon: 'cards',
         title: 'Flashcards',
         description: 'Revisão espaçada',

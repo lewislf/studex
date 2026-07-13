@@ -37,6 +37,9 @@ MAX_RELACOES_NO_MAPA = 25
 
 # Subconjunto de materiais que generate_materials sabe gerar. Usado também
 # por routes/document_routes.py pra validar o campo `materials` do upload.
+MATERIAIS_VALIDOS = {"resumo", "mapa_mental", "flashcards"}
+
+
 def _sample_evenly(items: list, max_count: int) -> list:
     """Amostra até max_count itens distribuídos uniformemente ao longo da
     lista, preservando a ordem, pra cobrir o documento inteiro sem processar
@@ -588,13 +591,26 @@ def generate_flashcards(nodes: list[BaseNode]) -> list[dict]:
 
 def _analisar_documento_grande(
     lotes: list[str], fallback_titulo: str, inicio_etapa: float, executor: ThreadPoolExecutor, flash_future,
+    on_phase_done=None,
 ) -> tuple[dict, list, list, list, dict]:
     """Caminho de documento grande: lotes de análise disparam em paralelo com
     os flashcards (mesma onda). A consolidação roda assim que os lotes
     terminam, mesmo que os flashcards ainda estejam rodando. Os parciais são
-    devolvidos na ordem do documento (viram o corpo do resumo final)."""
+    devolvidos na ordem do documento (viram o corpo do resumo final).
+
+    on_phase_done(nome), se passado, é chamado assim que cada material fica
+    pronto de verdade: "flashcards" quando os cards terminam; "mapa_mental"
+    assim que os lotes terminam (entidades/relações já são suficientes pra
+    montar o grafo, só os NOMES dos temas ainda dependem da consolidação, o
+    que não impede a montagem em si); "resumo" só quando a consolidação
+    termina (o texto final depende dela). Usado pro frontend acompanhar o
+    progresso real, inclusive pra distinguir qual etapa termina primeiro.
+
+    flash_future é None quando flashcards não foi pedido: nesse caso a onda
+    paralela cobre só os lotes de análise, sem agendar a fase de flashcards."""
     futures = {executor.submit(_analisar_lote, texto): idx for idx, texto in enumerate(lotes)}
-    futures[flash_future] = "flashcards"
+    if flash_future is not None:
+        futures[flash_future] = "flashcards"
 
     resultados_lote = [None] * len(lotes)
     concluidos = 0
@@ -611,6 +627,8 @@ def _analisar_documento_grande(
                 logger.exception("Falha ao gerar flashcards, material de baralho será omitido")
                 flashcards = []
             logger.info("flashcards: %.1fs", time.perf_counter() - inicio_etapa)
+            if on_phase_done:
+                on_phase_done("flashcards")
             continue
 
         resultado = future.result()
@@ -623,9 +641,17 @@ def _analisar_documento_grande(
             parciais = [r["resumo_parcial"] for r in resultados_lote if r["resumo_parcial"]]
             entidades = _merge_entities(raw_entidades)
 
+            # entidades/relações já dão pra montar o grafo (a nomeação dos
+            # temas na consolidação só refina os rótulos das categorias),
+            # então o mapa mental conta como pronto aqui, antes do resumo.
+            if on_phase_done:
+                on_phase_done("mapa_mental")
+
             inicio_consolidacao = time.perf_counter()
             consolidado = _consolidar(parciais, [e["nome"] for e in entidades], fallback_titulo)
             logger.info("consolidacao: %.1fs", time.perf_counter() - inicio_consolidacao)
+            if on_phase_done:
+                on_phase_done("resumo")
 
     return consolidado, entidades, relacoes, parciais, flashcards
 
@@ -634,16 +660,39 @@ def generate_materials(
     nodes: list[BaseNode],
     fallback_titulo: str = "Documento",
     subject_id=None,
+    on_phase_done=None,
+    tipos: set[str] | None = None,
 ) -> list[dict]:
-    """Roda o pipeline do documento e retorna os materiais gerados, cada um
-    no mesmo formato: {tipo, titulo, subject_id, creation_date, conteudo}.
+    """Roda o pipeline do documento e retorna só os materiais pedidos, cada
+    um no mesmo formato: {tipo, titulo, subject_id, creation_date, conteudo}.
+
+    tipos: subconjunto de MATERIAIS_VALIDOS ("resumo", "mapa_mental",
+    "flashcards"). None (default) gera os três. A onda paralela só agenda o
+    que foi pedido: sem "resumo" nem "mapa_mental", a análise do documento
+    (mega-chamada do doc pequeno ou lotes map-reduce do doc grande) nem roda,
+    já que ela só serve pra montar esses dois materiais.
 
     Documento pequeno: uma mega-chamada lê o texto inteiro UMA vez e devolve
     resumo + entidades + relações + temas juntos. Documento grande: lotes de
     análise em paralelo (cada um também lido uma única vez) seguidos de uma
     consolidação. Em ambos os casos, os flashcards rodam na mesma onda
     paralela, sem depender do resultado da análise.
+
+    on_phase_done(nome: "resumo"|"mapa_mental"|"flashcards"), se passado, só
+    é chamado pras fases pedidas, assim que cada material fica pronto de
+    verdade (não é uma simulação: reflete quando aquela etapa realmente
+    terminou no backend).
     """
+    tipos = tipos if tipos is not None else set(MATERIAIS_VALIDOS)
+    quer_resumo = "resumo" in tipos
+    quer_mapa = "mapa_mental" in tipos
+    quer_flash = "flashcards" in tipos
+    precisa_analise = quer_resumo or quer_mapa
+
+    def _notify(nome: str) -> None:
+        if on_phase_done and nome in tipos:
+            on_phase_done(nome)
+
     inicio_total = time.perf_counter()
     pequeno = len(nodes) <= SUMMARY_CHUNKS_PER_CALL
 
@@ -656,13 +705,15 @@ def generate_materials(
     flashcards = None
 
     if pequeno:
-        texto = "\n\n".join(node.get_content() for node in nodes)
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = {
-                executor.submit(_resumo_documento_pequeno, texto, fallback_titulo): "resumo",
-                executor.submit(_grafo_documento_pequeno, texto): "grafo",
-                executor.submit(generate_flashcards, nodes): "flashcards",
-            }
+        texto = "\n\n".join(node.get_content() for node in nodes) if precisa_analise else None
+        with ThreadPoolExecutor(max_workers=max(1, quer_resumo + quer_mapa + quer_flash)) as executor:
+            futures = {}
+            if quer_resumo:
+                futures[executor.submit(_resumo_documento_pequeno, texto, fallback_titulo)] = "resumo"
+            if quer_mapa:
+                futures[executor.submit(_grafo_documento_pequeno, texto)] = "grafo"
+            if quer_flash:
+                futures[executor.submit(generate_flashcards, nodes)] = "flashcards"
 
             inicio_etapa = time.perf_counter()
             resumo = None
@@ -678,33 +729,38 @@ def generate_materials(
                         logger.exception("Falha ao gerar flashcards, material de baralho será omitido")
                         flashcards = []
                     logger.info("%s: %.1fs", nome, time.perf_counter() - inicio_etapa)
+                    _notify("flashcards")
                     continue
 
                 resultado = future.result()
                 logger.info("%s: %.1fs", nome, time.perf_counter() - inicio_etapa)
                 if nome == "resumo":
                     resumo = resultado
+                    _notify("resumo")
                 else:
                     grafo = resultado
+                    _notify("mapa_mental")
 
-        titulo_base = resumo["titulo"]
-        topicos_chave = resumo["topicos_chave"]
-        texto_resumo = resumo["texto"]
-        entidades = _merge_entities(grafo["entidades"])
-        relacoes = grafo["relacoes"]
-        temas = grafo["temas"]
-    else:
+        if quer_resumo:
+            titulo_base = resumo["titulo"]
+            topicos_chave = resumo["topicos_chave"]
+            texto_resumo = resumo["texto"]
+        if quer_mapa:
+            entidades = _merge_entities(grafo["entidades"])
+            relacoes = grafo["relacoes"]
+            temas = grafo["temas"]
+    elif precisa_analise:
         lotes = [
             "\n\n".join(node.get_content() for node in nodes[i:i + SUMMARY_CHUNKS_PER_CALL])
             for i in range(0, len(nodes), SUMMARY_CHUNKS_PER_CALL)
         ]
         logger.info("Análise: map-reduce de %d chunks em %d lotes", len(nodes), len(lotes))
 
-        with ThreadPoolExecutor(max_workers=len(lotes) + 1) as executor:
+        with ThreadPoolExecutor(max_workers=len(lotes) + (1 if quer_flash else 0)) as executor:
             inicio_etapa = time.perf_counter()
-            flash_future = executor.submit(generate_flashcards, nodes)
+            flash_future = executor.submit(generate_flashcards, nodes) if quer_flash else None
             consolidado, entidades, relacoes, parciais, flashcards = _analisar_documento_grande(
-                lotes, fallback_titulo, inicio_etapa, executor, flash_future
+                lotes, fallback_titulo, inicio_etapa, executor, flash_future, on_phase_done=_notify
             )
 
         titulo_base = consolidado["titulo"]
@@ -714,20 +770,35 @@ def generate_materials(
         # texto inteiro), a consolidação entra como visão geral de abertura
         partes = ([consolidado["texto"]] if consolidado["texto"] else []) + parciais
         texto_resumo = "\n\n".join(partes)
+    elif quer_flash:
+        # nem resumo nem mapa_mental pedidos: pula a análise do documento
+        # inteira (mega-chamada/lotes só servem a esses dois materiais)
+        inicio_etapa = time.perf_counter()
+        try:
+            flashcards = generate_flashcards(nodes)
+        except Exception:
+            logger.exception("Falha ao gerar flashcards, material de baralho será omitido")
+            flashcards = []
+        logger.info("flashcards: %.1fs", time.perf_counter() - inicio_etapa)
+        _notify("flashcards")
 
-    # degradação graciosa: sem entidades (LLM falhou no grafo), entrega
-    # resumo e flashcards mesmo assim, só omite o mapa mental
-    try:
-        mapa_mental = build_mind_map(entidades, relacoes, temas, titulo_base)
-    except ValueError:
-        logger.warning("Sem entidades para o mapa mental, material omitido")
-        mapa_mental = None
+    mapa_mental = None
+    if quer_mapa:
+        # degradação graciosa: sem entidades (LLM falhou no grafo), entrega
+        # resumo e flashcards mesmo assim, só omite o mapa mental
+        try:
+            mapa_mental = build_mind_map(entidades, relacoes, temas, titulo_base)
+        except ValueError:
+            logger.warning("Sem entidades para o mapa mental, material omitido")
+            mapa_mental = None
 
     logger.info("total: %.1fs", time.perf_counter() - inicio_total)
 
     creation_date = datetime.now().isoformat(timespec="seconds")
-    materials = [
-        {
+    materials = []
+
+    if quer_resumo:
+        materials.append({
             "tipo": "resumo",
             "titulo": titulo_base,
             "subject_id": subject_id,
@@ -736,10 +807,9 @@ def generate_materials(
                 "texto": texto_resumo,
                 "topicos_chave": topicos_chave,
             },
-        },
-    ]
+        })
 
-    if mapa_mental is not None:
+    if quer_mapa and mapa_mental is not None:
         materials.append({
             "tipo": "mapa_mental",
             "titulo": f"{titulo_base} — Mapa Mental de Estudo",
@@ -751,19 +821,20 @@ def generate_materials(
             },
         })
 
-    # degradação graciosa: sem flashcards (LLM falhou nessa fase), entrega
-    # resumo e mapa mental mesmo assim, só omite o baralho
-    if flashcards:
-        materials.append({
-            "tipo": "baralho",
-            "titulo": f"{titulo_base} — Flashcards",
-            "subject_id": subject_id,
-            "creation_date": creation_date,
-            "conteudo": {
-                "flashcards": flashcards,
-            },
-        })
-    else:
-        logger.warning("Sem flashcards para incluir no baralho, material omitido")
+    if quer_flash:
+        # degradação graciosa: sem flashcards (LLM falhou nessa fase),
+        # entrega resumo e mapa mental mesmo assim, só omite o baralho
+        if flashcards:
+            materials.append({
+                "tipo": "baralho",
+                "titulo": f"{titulo_base} — Flashcards",
+                "subject_id": subject_id,
+                "creation_date": creation_date,
+                "conteudo": {
+                    "flashcards": flashcards,
+                },
+            })
+        else:
+            logger.warning("Sem flashcards para incluir no baralho, material omitido")
 
     return materials
