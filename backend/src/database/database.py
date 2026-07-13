@@ -175,16 +175,26 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
                     CHECK(status IN ('novo', 'aprendendo', 'review', 'reaprendendo')),
 
                 embedding TEXT,
+                due_date TEXT,
+                interval_days REAL DEFAULT 0,
+                ease REAL DEFAULT 2.5,
+                reps INTEGER DEFAULT 0,
+                lapses INTEGER DEFAULT 0,
 
                 FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
             );
             """
         )
 
-        # ALTER TABLE tolerante: bancos criados antes desta coluna existir
-        # ganham ela aqui; o "duplicate column" é ignorado se já existir.
+        # ALTER TABLE tolerante: bancos criados antes destas colunas existirem
+        # ganham elas aqui; o "duplicate column" é ignorado se já existirem.
         for coluna_sql in (
             "ALTER TABLE flashcards ADD COLUMN embedding TEXT;",
+            "ALTER TABLE flashcards ADD COLUMN due_date TEXT;",
+            "ALTER TABLE flashcards ADD COLUMN interval_days REAL DEFAULT 0;",
+            "ALTER TABLE flashcards ADD COLUMN ease REAL DEFAULT 2.5;",
+            "ALTER TABLE flashcards ADD COLUMN reps INTEGER DEFAULT 0;",
+            "ALTER TABLE flashcards ADD COLUMN lapses INTEGER DEFAULT 0;",
         ):
             try:
                 conn.execute(coluna_sql)
@@ -916,7 +926,12 @@ def get_flashcard_db(
                 resposta,
                 status,
                 creation_date,
-                embedding
+                embedding,
+                due_date,
+                interval_days,
+                ease,
+                reps,
+                lapses
             FROM flashcards
             WHERE id = ?
             """,
@@ -926,7 +941,20 @@ def get_flashcard_db(
         if row is None:
             return None
 
-        flashcard_id, deck_id, pergunta, resposta, status, creation_date, embedding_json = row
+        (
+            flashcard_id,
+            deck_id,
+            pergunta,
+            resposta,
+            status,
+            creation_date,
+            embedding_json,
+            due_date,
+            interval_days,
+            ease,
+            reps,
+            lapses,
+        ) = row
 
         return Flashcard(
             deck_id,
@@ -936,6 +964,11 @@ def get_flashcard_db(
             creation_date,
             flashcard_id,
             embedding=json.loads(embedding_json) if embedding_json else None,
+            due_date=due_date,
+            interval_days=interval_days if interval_days is not None else 0,
+            ease=ease if ease is not None else 2.5,
+            reps=reps if reps is not None else 0,
+            lapses=lapses if lapses is not None else 0,
         )
 
 def get_flashcards_db(
@@ -957,7 +990,12 @@ def get_flashcards_db(
                 resposta,
                 status,
                 creation_date,
-                embedding
+                embedding,
+                due_date,
+                interval_days,
+                ease,
+                reps,
+                lapses
             FROM flashcards
             WHERE deck_id = ?
             """,
@@ -966,7 +1004,20 @@ def get_flashcards_db(
 
         flashcards = []
 
-        for flashcard_id, deck_id, pergunta, resposta, status, creation_date, embedding_json in rows:
+        for (
+            flashcard_id,
+            deck_id,
+            pergunta,
+            resposta,
+            status,
+            creation_date,
+            embedding_json,
+            due_date,
+            interval_days,
+            ease,
+            reps,
+            lapses,
+        ) in rows:
 
             flashcards.append(
                 Flashcard(
@@ -977,6 +1028,11 @@ def get_flashcards_db(
                     creation_date,
                     flashcard_id,
                     embedding=json.loads(embedding_json) if embedding_json else None,
+                    due_date=due_date,
+                    interval_days=interval_days if interval_days is not None else 0,
+                    ease=ease if ease is not None else 2.5,
+                    reps=reps if reps is not None else 0,
+                    lapses=lapses if lapses is not None else 0,
                 )
             )
 
@@ -1113,6 +1169,275 @@ def count_flashcards_db(
         ).fetchone()
 
         return int(row[0]) if row else 0
+
+
+def update_flashcard_review_db(
+    flashcard_id: int,
+    status: str,
+    due_date: str,
+    interval_days: float,
+    ease: float,
+    reps: int,
+    lapses: int,
+    db_path: Path = DB_PATH,
+    conn: Connection | None = None,
+) -> None:
+    """
+    Grava o resultado de uma revisão SRS (srs.apply_review) num flashcard.
+    """
+
+    conn, own_conn = _get_connection(conn, db_path)
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            UPDATE flashcards
+            SET status = ?, due_date = ?, interval_days = ?, ease = ?, reps = ?, lapses = ?
+            WHERE id = ?
+            """,
+            (status, due_date, interval_days, ease, reps, lapses, flashcard_id),
+        )
+
+        if own_conn:
+            conn.commit()
+    except:
+        if own_conn:
+            conn.rollback()
+        raise
+    finally:
+        if own_conn:
+            conn.close()
+
+
+def get_study_queue_db(
+    deck_id: int,
+    limit: int = 20,
+    today: date | None = None,
+    db_path: Path = DB_PATH,
+) -> list[Flashcard]:
+    """
+    Monta a fila de estudo de um baralho: primeiro os cards vencidos
+    (due_date <= hoje e status != 'novo', mais atrasados primeiro), depois
+    os cards novos (status 'novo', mais antigos primeiro). Limitado a
+    `limit` cards no total.
+    """
+    if today is None:
+        today = date.today()
+
+    today_iso = today.isoformat() if isinstance(today, date) else str(today)
+
+    with _open_connection(db_path) as conn:
+
+        rows = conn.execute(
+            """
+            SELECT
+                id, deck_id, pergunta, resposta, status, creation_date,
+                embedding, due_date, interval_days, ease, reps, lapses
+            FROM flashcards
+            WHERE deck_id = ? AND status != 'novo' AND due_date IS NOT NULL AND due_date <= ?
+            ORDER BY due_date ASC
+            """,
+            (deck_id, today_iso),
+        ).fetchall()
+
+        remaining = max(0, limit - len(rows))
+
+        if remaining > 0:
+            rows += conn.execute(
+                """
+                SELECT
+                    id, deck_id, pergunta, resposta, status, creation_date,
+                    embedding, due_date, interval_days, ease, reps, lapses
+                FROM flashcards
+                WHERE deck_id = ? AND status = 'novo'
+                ORDER BY creation_date ASC, id ASC
+                LIMIT ?
+                """,
+                (deck_id, remaining),
+            ).fetchall()
+
+        flashcards = []
+
+        for (
+            flashcard_id,
+            fdeck_id,
+            pergunta,
+            resposta,
+            status,
+            creation_date,
+            embedding_json,
+            due_date,
+            interval_days,
+            ease,
+            reps,
+            lapses,
+        ) in rows[:limit]:
+
+            flashcards.append(
+                Flashcard(
+                    fdeck_id,
+                    pergunta,
+                    resposta,
+                    status,
+                    creation_date,
+                    flashcard_id,
+                    embedding=json.loads(embedding_json) if embedding_json else None,
+                    due_date=due_date,
+                    interval_days=interval_days if interval_days is not None else 0,
+                    ease=ease if ease is not None else 2.5,
+                    reps=reps if reps is not None else 0,
+                    lapses=lapses if lapses is not None else 0,
+                )
+            )
+
+        return flashcards
+
+
+def get_user_study_queue_db(
+    user_id: int,
+    limit: int = 20,
+    today: date | None = None,
+    db_path: Path = DB_PATH,
+) -> list[tuple[Flashcard, int, str, int, str]]:
+    """
+    Monta a fila de estudo global de um usuário: cards de todos os baralhos
+    de todas as matérias, na mesma ordenação da fila por baralho (vencidos
+    primeiro, mais atrasados antes; depois novos mais antigos). Limitado a
+    `limit` cards no total.
+
+    Returns
+    -------
+    list[tuple[Flashcard, int, str, int, str]]
+        Cada item é (flashcard, deck_id, deck_titulo, subject_id, subject_name).
+    """
+    if today is None:
+        today = date.today()
+
+    today_iso = today.isoformat() if isinstance(today, date) else str(today)
+
+    with _open_connection(db_path) as conn:
+
+        rows = conn.execute(
+            """
+            SELECT
+                f.id, f.deck_id, f.pergunta, f.resposta, f.status, f.creation_date,
+                f.embedding, f.due_date, f.interval_days, f.ease, f.reps, f.lapses,
+                d.titulo, s.id, s.name
+            FROM flashcards f
+            JOIN decks d ON d.id = f.deck_id
+            JOIN subjects s ON s.id = d.subject_id
+            WHERE s.user_id = ? AND f.status != 'novo' AND f.due_date IS NOT NULL AND f.due_date <= ?
+            ORDER BY f.due_date ASC
+            """,
+            (user_id, today_iso),
+        ).fetchall()
+
+        remaining = max(0, limit - len(rows))
+
+        if remaining > 0:
+            rows += conn.execute(
+                """
+                SELECT
+                    f.id, f.deck_id, f.pergunta, f.resposta, f.status, f.creation_date,
+                    f.embedding, f.due_date, f.interval_days, f.ease, f.reps, f.lapses,
+                    d.titulo, s.id, s.name
+                FROM flashcards f
+                JOIN decks d ON d.id = f.deck_id
+                JOIN subjects s ON s.id = d.subject_id
+                WHERE s.user_id = ? AND f.status = 'novo'
+                ORDER BY f.creation_date ASC, f.id ASC
+                LIMIT ?
+                """,
+                (user_id, remaining),
+            ).fetchall()
+
+        result = []
+
+        for (
+            flashcard_id,
+            fdeck_id,
+            pergunta,
+            resposta,
+            status,
+            creation_date,
+            embedding_json,
+            due_date,
+            interval_days,
+            ease,
+            reps,
+            lapses,
+            deck_titulo,
+            subject_id,
+            subject_name,
+        ) in rows[:limit]:
+
+            flashcard = Flashcard(
+                fdeck_id,
+                pergunta,
+                resposta,
+                status,
+                creation_date,
+                flashcard_id,
+                embedding=json.loads(embedding_json) if embedding_json else None,
+                due_date=due_date,
+                interval_days=interval_days if interval_days is not None else 0,
+                ease=ease if ease is not None else 2.5,
+                reps=reps if reps is not None else 0,
+                lapses=lapses if lapses is not None else 0,
+            )
+
+            result.append((flashcard, fdeck_id, deck_titulo, subject_id, subject_name))
+
+        return result
+
+
+def refresh_deck_counters_db(
+    deck_id: int,
+    db_path: Path = DB_PATH,
+    conn: Connection | None = None,
+) -> None:
+    """
+    Recalcula decks.novos/aprendendo/review a partir dos status reais dos
+    flashcards do baralho ('reaprendendo' conta como aprendendo) e atualiza
+    a linha do deck.
+    """
+
+    conn, own_conn = _get_connection(conn, db_path)
+
+    try:
+        cur = conn.cursor()
+
+        rows = cur.execute(
+            "SELECT status, COUNT(*) FROM flashcards WHERE deck_id = ? GROUP BY status",
+            (deck_id,),
+        ).fetchall()
+
+        counts = {"novo": 0, "aprendendo": 0, "review": 0}
+        for status, count in rows:
+            if status == "novo":
+                counts["novo"] += count
+            elif status == "review":
+                counts["review"] += count
+            else:
+                # aprendendo e reaprendendo contam juntos
+                counts["aprendendo"] += count
+
+        cur.execute(
+            "UPDATE decks SET novos = ?, aprendendo = ?, review = ? WHERE id = ?",
+            (counts["novo"], counts["aprendendo"], counts["review"], deck_id),
+        )
+
+        if own_conn:
+            conn.commit()
+    except:
+        if own_conn:
+            conn.rollback()
+        raise
+    finally:
+        if own_conn:
+            conn.close()
 
 
 ### MATERIALS ###

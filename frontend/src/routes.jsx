@@ -5,6 +5,7 @@ import Subjects from './components/Subjects/Subjects.jsx'
 import SubjectDetail from './components/SubjectDetail/SubjectDetail.jsx'
 import SummaryPage from './components/SubjectDetail/SummaryPage.jsx'
 import MindMapPage from './components/SubjectDetail/MindMapPage.jsx'
+import FlashcardStudyPage from './components/SubjectDetail/FlashcardStudyPage.jsx'
 import Home from './components/Home/Home.jsx';
 import ErrorPage from './components/Common/ErrorPage.jsx';
 import Auth from './components/Auth/Auth.jsx';
@@ -30,6 +31,10 @@ const routes = [
                 element: <Revisions />
             },
             {
+                path: "revisoes/estudar",
+                element: <FlashcardStudyPage />
+            },
+            {
                 path: "materias",
                 element: <Subjects />
             },
@@ -44,6 +49,10 @@ const routes = [
             {
                 path: "materias/:subjectId/mapas/:mapaId",
                 element: <MindMapPage />
+            },
+            {
+                path: "materias/:subjectId/flashcards/:deckId",
+                element: <FlashcardStudyPage />
             },
             {
                 path: "estatisticas",

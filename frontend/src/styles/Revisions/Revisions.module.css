@@ -284,6 +284,8 @@
 }
 
 .revisarButton {
+    display: inline-flex;
+    align-items: center;
     border-radius: 20px !important;
     font-weight: 700 !important;
     font-size: 0.8rem !important;

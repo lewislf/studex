@@ -1,3 +1,5 @@
+from datetime import date
+
 from flask import Blueprint, jsonify, request
 
 from database.database import (
@@ -6,8 +8,11 @@ from database.database import (
     get_flashcards_db,
     save_flashcard_db,
     delete_flashcard_db,
-    match_subject_user_db
+    match_subject_user_db,
+    update_flashcard_review_db,
+    refresh_deck_counters_db,
 )
+from srs import apply_review, RATINGS
 
 flashcard_bp = Blueprint(
     "flashcards",
@@ -291,3 +296,103 @@ def delete_flashcard(user_id, subject_id, deck_id, flashcard_id):
         return "", 204
 
     return jsonify({"error": "flashcard not found"}), 404
+
+
+@flashcard_bp.post("/<int:flashcard_id>/review")
+def review_flashcard(user_id, subject_id, deck_id, flashcard_id):
+    """
+    Registra a revisão de um flashcard (SRS) e agenda a próxima revisão.
+    ---
+    tags:
+      - Flashcards
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: ID do usuário
+      - in: path
+        name: subject_id
+        type: integer
+        required: true
+        description: ID da matéria
+      - in: path
+        name: deck_id
+        type: integer
+        required: true
+        description: ID do baralho
+      - in: path
+        name: flashcard_id
+        type: integer
+        required: true
+        description: ID do flashcard revisado
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [rating]
+          properties:
+            rating: {type: string, enum: ["reset", "dificil", "bom", "facil"], example: "bom", description: "Nota dada na revisão"}
+    responses:
+      200:
+        description: Flashcard atualizado com o novo estado do SRS
+        schema:
+          type: object
+          properties:
+            id: {type: integer}
+            status: {type: string}
+            due_date: {type: string}
+            interval_days: {type: number}
+            ease: {type: number}
+            reps: {type: integer}
+            lapses: {type: integer}
+      400:
+        description: Rating inválido ou ausente
+      404:
+        description: Usuário não possui a matéria, baralho ou flashcard não encontrado
+    """
+    has_subj = match_subject_user_db(subject_id, user_id)
+
+    if has_subj is False:
+        return jsonify({"error": "User does not have this subject!"}), 404
+
+    deck = get_deck_db(deck_id)
+
+    if deck is None:
+        return jsonify({"error": "deck not found"}), 404
+
+    if deck.subject_id != subject_id:
+        return jsonify({"error": "deck is not from this subject"}), 404
+
+    flashcard = get_flashcard_db(flashcard_id)
+
+    if flashcard is None:
+        return jsonify({"error": "flashcard not found"}), 404
+
+    if flashcard.deck_id != deck_id:
+        return jsonify({"error": "flashcard is not from this deck"}), 404
+
+    body = request.get_json(silent=True) or {}
+    rating = body.get("rating")
+
+    if rating not in RATINGS:
+        return jsonify({"error": f"invalid rating, expected one of {RATINGS}"}), 400
+
+    status, due_date, interval_days, ease, reps, lapses = apply_review(
+        flashcard, rating, today=date.today()
+    )
+
+    update_flashcard_review_db(
+        flashcard_id, status, due_date, interval_days, ease, reps, lapses
+    )
+    refresh_deck_counters_db(deck_id)
+
+    flashcard.status = status
+    flashcard.due_date = due_date
+    flashcard.interval_days = interval_days
+    flashcard.ease = ease
+    flashcard.reps = reps
+    flashcard.lapses = lapses
+
+    return jsonify(flashcard.to_dict())

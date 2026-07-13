@@ -43,6 +43,7 @@ export default function FlashcardsSection({ userId, subjectId }) {
 
     const items = decks.map((deck) => ({
         id: deck.id,
+        to: `/materias/${subjectId}/flashcards/${deck.id}`,
         title: deckTitle(deck),
         date: formatDate(deckDate(deck)),
         novos: deck.new || 0,
@@ -74,7 +75,6 @@ export default function FlashcardsSection({ userId, subjectId }) {
             emptyText="Nenhum baralho de flashcards ainda."
             color={color}
             renderPreview={renderPreview}
-            disabled
         />
     );
 }
