@@ -120,3 +120,52 @@ export async function fetchDecks(userId, subjectId) {
     const data = await getJson(`${API_URL}/users/${userId}/subjects/${subjectId}/decks`);
     return Array.isArray(data) ? data : [];
 }
+
+/**
+ * Fetches the spaced-repetition study queue for a deck: the deck's own
+ * summary plus the cards due for review, capped at `limit`.
+ *
+ * @param {string|number} userId
+ * @param {string|number} subjectId
+ * @param {string|number} deckId
+ * @param {number} limit - Max cards to bring back in this session.
+ * @returns {Promise<{deck: Object, cards: Array<Object>, total: number}|null>}
+ */
+export function fetchStudyQueue(userId, subjectId, deckId, limit) {
+    return getJson(`${API_URL}/users/${userId}/subjects/${subjectId}/decks/${deckId}/study?limit=${limit}`);
+}
+
+/**
+ * Fetches the global spaced-repetition study queue: due cards across every
+ * deck of every subject the user has, capped at `limit`.
+ *
+ * @param {string|number} userId
+ * @param {number} limit - Max cards to bring back in this session.
+ * @returns {Promise<{cards: Array<Object>, total: number}|null>}
+ */
+export function fetchGlobalStudyQueue(userId, limit) {
+    return getJson(`${API_URL}/users/${userId}/study?limit=${limit}`);
+}
+
+/**
+ * Submits a spaced-repetition review for a single flashcard.
+ *
+ * @param {string|number} userId
+ * @param {string|number} subjectId
+ * @param {string|number} deckId
+ * @param {string|number} flashcardId
+ * @param {'reset'|'dificil'|'bom'|'facil'} rating
+ * @returns {Promise<Object>} The updated card.
+ */
+export async function reviewFlashcard(userId, subjectId, deckId, flashcardId, rating) {
+    const res = await fetch(
+        `${API_URL}/users/${userId}/subjects/${subjectId}/decks/${deckId}/flashcards/${flashcardId}/review`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rating }),
+        }
+    );
+    if (!res.ok) throw new Error(`request failed (${res.status})`);
+    return res.json();
+}

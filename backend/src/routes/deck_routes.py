@@ -1,3 +1,5 @@
+from datetime import date
+
 from flask import Blueprint, jsonify, request
 
 from database.database import (
@@ -7,6 +9,7 @@ from database.database import (
     save_deck_db,
     delete_deck_db,
     match_subject_user_db,
+    get_study_queue_db,
 )
 
 deck_bp = Blueprint("decks", __name__, url_prefix="/users/<int:user_id>/subjects/<int:subject_id>/decks")
@@ -243,3 +246,94 @@ def delete_deck(user_id, subject_id, deck_id):
         return "", 204
 
     return jsonify({"error": "deck not found"}), 404
+
+
+@deck_bp.get("/<int:deck_id>/study")
+def get_study_queue(user_id, subject_id, deck_id):
+    """
+    Monta a fila de estudo (SRS) de um baralho: cards vencidos primeiro
+    (mais atrasados primeiro), depois cards novos, até o limite pedido.
+    ---
+    tags:
+      - Baralhos
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: ID do usuário
+      - in: path
+        name: subject_id
+        type: integer
+        required: true
+        description: ID da matéria
+      - in: path
+        name: deck_id
+        type: integer
+        required: true
+        description: ID do baralho
+      - in: query
+        name: limit
+        type: integer
+        required: false
+        description: Número máximo de cards na fila (default 20, 1..200)
+    responses:
+      200:
+        description: Fila de estudo montada (cards pode vir vazio)
+        schema:
+          type: object
+          properties:
+            deck:
+              type: object
+              properties:
+                id: {type: integer}
+                titulo: {type: string}
+                subject_id: {type: integer}
+                subject_name: {type: string}
+            cards:
+              type: array
+              items:
+                type: object
+            total: {type: integer}
+      404:
+        description: Usuário não possui a matéria ou baralho não encontrado
+    """
+    has_subj = match_subject_user_db(subject_id, user_id)
+
+    if has_subj is False:
+        return jsonify({"error": "User does not have this subject!"}), 404
+
+    deck = get_deck_db(deck_id)
+
+    if deck is None:
+        return jsonify({"error": "deck not found"}), 404
+
+    if deck.subject_id != subject_id:
+        return jsonify({"error": "deck is not from this subject"}), 404
+
+    subject = get_subject_db(subject_id)
+
+    if subject is None:
+        return jsonify({"error": "No subject has been found for this deck"}), 404
+
+    try:
+        limit = int(request.args.get("limit", 20))
+    except (TypeError, ValueError):
+        limit = 20
+
+    limit = max(1, min(200, limit))
+
+    cards = get_study_queue_db(deck_id, limit=limit, today=date.today())
+
+    return jsonify(
+        {
+            "deck": {
+                "id": deck.id,
+                "titulo": deck.titulo,
+                "subject_id": subject.id,
+                "subject_name": subject.name,
+            },
+            "cards": [c.to_dict() for c in cards],
+            "total": len(cards),
+        }
+    )

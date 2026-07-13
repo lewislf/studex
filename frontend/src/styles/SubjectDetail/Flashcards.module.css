@@ -1,0 +1,81 @@
+/* Flashcard study page: white "fichário" wrapper, same as Materials.module.css's .page. */
+.page {
+    padding: var(--mantine-spacing-xl);
+    background-color: var(--mantine-color-white);
+    border-radius: var(--mantine-radius-lg);
+}
+
+/* Big study surface: takes up most of the main block, with an orange top
+   stripe matching the flashcards material type accent used elsewhere. */
+.studyCard {
+    margin-top: var(--mantine-spacing-lg);
+    background-color: var(--mantine-color-gray-0);
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-lg);
+    overflow: hidden;
+}
+
+.stripe {
+    height: 6px;
+    background-color: var(--mantine-color-orange-6);
+}
+
+.studyCardInner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mantine-spacing-lg);
+    padding: var(--mantine-spacing-xl);
+    min-height: 60vh;
+}
+
+.progress {
+    flex: 1;
+}
+
+.counter {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--mantine-color-gray-6);
+    white-space: nowrap;
+}
+
+.centerState {
+    flex: 1;
+    display: flex;
+}
+
+.question {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--mantine-color-dark-9);
+    text-align: center;
+    max-width: 46rem;
+}
+
+.questionSmall {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--mantine-color-gray-6);
+    text-align: center;
+}
+
+.answer {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--mantine-color-dark-9);
+    text-align: center;
+}
+
+.mainAction {
+    max-width: 28rem;
+}
+
+.ratingGrid {
+    max-width: 40rem;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.statsGrid {
+    max-width: 24rem;
+}
