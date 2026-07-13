@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import date, timedelta
 
 from flask import Blueprint, jsonify, request
 
@@ -8,9 +9,36 @@ from database.database import (
     save_user_db,
     delete_user_db,
     login_user_db,
+    get_subjects_db,
+    count_summaries_db,
+    count_mindmaps_db,
+    count_due_flashcards_db,
+    count_flashcards_by_user_db,
+    get_activity_days_db,
+    compute_streak,
 )
-
 user_bp = Blueprint("users", __name__, url_prefix="/users")
+
+ACTIVITY_WINDOW_DAYS = 400
+
+
+def _gamification_with_streak(user, base_gamification: dict | None) -> dict:
+    """
+    Injeta o streak real (calculado a partir de activity_days) no bloco de
+    gamification do usuário. "streak" é duplicado de "current_streak" só
+    por compatibilidade com o frontend atual.
+    """
+    today = date.today()
+    since = (today - timedelta(days=ACTIVITY_WINDOW_DAYS)).isoformat()
+
+    days = get_activity_days_db(user.id, since) or {}
+    current_streak = compute_streak(set(days.keys()), today)
+
+    return {
+        **(base_gamification or {}),
+        "current_streak": current_streak,
+        "streak": current_streak,
+    }
 
 
 def _live_counters(user_id: int) -> dict:
@@ -19,27 +47,29 @@ def _live_counters(user_id: int) -> dict:
     de ler o blob "counters" salvo na tabela users (que nunca é atualizado
     depois da criação da conta e sempre ficaria zerado).
 
-    Sem uma fila de revisão de verdade (SRS) ainda, "pending_flashcards_today"
-    e "total_flashcards_created" contam o mesmo total de flashcards criados.
+    "pending_flashcards_today" é a fila de revisão SRS real: cards novos +
+    cards vencidos (due_date <= hoje). "total_flashcards_created" é a
+    contagem de todos os flashcards do usuário.
     """
     subjects = get_subjects_db(user_id) or []
 
     summaries = 0
     mind_maps = 0
-    flashcards = 0
 
     for subject in subjects:
         summaries += count_summaries_db(subject.id)
         mind_maps += count_mindmaps_db(subject.id)
-        for deck in (get_decks_db(subject.id) or []):
-            flashcards += count_flashcards_db(deck.id)
+
+    pending_flashcards_today = count_due_flashcards_db(user_id)
+    total_flashcards_created = count_flashcards_by_user_db(user_id)
 
     return {
         "summaries": summaries,
         "mind_maps": mind_maps,
-        "pending_flashcards_today": flashcards,
-        "total_flashcards_created": flashcards,
+        "pending_flashcards_today": pending_flashcards_today,
+        "total_flashcards_created": total_flashcards_created,
     }
+
 
 @user_bp.get("")
 def get_users():
@@ -63,6 +93,7 @@ def get_users():
     for user in users:
         data = user.to_dict()
         data["counters"] = _live_counters(user.id)
+        data["gamification"] = _gamification_with_streak(user, data.get("gamification"))
         response.append(data)
 
     return jsonify(response)
@@ -92,6 +123,7 @@ def get_user(user_id):
 
     data = user.to_dict()
     data["counters"] = _live_counters(user_id)
+    data["gamification"] = _gamification_with_streak(user, data.get("gamification"))
     return jsonify(data)
 
 
@@ -178,6 +210,7 @@ def login_user():
 
     data = user.to_dict()
     data["counters"] = _live_counters(user.id)
+    data["gamification"] = _gamification_with_streak(user, data.get("gamification"))
     return jsonify(data), 200
 
 
@@ -203,3 +236,46 @@ def delete_user(user_id):
         return "", 204
 
     return jsonify({"error": "User not found"}), 404
+
+
+@user_bp.get("/<int:user_id>/activity")
+def get_user_activity(user_id):
+    """
+    Atividade diária do usuário (streak/heatmap): dias em que revisou ao
+    menos 1 flashcard ou enviou ao menos 1 arquivo.
+    ---
+    tags:
+      - Usuários
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Dias ativos dos últimos 400 dias, streak atual e se hoje já conta como ativo
+        schema:
+          type: object
+          properties:
+            days: {type: object, example: {"2026-07-08": 3}}
+            current_streak: {type: integer, example: 2}
+            today_active: {type: boolean, example: true}
+      404:
+        description: Usuário não encontrado
+    """
+    user = get_user_db(user_id)
+
+    if user is None:
+        return jsonify({"error": "User not found"}), 404
+
+    today = date.today()
+    since = (today - timedelta(days=ACTIVITY_WINDOW_DAYS)).isoformat()
+
+    days = get_activity_days_db(user_id, since) or {}
+    current_streak = compute_streak(set(days.keys()), today)
+
+    return jsonify({
+        "days": days,
+        "current_streak": current_streak,
+        "today_active": today.isoformat() in days,
+    })

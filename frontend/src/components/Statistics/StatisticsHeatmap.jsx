@@ -1,4 +1,4 @@
-import { Tooltip, Container, Box, Stack, Text } from "@mantine/core";
+import { Tooltip, Container, Box } from "@mantine/core";
 import styles from '../../styles/Statistics/Statistics.module.css';
 import { MONTHS_SHORT } from '../../config/Constants';
 
@@ -12,25 +12,8 @@ export default function StatisticsHeatmap({ stats }) {
     // Normalize today's date to midnight local time for safe comparisons
     const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    // Calculate the shift difference in days between the last mock date (2026-07-04) and today's local date
-    const lastMockDateStr = "2026-07-04";
-    const lastMockDate = new Date(lastMockDateStr + "T00:00:00");
-    const diffTime = todayLocal.getTime() - lastMockDate.getTime();
-    const dayShift = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-    // Shift all heatmap dates dynamically so the last activity aligns with today
-    const shiftedHeatmap = {};
-    if (stats.activityHeatmap) {
-        Object.keys(stats.activityHeatmap).forEach((dateStr) => {
-            const mockDate = new Date(dateStr + "T00:00:00");
-            mockDate.setDate(mockDate.getDate() + dayShift);
-            const yyyy = mockDate.getFullYear();
-            const mm = String(mockDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(mockDate.getDate()).padStart(2, '0');
-            const shiftedStr = `${yyyy}-${mm}-${dd}`;
-            shiftedHeatmap[shiftedStr] = stats.activityHeatmap[dateStr];
-        });
-    }
+    // Real activity map: local ISO day -> activity count, straight from the API
+    const heatmap = stats.activityHeatmap || {};
 
     const todayDay = todayLocal.getDay(); // 0 (Sun) to 6 (Sat)
     const weeksToShow = 53;
@@ -55,10 +38,10 @@ export default function StatisticsHeatmap({ stats }) {
         const dd = String(date.getDate()).padStart(2, '0');
         const dateStr = `${yyyy}-${mm}-${dd}`;
 
-        // Get activity count strictly from shifted mock data
+        // Get the real activity count for this day, if any
         let count = 0;
-        if (shiftedHeatmap[dateStr] !== undefined) {
-            count = shiftedHeatmap[dateStr];
+        if (heatmap[dateStr] !== undefined) {
+            count = heatmap[dateStr];
         }
 
         currentWeek.push({
@@ -139,10 +122,11 @@ export default function StatisticsHeatmap({ stats }) {
                                         month: "long",
                                         year: "numeric"
                                     });
+                                    const activityLabel = day.count === 1 ? "1 atividade" : `${day.count} atividades`;
                                     return (
                                         <Tooltip
                                             key={day.dateStr}
-                                            label={`${day.count} atividades em ${formattedDate}`}
+                                            label={`${activityLabel} em ${formattedDate}`}
                                             position="top"
                                             withArrow
                                         >

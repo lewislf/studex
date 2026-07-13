@@ -202,6 +202,12 @@
     }
 }
 
+.checkmarkTodayOutline {
+    background-color: transparent;
+    border: 2px solid #2196f3;
+    color: #2196f3;
+}
+
 .streakMessage {
     font-size: 0.85rem;
     color: var(--mantine-color-gray-6);

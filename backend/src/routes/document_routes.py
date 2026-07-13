@@ -1,6 +1,7 @@
 import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -13,6 +14,7 @@ from database.database import (
     get_flashcards_by_subject_db,
     update_flashcard_embedding_db,
     match_subject_user_db,
+    record_activity_db,
     get_summaries_db,
     get_mindmaps_db,
 )
@@ -290,6 +292,13 @@ def upload_document(user_id):
     stored_filename = f"{uuid4().hex}_{filename}"
     saved_path = DOCS_DIR / stored_filename
     file.save(saved_path)
+
+    # Envio conta como atividade mesmo que a geração de materiais falhe
+    # depois. Nunca pode derrubar o upload.
+    try:
+        record_activity_db(user_id, date.today().isoformat())
+    except Exception:
+        logger.exception("Falha ao registrar atividade de upload do usuário %s", user_id)
 
     token = _start_progress(user_id, filename, tipos_pedidos or MATERIAIS_VALIDOS)
     try:

@@ -11,6 +11,7 @@ from database.database import (
     match_subject_user_db,
     update_flashcard_review_db,
     refresh_deck_counters_db,
+    record_activity_db,
 )
 from srs import apply_review, RATINGS
 
@@ -387,6 +388,7 @@ def review_flashcard(user_id, subject_id, deck_id, flashcard_id):
         flashcard_id, status, due_date, interval_days, ease, reps, lapses
     )
     refresh_deck_counters_db(deck_id)
+    record_activity_db(user_id, date.today().isoformat())
 
     flashcard.status = status
     flashcard.due_date = due_date
