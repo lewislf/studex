@@ -1,11 +1,16 @@
 import logging
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from uuid import uuid4
 from werkzeug.utils import secure_filename
 
 from flask import Blueprint, jsonify, request
 
-from database.database import save_materials_db
+from database.database import (
+    save_materials_db,
+    match_subject_user_db,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +59,7 @@ def upload_document(user_id):
       500:
         description: Falha ao indexar o documento
     """
-  
+
     if "file" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado (campo 'file' ausente)"}), 400
 
@@ -69,13 +74,17 @@ def upload_document(user_id):
     if extension not in ALLOWED_EXTENSIONS:
         return jsonify({"error": f"Extensão não suportada: {extension}"}), 400
 
-    DOCS_DIR.mkdir(parents=True, exist_ok=True)
-    saved_path = DOCS_DIR / filename
-    file.save(saved_path)
+    # Valida user_id e subject_id ANTES de salvar o PDF em disco, pra não
+    # deixar arquivo órfão quando a requisição está malformada.
+    id_user_raw = request.form.get("user_id")
+    try:
+        id_user = int(id_user_raw)
+    except (TypeError, ValueError):
+        return jsonify({
+            "error": "Campo 'user_id' ausente ou inválido. Envie o id numérico do usuário."
+        }), 400
 
-    id_user = request.form.get("user_id")
-
-    if int(id_user) != user_id:
+    if id_user != user_id:
         return jsonify({"error": "Erro: O id do usuário passado na URL não corresponde ao ID passada na requisição"}), 400
 
     subject_id = request.form.get("subject_id")
@@ -88,18 +97,48 @@ def upload_document(user_id):
                 "error": f"subject_id inválido: '{subject_id}'. Envie o id numérico de uma matéria existente."
             }), 400
 
+        # a matéria precisa ser do usuário que está fazendo o upload, senão
+        # qualquer um grava material na matéria de outro usuário
+        if not match_subject_user_db(subject_id, user_id):
+            return jsonify({"error": "User does not have this subject!"}), 404
+
     doc_metadata = {k: v for k, v in {"user_id": id_user, "subject_id": subject_id}.items() if v is not None}
+
+    # Prefixo uuid no nome salvo em disco: dois uploads simultâneos do mesmo
+    # arquivo (ex: "aula1.pdf") não colidem no mesmo path. O nome original
+    # segue como sufixo só pra debug.
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    stored_filename = f"{uuid4().hex}_{filename}"
+    saved_path = DOCS_DIR / stored_filename
+    file.save(saved_path)
 
     try:
         docs = load_documents([saved_path], metadata=doc_metadata)
         nodes = split_into_nodes(docs)
-        build_vector_index(nodes, collection_name=COLLECTION_NAME)
     except Exception:
         logger.exception("Falha ao indexar documento %s", filename)
         return jsonify({"error": "Falha ao indexar o documento"}), 500
 
+    index_error = None
+    def _index():
+        nonlocal index_error
+        try:
+            build_vector_index(nodes, collection_name=COLLECTION_NAME)
+        except Exception as exc:
+            index_error = exc
+            logger.exception("Falha ao indexar documento %s", filename)
+
     try:
-        materials = generate_materials(nodes, fallback_titulo=Path(filename).stem, subject_id=subject_id)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_index = executor.submit(_index)
+            future_materials = executor.submit(
+                generate_materials,
+                nodes,
+                fallback_titulo=Path(filename).stem,
+                subject_id=subject_id,
+            )
+            materials = future_materials.result()
+            future_index.result()
     except Exception:
         logger.exception("Falha ao gerar materiais para %s", filename)
         return jsonify({
@@ -108,6 +147,9 @@ def upload_document(user_id):
             "status": "indexed_without_materials",
             "error": "Documento indexado, mas falha ao gerar os materiais de estudo",
         }), 207
+
+    if index_error is not None:
+        return jsonify({"error": "Falha ao indexar o documento"}), 500
 
     # Persiste os materiais na matéria escolhida (nova ou existente).
     # Sem subject_id, apenas devolve os materiais sem salvar.
