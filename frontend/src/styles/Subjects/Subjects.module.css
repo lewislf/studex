@@ -1,0 +1,133 @@
+.container {
+    padding: var(--mantine-spacing-xl);
+    margin: var(--mantine-spacing-xl) auto;
+    background-color: var(--mantine-color-default);
+    border-radius: var(--mantine-radius-lg);
+    max-width: 1200px;
+}
+
+.titleSection {
+    margin-bottom: var(--mantine-spacing-xl);
+}
+
+.pageTitle {
+    color: var(--mantine-color-dark-9);
+    margin: 0;
+}
+
+.pageSubtitle {
+    color: var(--mantine-color-gray-6);
+    font-size: 1rem;
+    margin-top: 6px;
+}
+
+.addButton {
+    background-color: #212529 !important;
+    color: var(--mantine-color-white) !important;
+    border-radius: 20px !important;
+    font-weight: 600 !important;
+    padding: 0 var(--mantine-spacing-lg) !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.addButton:hover {
+    background-color: #000000 !important;
+}
+
+.subjectCard {
+    display: flex;
+    flex-direction: row;
+    background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-md);
+    overflow: hidden;
+    box-shadow: var(--mantine-shadow-sm);
+    height: 100%;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.subjectCard:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--mantine-shadow-md);
+}
+
+.cardStripe {
+    width: 6px;
+    flex-shrink: 0;
+    height: 100%;
+}
+
+.cardContent {
+    flex: 1;
+    padding: var(--mantine-spacing-lg);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--mantine-spacing-md);
+}
+
+.cardHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cardTitle {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: var(--mantine-color-dark-9);
+    margin-top: 4px;
+    margin-bottom: 2px;
+}
+
+.cardSubtext {
+    font-size: 0.85rem;
+    color: var(--mantine-color-gray-5);
+    font-weight: 500;
+    margin-bottom: var(--mantine-spacing-xs);
+}
+
+.statBadge {
+    background-color: #e9ecef;
+    padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+    border-radius: 8px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.statBadgeLabel {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--mantine-color-gray-6);
+}
+
+.statBadgeValue {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--mantine-color-dark-9);
+}
+
+.progressBar {
+    background-color: #e0e0e0 !important;
+}
+
+.bulletDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.openLink {
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--mantine-color-gray-6);
+    transition: color 0.2s ease;
+}
+
+.openLink:hover {
+    color: var(--mantine-color-dark-9);
+}

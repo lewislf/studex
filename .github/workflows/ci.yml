@@ -1,0 +1,85 @@
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events for the "main" and "dev" branches
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # Job to install dependencies and run unit tests for the frontend with Vitest
+  frontend-tests:
+    name: Frontend Tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # Sets up a Node.js environment with npm caching enabled
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # Installs frontend dependencies using clean install
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # Executes the Vitest test suite using the runners shell
+      - name: Run Vitest tests
+        run: npm run test
+        working-directory: frontend
+
+  # Job to lint and build the frontend, catching lint/build errors before merge
+  frontend-build:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+  # Job to spin up the Docker environment and run unit tests for the backend with Pytest
+  backend-tests:
+    name: Backend Tests (Pytest)
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Starts the Docker Compose backend service and its dependencies
+      - name: Start Docker Compose backend
+        run: docker compose up -d --build backend
+
+      # Executes the Pytest suite inside the backend container
+      - name: Run Pytest tests in backend container
+        run: docker compose exec -T backend python -m pytest

@@ -1,0 +1,90 @@
+{
+    "user_id": "usr_placeholder_id",
+    "subjects": [
+        {
+            "id": 1,
+            "title": "Redes",
+            "user_id": 1,
+            "description": "Descrição redes",
+            "date": "2026-07-05",
+            "icon": "globe",
+            "color": "#e63946",
+            "total_topics": 4,
+            "mastery_percentage": 55,
+            "pending_in_queue": 10,
+            "counters": {
+                "summaries": 1,
+                "mind_maps": 2,
+                "flashcards": 10
+            }
+        },
+        {
+            "id": 2,
+            "title": "Projeto Integrado",
+            "user_id": 1,
+            "description": "Descrição PI",
+            "date": "2026-07-05",
+            "icon": "rocket",
+            "color": "#ffb703",
+            "total_topics": 32,
+            "mastery_percentage": 99,
+            "pending_in_queue": 20,
+            "counters": {
+                "summaries": 25,
+                "mind_maps": 30,
+                "flashcards": 298
+            }
+        },
+        {
+            "id": 3,
+            "title": "Engenharia de Software 1",
+            "user_id": 1,
+            "description": "Descrição ES1",
+            "date": "2026-07-05",
+            "icon": "user-teacher",
+            "color": "#fb8500",
+            "total_topics": 9,
+            "mastery_percentage": 67,
+            "pending_in_queue": 10,
+            "counters": {
+                "summaries": 8,
+                "mind_maps": 3,
+                "flashcards": 98
+            }
+        },
+        {
+            "id": 4,
+            "title": "Engenharia de Software 2",
+            "user_id": 1,
+            "description": "Descrição ES2",
+            "date": "2026-07-05",
+            "icon": "users",
+            "color": "#4361ee",
+            "total_topics": 1,
+            "mastery_percentage": 38,
+            "pending_in_queue": 15,
+            "counters": {
+                "summaries": 6,
+                "mind_maps": 1,
+                "flashcards": 48
+            }
+        },
+        {
+            "id": 5,
+            "title": "Banco de Dados",
+            "user_id": 1,
+            "description": "Descrição BD",
+            "date": "2026-07-05",
+            "icon": "database",
+            "color": "#2ec4b6",
+            "total_topics": 9,
+            "mastery_percentage": 67,
+            "pending_in_queue": 10,
+            "counters": {
+                "summaries": 8,
+                "mind_maps": 3,
+                "flashcards": 98
+            }
+        }
+    ]
+}

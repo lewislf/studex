@@ -1,0 +1,28 @@
+.wrapper {
+    margin-top: var(--mantine-spacing-xl);
+    margin-bottom: var(--mantine-spacing-xl);
+}
+
+.dropzone {
+    border: 1px dashed light-dark(var(--mantine-color-blue-2), var(--mantine-color-dark-4));
+    background-color: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-7));
+    padding: var(--mantine-spacing-xl) var(--mantine-spacing-md);
+    transition: background-color 150ms ease, border-color 150ms ease;
+    cursor: pointer;
+}
+
+.dropzone:hover {
+    background-color: light-dark(var(--mantine-color-blue-1), var(--mantine-color-dark-6));
+    border-color: var(--mantine-color-blue-5);
+}
+
+.icon {
+    color: var(--mantine-color-blue-5);
+}
+
+.description {
+    text-align: center;
+    font-size: calc(var(--mantine-font-size-xs) - 2px);
+    color: var(--mantine-color-dimmed);
+    margin-top: 4px;
+}

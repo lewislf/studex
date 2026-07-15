@@ -1,0 +1,12 @@
+# Documentação gerada pelo MkDocs
+site/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+*.key
+src/docs/*
+!src/docs/.gitkeep
