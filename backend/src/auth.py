@@ -12,7 +12,7 @@ _TTL_DAYS = 30
 
 def create_token(user_id: int) -> str:
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),
         "exp": datetime.now(timezone.utc) + timedelta(days=_TTL_DAYS),
     }
     return jwt.encode(payload, _SECRET, algorithm=_ALGORITHM)

@@ -13,14 +13,13 @@ from database.database import (
 
 
 def test_save_summary(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id != None
@@ -59,14 +58,13 @@ def test_save_summary(temp_db):
 
 
 def test_delete_summary(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id != None
@@ -104,14 +102,13 @@ def test_delete_summary(temp_db):
 
 
 def test_search_summary(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id != None
@@ -147,14 +144,13 @@ def test_search_summary(temp_db):
     assert summaries[0].titulo == "Herança"
 
 def test_count_summary(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id != None

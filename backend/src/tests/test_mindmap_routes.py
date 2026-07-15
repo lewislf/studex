@@ -43,7 +43,7 @@ def fake_mindmap(**kwargs):
     return SimpleNamespace(**base)
 
 
-def test_get_mindmaps(client):
+def test_get_mindmaps(client, auth_headers):
     mindmaps = [
         fake_mindmap(id=1, titulo="Mapa 1"),
         fake_mindmap(id=2, titulo="Mapa 2"),
@@ -60,7 +60,7 @@ def test_get_mindmaps(client):
         return_value=True,
     ):
 
-        response = client.get("/users/10/subjects/1/mindmaps")
+        response = client.get("/users/10/subjects/1/mindmaps", headers=auth_headers(10))
 
     assert response.status_code == 200
 
@@ -71,18 +71,18 @@ def test_get_mindmaps(client):
     assert body[1]["titulo"] == "Mapa 2"
 
 
-def test_get_mindmaps_not_found(client):
+def test_get_mindmaps_not_found(client, auth_headers):
     with patch(
         "routes.mindmap_routes.get_mindmaps_db",
         return_value=None,
     ):
 
-        response = client.get("/users/10/subjects/1/mindmaps")
+        response = client.get("/users/10/subjects/1/mindmaps", headers=auth_headers(10))
 
     assert response.status_code == 404
 
 
-def test_get_mindmap(client):
+def test_get_mindmap(client, auth_headers):
     with patch(
         "routes.mindmap_routes.get_mindmap_db",
         return_value=fake_mindmap(),
@@ -94,7 +94,7 @@ def test_get_mindmap(client):
         return_value=True,
     ):
 
-        response = client.get("/users/10/subjects/1/mindmaps/1")
+        response = client.get("/users/10/subjects/1/mindmaps/1", headers=auth_headers(10))
 
     assert response.status_code == 200
 
@@ -104,7 +104,7 @@ def test_get_mindmap(client):
     assert body["titulo"] == "Planolândia"
 
 
-def test_get_mindmap_not_found(client):
+def test_get_mindmap_not_found(client, auth_headers):
     with patch(
         "routes.mindmap_routes.match_subject_user_db",
         return_value=True,
@@ -113,12 +113,12 @@ def test_get_mindmap_not_found(client):
         return_value=None,
     ):
 
-        response = client.get("/users/10/subjects/1/mindmaps/1")
+        response = client.get("/users/10/subjects/1/mindmaps/1", headers=auth_headers(10))
 
     assert response.status_code == 404
 
 
-def test_create_mindmap(client):
+def test_create_mindmap(client, auth_headers):
     payload = {
         "tipo": "mapa_mental",
         "titulo": "Planolândia",
@@ -139,7 +139,8 @@ def test_create_mindmap(client):
 
         response = client.post(
             "/users/10/subjects/1/mindmaps",
-            json=payload,
+            headers=auth_headers(10),
+        json=payload,
         )
 
     assert response.status_code == 201
@@ -153,7 +154,7 @@ def test_create_mindmap(client):
     assert json.loads(args["conteudo"]) == payload["conteudo"]
 
 
-def test_delete_mindmap_success(client):
+def test_delete_mindmap_success(client, auth_headers):
     with patch(
         "routes.mindmap_routes.match_subject_user_db",
         return_value=True,
@@ -165,12 +166,12 @@ def test_delete_mindmap_success(client):
         return_value=True,
     ):
 
-        response = client.delete("/users/10/subjects/1/mindmaps/1")
+        response = client.delete("/users/10/subjects/1/mindmaps/1", headers=auth_headers(10))
 
     assert response.status_code == 204
 
 
-def test_delete_mindmap_not_found(client):
+def test_delete_mindmap_not_found(client, auth_headers):
     with patch(
         "routes.mindmap_routes.match_subject_user_db",
         return_value=True,
@@ -182,6 +183,6 @@ def test_delete_mindmap_not_found(client):
         return_value=False,
     ):
 
-        response = client.delete("/users/10/subjects/1/mindmaps/1")
+        response = client.delete("/users/10/subjects/1/mindmaps/1", headers=auth_headers(10))
 
     assert response.status_code == 404

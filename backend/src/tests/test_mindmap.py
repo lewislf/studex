@@ -19,10 +19,10 @@ CONTEUDO = {
 }
 
 
-def _user_and_subject(db_path, key_path):
+def _user_and_subject(db_path):
     user_id = save_user_db(
         "Felipe", "123456", "felipe@email.com",
-        db_path=db_path, key_path=key_path,
+        db_path=db_path
     )
     subject_id = save_subject_db(
         user_id=user_id, name="Redes", desc="Redes de Computadores",
@@ -32,8 +32,8 @@ def _user_and_subject(db_path, key_path):
 
 
 def test_save_mindmap(temp_db):
-    db_path, key_path = temp_db
-    _, subject_id = _user_and_subject(db_path, key_path)
+    db_path = temp_db
+    _, subject_id = _user_and_subject(db_path)
 
     mind_map_id = save_mindmap_db(
         subject_id=subject_id,
@@ -54,8 +54,8 @@ def test_save_mindmap(temp_db):
 
 
 def test_delete_mindmap(temp_db):
-    db_path, key_path = temp_db
-    _, subject_id = _user_and_subject(db_path, key_path)
+    db_path = temp_db
+    _, subject_id = _user_and_subject(db_path)
 
     mind_map_id = save_mindmap_db(
         subject_id=subject_id,
@@ -75,8 +75,8 @@ def test_delete_mindmap(temp_db):
 
 
 def test_search_mindmap(temp_db):
-    db_path, key_path = temp_db
-    _, subject_id = _user_and_subject(db_path, key_path)
+    db_path = temp_db
+    _, subject_id = _user_and_subject(db_path)
 
     save_mindmap_db(
         subject_id=subject_id,
@@ -94,8 +94,8 @@ def test_search_mindmap(temp_db):
 
 
 def test_count_mindmap(temp_db):
-    db_path, key_path = temp_db
-    _, subject_id = _user_and_subject(db_path, key_path)
+    db_path = temp_db
+    _, subject_id = _user_and_subject(db_path)
 
     save_mindmap_db(
         subject_id=subject_id, titulo="Mapa 1",

@@ -28,14 +28,10 @@ export default function App() {
             const res = await fetch(`${API_URL}/users/${session.id}`, { headers: getAuthHeaders() });
             if (res.ok) {
                 const updated = await res.json();
-                // Preserve the JWT token that was set at login time.
                 const withToken = { ...updated, token: session.token };
                 saveSession(withToken);
                 setSessionData(withToken);
             } else if (res.status === 404) {
-                // Session points at a user that no longer exists on the
-                // backend (e.g. the DB was reset): drop the stale cache
-                // instead of silently leaving the old data on screen.
                 clearSession();
                 setSessionData(null);
             }

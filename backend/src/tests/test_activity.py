@@ -23,8 +23,8 @@ TODAY = date(2026, 7, 9)
 ### record_activity_db / get_activity_days_db ###
 
 def test_record_activity_insere_e_incrementa(temp_db):
-    db_path, key_path = temp_db
-    user_id = save_user_db("Felipe", "123456", "felipe@email.com", db_path=db_path, key_path=key_path)
+    db_path = temp_db
+    user_id = save_user_db("Felipe", "123456", "felipe@email.com", db_path=db_path)
 
     record_activity_db(user_id, "2026-07-09", db_path=db_path)
     record_activity_db(user_id, "2026-07-09", db_path=db_path)
@@ -36,8 +36,8 @@ def test_record_activity_insere_e_incrementa(temp_db):
 
 
 def test_get_activity_days_respeita_since(temp_db):
-    db_path, key_path = temp_db
-    user_id = save_user_db("Felipe", "123456", "felipe@email.com", db_path=db_path, key_path=key_path)
+    db_path = temp_db
+    user_id = save_user_db("Felipe", "123456", "felipe@email.com", db_path=db_path)
 
     record_activity_db(user_id, "2026-01-01", db_path=db_path)
     record_activity_db(user_id, "2026-07-09", db_path=db_path)
@@ -81,7 +81,7 @@ def test_compute_streak_apenas_hoje():
 
 ### GET /users/<id>/activity ###
 
-def test_get_activity_route_200(client):
+def test_get_activity_route_200(client, auth_headers):
     fake_days = {"2026-07-08": 3, "2026-07-09": 1}
 
     with patch("routes.user_routes.get_user_db", return_value=object()), \
@@ -90,7 +90,7 @@ def test_get_activity_route_200(client):
 
         mock_date.today.return_value = TODAY
 
-        response = client.get("/users/10/activity")
+        response = client.get("/users/10/activity", headers=auth_headers(10))
 
     assert response.status_code == 200
     body = response.get_json()
@@ -102,9 +102,9 @@ def test_get_activity_route_200(client):
     }
 
 
-def test_get_activity_route_user_not_found_404(client):
+def test_get_activity_route_user_not_found_404(client, auth_headers):
     with patch("routes.user_routes.get_user_db", return_value=None):
-        response = client.get("/users/999/activity")
+        response = client.get("/users/999/activity", headers=auth_headers(999))
 
     assert response.status_code == 404
     assert response.get_json() == {"error": "User not found"}
@@ -112,7 +112,7 @@ def test_get_activity_route_user_not_found_404(client):
 
 ### Revisão de flashcard registra atividade ###
 
-def test_review_flashcard_registra_atividade(client):
+def test_review_flashcard_registra_atividade(client, auth_headers):
     from types import SimpleNamespace
 
     card = SimpleNamespace(
@@ -137,7 +137,8 @@ def test_review_flashcard_registra_atividade(client):
 
         response = client.post(
             "/users/10/subjects/2/decks/1/flashcards/5/review",
-            json={"rating": "bom"},
+            headers=auth_headers(10),
+        json={"rating": "bom"},
         )
 
     assert response.status_code == 200
@@ -146,7 +147,7 @@ def test_review_flashcard_registra_atividade(client):
 
 ### Upload de documento registra atividade ###
 
-def test_upload_registra_atividade(client, tmp_path):
+def test_upload_registra_atividade(client, auth_headers, tmp_path):
     materials = [{"tipo": "resumo", "titulo": "T", "conteudo": {}, "creation_date": "2026-07-07"}]
 
     with patch("routes.document_routes.DOCS_DIR", tmp_path), \
@@ -160,6 +161,7 @@ def test_upload_registra_atividade(client, tmp_path):
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -172,7 +174,7 @@ def test_upload_registra_atividade(client, tmp_path):
     mock_activity.assert_called_once_with(10, date.today().isoformat())
 
 
-def test_upload_nao_registra_atividade_quando_validacao_falha(client, tmp_path):
+def test_upload_nao_registra_atividade_quando_validacao_falha(client, auth_headers, tmp_path):
     # user_id ausente: 400 antes de sequer salvar o arquivo, não deve
     # registrar atividade nenhuma.
     with patch("routes.document_routes.DOCS_DIR", tmp_path), \
@@ -180,6 +182,7 @@ def test_upload_nao_registra_atividade_quando_validacao_falha(client, tmp_path):
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
             },
@@ -190,7 +193,7 @@ def test_upload_nao_registra_atividade_quando_validacao_falha(client, tmp_path):
     mock_activity.assert_not_called()
 
 
-def test_upload_nao_registra_atividade_quando_subject_de_outro_usuario(client, tmp_path):
+def test_upload_nao_registra_atividade_quando_subject_de_outro_usuario(client, auth_headers, tmp_path):
     # subject_id não pertence ao usuário: 404 antes de salvar o arquivo.
     with patch("routes.document_routes.DOCS_DIR", tmp_path), \
          patch("routes.document_routes.load_documents") as mock_load, \
@@ -199,6 +202,7 @@ def test_upload_nao_registra_atividade_quando_subject_de_outro_usuario(client, t
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",

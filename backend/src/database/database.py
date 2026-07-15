@@ -367,7 +367,7 @@ def count_people_db(db_path: Path = DB_PATH) -> int:
         row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
         return int(row[0]) if row else 0
 
-def print_all_people_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
+def print_all_people_db(db_path: Path = DB_PATH) -> None:
     """
     Prints all registered users.
     """
@@ -381,7 +381,7 @@ def print_all_people_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> N
 
 ### SUBJECT ###
 
-def save_subject_db(user_id: int, name: str, desc: str, domain: int, icon: str, color: str, creation_date: date, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int | None:
+def save_subject_db(user_id: int, name: str, desc: str, domain: int, icon: str, color: str, creation_date: date, db_path: Path = DB_PATH) -> int | None:
     """
     Register a new subject in the database. 
     

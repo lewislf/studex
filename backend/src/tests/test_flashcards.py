@@ -15,14 +15,13 @@ from enums.flashcard_status import FlashcardStatus
 
 
 def test_save_flashcard(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id is not None
@@ -77,14 +76,13 @@ def test_save_flashcard(temp_db):
 
 
 def test_delete_flashcard(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id is not None
@@ -137,14 +135,13 @@ def test_delete_flashcard(temp_db):
 
 
 def test_search_flashcards(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id is not None
@@ -203,14 +200,13 @@ def test_search_flashcards(temp_db):
 
 
 def test_count_flashcards(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id is not None

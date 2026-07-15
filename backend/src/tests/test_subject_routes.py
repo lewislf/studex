@@ -54,7 +54,7 @@ def fake_subject(**kwargs):
     return SimpleNamespace(**base)
 
 
-def test_get_subjects(client):
+def test_get_subjects(client, auth_headers):
     subjects = [
         fake_subject(id=1, name="Redes"),
         fake_subject(id=2, name="POO"),
@@ -68,7 +68,7 @@ def test_get_subjects(client):
         return_value=True,
     ):
 
-        response = client.get("/users/10/subjects")
+        response = client.get("/users/10/subjects", headers=auth_headers(10))
 
     assert response.status_code == 200
 
@@ -82,17 +82,17 @@ def test_get_subjects(client):
     mock_get.assert_called_once_with(10)
 
 
-def test_get_subjects_none(client):
+def test_get_subjects_none(client, auth_headers):
     with patch(
         "routes.subject_routes.get_subjects_db",
         return_value=None,
     ):
-        response = client.get("/users/10/subjects")
+        response = client.get("/users/10/subjects", headers=auth_headers(10))
 
     assert response.status_code == 404
 
 
-def test_get_subject(client):
+def test_get_subject(client, auth_headers):
     with patch(
         "routes.subject_routes.get_subject_db",
         return_value=fake_subject(),
@@ -101,7 +101,7 @@ def test_get_subject(client):
         return_value=True,
     ):
 
-        response = client.get("/users/10/subjects/1")
+        response = client.get("/users/10/subjects/1", headers=auth_headers(10))
 
     assert response.status_code == 200
 
@@ -111,17 +111,17 @@ def test_get_subject(client):
     assert body["title"] == "Redes"
 
 
-def test_get_subject_not_found(client):
+def test_get_subject_not_found(client, auth_headers):
     with patch(
         "routes.subject_routes.get_subject_db",
         return_value=None,
     ):
-        response = client.get("/users/10/subjects/1")
+        response = client.get("/users/10/subjects/1", headers=auth_headers(10))
 
     assert response.status_code == 404
 
 
-def test_create_subject(client):
+def test_create_subject(client, auth_headers):
     payload = {
         "user_id": 10,
         "name": "Redes",
@@ -139,7 +139,8 @@ def test_create_subject(client):
 
         response = client.post(
             "/users/10/subjects",
-            json=payload,
+            headers=auth_headers(10),
+        json=payload,
         )
 
     assert response.status_code == 201
@@ -156,7 +157,7 @@ def test_create_subject(client):
     )
 
 
-def test_delete_subject_success(client):
+def test_delete_subject_success(client, auth_headers):
     with patch(
         "routes.subject_routes.get_subject_db",
         return_value=fake_subject(user_id=10),
@@ -170,13 +171,13 @@ def test_delete_subject_success(client):
         "routes.subject_routes.delete_vectors_by_metadata",
     ) as mock_delete_vectors:
 
-        response = client.delete("/users/10/subjects/1")
+        response = client.delete("/users/10/subjects/1", headers=auth_headers(10))
 
     assert response.status_code == 204
     mock_delete_vectors.assert_called_once_with(subject_id=1)
 
 
-def test_delete_subject_not_found(client):
+def test_delete_subject_not_found(client, auth_headers):
     with patch(
         "routes.subject_routes.match_subject_user_db",
         return_value=True,
@@ -185,12 +186,12 @@ def test_delete_subject_not_found(client):
         return_value=False,
     ):
 
-        response = client.delete("/users/10/subjects/1")
+        response = client.delete("/users/10/subjects/1", headers=auth_headers(10))
 
     assert response.status_code == 404
 
 
-def test_delete_subject_qdrant_failure_does_not_block_204(client):
+def test_delete_subject_qdrant_failure_does_not_block_204(client, auth_headers):
     """Erro na limpeza do Qdrant não pode impedir o delete de completar."""
     with patch(
         "routes.subject_routes.get_subject_db",
@@ -206,6 +207,6 @@ def test_delete_subject_qdrant_failure_does_not_block_204(client):
         side_effect=Exception("qdrant indisponível"),
     ):
 
-        response = client.delete("/users/10/subjects/1")
+        response = client.delete("/users/10/subjects/1", headers=auth_headers(10))
 
     assert response.status_code == 204
