@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 
 from flask import Blueprint, jsonify, request
 
+from auth import require_auth
 from database.database import (
     save_materials_db,
     get_flashcards_by_subject_db,
@@ -148,6 +149,7 @@ ALLOWED_EXTENSIONS = {".pdf"}
 
 
 @document_bp.get("/progress")
+@require_auth
 def get_upload_progress(user_id):
     """
     Estado real do upload em andamento (se houver), pro frontend acompanhar
@@ -180,6 +182,7 @@ def get_upload_progress(user_id):
 
 
 @document_bp.post("")
+@require_auth
 def upload_document(user_id):
     """
     Envia um PDF, gera os materiais de estudo e os salva na matéria escolhida.

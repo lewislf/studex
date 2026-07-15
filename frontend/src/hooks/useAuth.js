@@ -4,8 +4,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 const STORAGE_KEY = 'studex_user';
 
 /**
- * Persists the authenticated user in localStorage.
- * @param {{id: number, name: string, email: string}} user
+ * Persists the authenticated user (including JWT token) in localStorage.
+ * @param {{id: number, name: string, email: string, token: string}} user
  */
 export function saveSession(user) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
@@ -24,6 +24,17 @@ export function getSession() {
  */
 export function clearSession() {
     localStorage.removeItem(STORAGE_KEY);
+}
+
+/**
+ * Returns Authorization header object for authenticated requests.
+ * Returns an empty object when no session exists.
+ * @returns {Record<string, string>}
+ */
+export function getAuthHeaders() {
+    const session = getSession();
+    if (!session?.token) return {};
+    return { Authorization: `Bearer ${session.token}` };
 }
 
 /**

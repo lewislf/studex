@@ -2,6 +2,7 @@ from datetime import date
 
 from flask import Blueprint, jsonify, request
 
+from auth import require_auth
 from database.database import (
     get_deck_db,
     get_flashcard_db,
@@ -23,6 +24,7 @@ flashcard_bp = Blueprint(
 
 
 @flashcard_bp.get("")
+@require_auth
 def get_flashcards(user_id, subject_id, deck_id):
     """
     Lista todos os flashcards de um baralho.
@@ -96,6 +98,7 @@ def get_flashcards(user_id, subject_id, deck_id):
 
 
 @flashcard_bp.get("/<int:flashcard_id>")
+@require_auth
 def get_flashcard(user_id, subject_id, deck_id, flashcard_id):
     """
     Busca um flashcard específico pelo ID.
@@ -172,6 +175,7 @@ def get_flashcard(user_id, subject_id, deck_id, flashcard_id):
 
 
 @flashcard_bp.post("")
+@require_auth
 def create_flashcard(user_id, subject_id, deck_id):
     """
     Cria um novo flashcard em um baralho.
@@ -242,6 +246,7 @@ def create_flashcard(user_id, subject_id, deck_id):
 
 
 @flashcard_bp.delete("/<int:flashcard_id>")
+@require_auth
 def delete_flashcard(user_id, subject_id, deck_id, flashcard_id):
     """
     Deleta um flashcard pelo ID.
@@ -300,6 +305,7 @@ def delete_flashcard(user_id, subject_id, deck_id, flashcard_id):
 
 
 @flashcard_bp.post("/<int:flashcard_id>/review")
+@require_auth
 def review_flashcard(user_id, subject_id, deck_id, flashcard_id):
     """
     Registra a revisão de um flashcard (SRS) e agenda a próxima revisão.

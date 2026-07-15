@@ -5,6 +5,7 @@ import { Group, Text, useMantineTheme } from '@mantine/core';
 import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { notifications } from '@mantine/notifications';
 import { usePdfUpload } from '../../hooks/usePdfUpload';
+import { getAuthHeaders } from '../../hooks/useAuth';
 import SubjectPickerModal from '../Common/SubjectPickerModal';
 import HomeUploadProgress from './HomeUploadProgress';
 import classes from '../../styles/Mantine/PdfDropZone.module.css';
@@ -71,7 +72,7 @@ export default function HomePdfDropzone({ selectedMaterials }) {
 
         async function poll() {
             try {
-                const res = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/documents/progress`);
+                const res = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/documents/progress`, { headers: getAuthHeaders() });
                 if (!res.ok || cancelled) return;
                 const data = await res.json();
                 setUploadProgress(data.active ? data : null);

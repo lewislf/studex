@@ -51,8 +51,7 @@ services:
       LLM_MODEL: ${LLM_MODEL:-llama3.2:latest}
       LLM_CONTEXT_WINDOW: ${LLM_CONTEXT_WINDOW:-4096}
       LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-2048}
-      # FLASK_DEBUG=1 mantém o autoreload (dev). Sobrescreva com 0 em produção.
-      FLASK_DEBUG: ${FLASK_DEBUG:-1}
+      FLASK_DEBUG: ${FLASK_DEBUG:-0}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

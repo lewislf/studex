@@ -1,10 +1,12 @@
 // Fetch helper for the statistics dashboard route.
 
+import { getAuthHeaders } from '../../hooks/useAuth';
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 /** GETs a JSON resource; a 404 response resolves to null instead of throwing. */
 async function getJson(url) {
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: getAuthHeaders() });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`request failed (${res.status})`);
     return res.json();

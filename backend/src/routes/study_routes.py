@@ -2,12 +2,14 @@ from datetime import date
 
 from flask import Blueprint, jsonify, request
 
+from auth import require_auth
 from database.database import get_user_db, get_user_study_queue_db
 
 study_bp = Blueprint("study", __name__, url_prefix="/users/<int:user_id>/study")
 
 
 @study_bp.get("")
+@require_auth
 def get_global_study_queue(user_id):
     """
     Monta a fila de estudo (SRS) global de um usuário: cards de todos os

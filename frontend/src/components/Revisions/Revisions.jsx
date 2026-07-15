@@ -3,6 +3,7 @@ import { Container } from "@mantine/core";
 import { useOutletContext } from "react-router";
 import styles from '../../styles/Revisions/Revisions.module.css';
 import { parseDailyReviews } from '../../utils/userHelpers.js';
+import { getAuthHeaders } from '../../hooks/useAuth.js';
 import RevisionsTitle from "./RevisionsTitle";
 import RevisionsSummary from "./RevisionsSummary";
 import RevisionsDeckList from "./RevisionsDeckList";
@@ -22,7 +23,7 @@ export default function Revisions() {
 
         async function fetchDecks() {
             try {
-                const subjectsRes = await fetch(`${API_URL}/users/${user.id}/subjects`);
+                const subjectsRes = await fetch(`${API_URL}/users/${user.id}/subjects`, { headers: getAuthHeaders() });
                 if (!subjectsRes.ok) return;
                 const subjects = await subjectsRes.json();
                 const subjectById = new Map(subjects.map(s => [s.id, s]));
@@ -30,7 +31,7 @@ export default function Revisions() {
                 const allDecks = (
                     await Promise.all(
                         subjects.map(s =>
-                            fetch(`${API_URL}/users/${user.id}/subjects/${s.id}/decks`)
+                            fetch(`${API_URL}/users/${user.id}/subjects/${s.id}/decks`, { headers: getAuthHeaders() })
                                 .then(r => r.ok ? r.json() : [])
                                 .catch(() => [])
                         )

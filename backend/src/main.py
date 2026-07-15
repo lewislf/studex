@@ -19,9 +19,7 @@ CORS(app)
 HOST = "0.0.0.0"
 SOCKET = 5000
 
-# Debug/autoreload liga por padrão (modo dev da plataforma). Em produção,
-# setar FLASK_DEBUG=0 no ambiente.
-FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "1") == "1"
+FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"
 
 # Mesmo limite de tamanho de upload que o client já aplica.
 app.config["MAX_CONTENT_LENGTH"] = 250 * 1024 * 1024

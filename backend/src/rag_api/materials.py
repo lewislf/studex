@@ -168,6 +168,13 @@ como material de estudo: quem não leu o documento original deve conseguir
 estudar o assunto só por este resumo. Sem títulos, listas ou markdown, só
 parágrafos de texto.
 
+Este trecho é PARTE de um documento maior e seu resumo será emendado aos
+resumos das outras partes. Por isso: vá direto ao conteúdo específico do
+trecho, sem abertura genérica (nada de "O texto apresenta", "Este trecho
+aborda") e sem reapresentar o assunto geral do documento. Se o trecho só
+retoma de passagem um conceito que claramente já foi explicado antes, não o
+redefina, apenas use o termo.
+
 PARTE 2: um JSON válido em uma linha nova após o resumo, no formato:
 {{"entidades": [{{"nome": "...", "tipo": "...", "descricao": "..."}}], "relacoes": [{{"origem": "...", "destino": "...", "descricao": "...", "forca": 1}}]}}
 
@@ -211,11 +218,12 @@ def _resumo_documento_pequeno(texto: str, fallback_titulo: str) -> dict:
 no formato:
 {{"titulo": "título curto do documento", "topicos_chave": ["ponto 1", "ponto 2", "ponto 3", "ponto 4"], "texto": "resumo do documento em português, 4 a 6 parágrafos detalhados"}}
 
-- "topicos_chave" tem de 4 a 6 itens curtos.
+- "topicos_chave" tem de 4 a 6 itens curtos, cada um sobre um assunto
+  DISTINTO. Não repita o mesmo ponto com outras palavras.
 - "texto" cobre os acontecimentos, conceitos e exemplos do documento em 4 a 6
-  parágrafos detalhados, na ordem do texto. Escreva como material de estudo:
-  quem não leu o documento original deve conseguir estudar o assunto só por
-  este resumo.
+  parágrafos detalhados, na ordem do texto, sem repetir conceito já explicado
+  em parágrafo anterior. Escreva como material de estudo: quem não leu o
+  documento original deve conseguir estudar o assunto só por este resumo.
 
 Documento:
 \"\"\"{texto}\"\"\"
@@ -289,15 +297,18 @@ Responda com um JSON válido, e SOMENTE o JSON, no formato:
 
 Regras:
 - "titulo": título curto do documento.
-- "topicos_chave": 4 a 6 itens curtos com os principais pontos.
+- "topicos_chave": 4 a 6 itens curtos com os principais pontos, cada um
+  sobre um assunto DISTINTO. Não repita o mesmo ponto com outras palavras.
 - "texto": visão geral do documento em português, 1 a 2 parágrafos que
   apresentam a obra e seus pontos centrais (os resumos parciais viram o corpo
-  do resumo final, então aqui é só a abertura).
+  do resumo final, então aqui é só a abertura, não repita o que eles já
+  detalham).
 - "temas": de 3 a 6 temas que organizam as entidades listadas abaixo por
-  ASSUNTO do conteúdo. O "titulo" de cada tema é ESPECÍFICO do conteúdo (ex:
-  "A Revolta das Cores"), NUNCA uma categoria genérica como "Personagens" ou
-  "Conceitos". "entidades" é a lista de nomes (dentre os listados abaixo)
-  que pertencem a esse tema.
+  ASSUNTO do conteúdo, sem sobreposição: cada tema cobre um assunto distinto
+  e cada entidade entra em UM tema só. O "titulo" de cada tema é ESPECÍFICO
+  do conteúdo (ex: "A Revolta das Cores"), NUNCA uma categoria genérica como
+  "Personagens" ou "Conceitos". "entidades" é a lista de nomes (dentre os
+  listados abaixo) que pertencem a esse tema.
 
 Resumos parciais:
 \"\"\"{texto_fonte}\"\"\"

@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 import json
 
+from auth import require_auth
 from database.database import (
     get_subject_db,
     get_summary_db,
@@ -14,6 +15,7 @@ summary_bp = Blueprint("summaries", __name__, url_prefix="/users/<int:user_id>/s
 
 
 @summary_bp.get("")
+@require_auth
 def get_summaries(user_id, subject_id):
     """
     Lista os resumos de um usuário.
@@ -63,6 +65,7 @@ def get_summaries(user_id, subject_id):
 
 
 @summary_bp.get("/<int:summary_id>")
+@require_auth
 def get_summary(user_id, subject_id, summary_id):
     """
     Busca um resumo pelo id.
@@ -114,6 +117,7 @@ def get_summary(user_id, subject_id, summary_id):
 
 
 @summary_bp.post("")
+@require_auth
 def create_summary(user_id, subject_id):
     """
     Cria um novo resumo para um usuário.
@@ -179,6 +183,7 @@ def create_summary(user_id, subject_id):
 
 
 @summary_bp.delete("/<int:summary_id>")
+@require_auth
 def delete_summary(user_id, subject_id, summary_id):
     """
     Remove um resumo pelo id.
