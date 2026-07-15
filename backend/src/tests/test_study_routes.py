@@ -37,8 +37,8 @@ def study_client():
         yield client
 
 
-def _setup_two_decks(db_path, key_path):
-    user_id = save_user_db("Felipe", "123456", "felipe@email.com", db_path=db_path, key_path=key_path)
+def _setup_two_decks(db_path):
+    user_id = save_user_db("Felipe", "123456", "felipe@email.com", db_path=db_path)
 
     subject_a = save_subject_db(
         user_id, "Biologia", "desc", "geral", "icon", "#000", date.today().isoformat(), db_path=db_path
@@ -58,8 +58,8 @@ def _setup_two_decks(db_path, key_path):
 # ---------------------------------------------------------------------------
 
 def test_get_user_study_queue_cruza_baralhos_e_ordena_vencidos_primeiro(temp_db):
-    db_path, key_path = temp_db
-    user_id, subject_a, subject_b, deck_a, deck_b = _setup_two_decks(db_path, key_path)
+    db_path = temp_db
+    user_id, subject_a, subject_b, deck_a, deck_b = _setup_two_decks(db_path)
 
     novo_id = save_flashcard_db(
         deck_a, "Pergunta nova", "Resposta nova", FlashcardStatus.NOVO.value, date.today(), db_path=db_path
@@ -88,8 +88,8 @@ def test_get_user_study_queue_cruza_baralhos_e_ordena_vencidos_primeiro(temp_db)
 
 
 def test_get_user_study_queue_respeita_limit(temp_db):
-    db_path, key_path = temp_db
-    user_id, subject_a, subject_b, deck_a, deck_b = _setup_two_decks(db_path, key_path)
+    db_path = temp_db
+    user_id, subject_a, subject_b, deck_a, deck_b = _setup_two_decks(db_path)
 
     for i in range(5):
         save_flashcard_db(
@@ -101,10 +101,10 @@ def test_get_user_study_queue_respeita_limit(temp_db):
 
 
 def test_get_user_study_queue_nao_traz_cards_de_outro_usuario(temp_db):
-    db_path, key_path = temp_db
-    user_id, subject_a, subject_b, deck_a, deck_b = _setup_two_decks(db_path, key_path)
+    db_path = temp_db
+    user_id, subject_a, subject_b, deck_a, deck_b = _setup_two_decks(db_path)
 
-    outro_user_id = save_user_db("Ana", "123456", "ana@email.com", db_path=db_path, key_path=key_path)
+    outro_user_id = save_user_db("Ana", "123456", "ana@email.com", db_path=db_path)
     outro_subject = save_subject_db(
         outro_user_id, "Química", "desc", "geral", "icon", "#000", date.today().isoformat(), db_path=db_path
     )
@@ -155,13 +155,13 @@ def fake_flashcard(**overrides):
     return card
 
 
-def test_study_route_200_traz_campos_de_deck_e_materia(study_client):
+def test_study_route_200_traz_campos_de_deck_e_materia(study_client, auth_headers):
     queue = [(fake_flashcard(), 1, "Fotossíntese", 2, "Biologia")]
 
     with patch("routes.study_routes.get_user_db", return_value=fake_user()), \
          patch("routes.study_routes.get_user_study_queue_db", return_value=queue):
 
-        response = study_client.get("/users/10/study")
+        response = study_client.get("/users/10/study", headers=auth_headers(10))
 
     assert response.status_code == 200
     body = response.get_json()
@@ -173,11 +173,11 @@ def test_study_route_200_traz_campos_de_deck_e_materia(study_client):
     assert card["subject_name"] == "Biologia"
 
 
-def test_study_route_sem_cards_pendentes_e_200(study_client):
+def test_study_route_sem_cards_pendentes_e_200(study_client, auth_headers):
     with patch("routes.study_routes.get_user_db", return_value=fake_user()), \
          patch("routes.study_routes.get_user_study_queue_db", return_value=[]):
 
-        response = study_client.get("/users/10/study")
+        response = study_client.get("/users/10/study", headers=auth_headers(10))
 
     assert response.status_code == 200
     body = response.get_json()
@@ -185,26 +185,26 @@ def test_study_route_sem_cards_pendentes_e_200(study_client):
     assert body["total"] == 0
 
 
-def test_study_route_respeita_limit_da_query(study_client):
+def test_study_route_respeita_limit_da_query(study_client, auth_headers):
     with patch("routes.study_routes.get_user_db", return_value=fake_user()), \
          patch("routes.study_routes.get_user_study_queue_db", return_value=[]) as mock_queue:
 
-        study_client.get("/users/10/study?limit=5")
+        study_client.get("/users/10/study?limit=5", headers=auth_headers(10))
 
     assert mock_queue.call_args.kwargs["limit"] == 5
 
 
-def test_study_route_clamp_limit_maximo(study_client):
+def test_study_route_clamp_limit_maximo(study_client, auth_headers):
     with patch("routes.study_routes.get_user_db", return_value=fake_user()), \
          patch("routes.study_routes.get_user_study_queue_db", return_value=[]) as mock_queue:
 
-        study_client.get("/users/10/study?limit=9999")
+        study_client.get("/users/10/study?limit=9999", headers=auth_headers(10))
 
     assert mock_queue.call_args.kwargs["limit"] == 200
 
 
-def test_study_route_usuario_nao_encontrado_404(study_client):
+def test_study_route_usuario_nao_encontrado_404(study_client, auth_headers):
     with patch("routes.study_routes.get_user_db", return_value=None):
-        response = study_client.get("/users/999/study")
+        response = study_client.get("/users/999/study", headers=auth_headers(999))
 
     assert response.status_code == 404

@@ -8,7 +8,7 @@ import { AppShell } from '@mantine/core';
 
 import profileImage from './assets/generic-profile.svg'
 import { parseUserProfile } from './utils/userHelpers.js'
-import { getSession, saveSession, clearSession } from './hooks/useAuth.js'
+import { getSession, saveSession, clearSession, getAuthHeaders } from './hooks/useAuth.js'
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -25,15 +25,13 @@ export default function App() {
         const session = getSession();
         if (!session?.id) return;
         try {
-            const res = await fetch(`${API_URL}/users/${session.id}`);
+            const res = await fetch(`${API_URL}/users/${session.id}`, { headers: getAuthHeaders() });
             if (res.ok) {
                 const updated = await res.json();
-                saveSession(updated);
-                setSessionData(updated);
+                const withToken = { ...updated, token: session.token };
+                saveSession(withToken);
+                setSessionData(withToken);
             } else if (res.status === 404) {
-                // Session points at a user that no longer exists on the
-                // backend (e.g. the DB was reset): drop the stale cache
-                // instead of silently leaving the old data on screen.
                 clearSession();
                 setSessionData(null);
             }

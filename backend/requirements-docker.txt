@@ -2,6 +2,8 @@ flask
 flask-cors
 flasgger
 cryptography
+argon2-cffi
+PyJWT
 numpy
 pymupdf
 llama-index

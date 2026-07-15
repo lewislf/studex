@@ -25,15 +25,14 @@ from database.database import (
 
 
 def test_signup_login_upload_persistence(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     # 1. Cadastro de uma conta
     user_id = save_user_db(
         "Maria",
         "senha123",
         "maria@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id is not None
@@ -42,8 +41,7 @@ def test_signup_login_upload_persistence(temp_db):
     user = login_user_db(
         "maria@email.com",
         "senha123",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user is not None
@@ -51,8 +49,8 @@ def test_signup_login_upload_persistence(temp_db):
     assert user.email == "maria@email.com"
 
     # Senha errada e email inexistente não autenticam
-    assert login_user_db("maria@email.com", "errada", db_path=db_path, key_path=key_path) is None
-    assert login_user_db("ninguem@email.com", "senha123", db_path=db_path, key_path=key_path) is None
+    assert login_user_db("maria@email.com", "errada", db_path=db_path) is None
+    assert login_user_db("ninguem@email.com", "senha123", db_path=db_path) is None
 
     # 3. Matéria do usuário: destino do upload
     subject_id = save_subject_db(

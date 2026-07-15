@@ -2,6 +2,7 @@ from datetime import date
 
 from flask import Blueprint, jsonify, request
 
+from auth import require_auth
 from database.database import (
     get_subject_db,
     get_deck_db,
@@ -16,6 +17,7 @@ deck_bp = Blueprint("decks", __name__, url_prefix="/users/<int:user_id>/subjects
 
 
 @deck_bp.get("")
+@require_auth
 def get_decks(user_id, subject_id):
     """
     Lista todos os baralhos de uma matéria.
@@ -79,6 +81,7 @@ def get_decks(user_id, subject_id):
 
 
 @deck_bp.get("/<int:deck_id>")
+@require_auth
 def get_deck(user_id, subject_id, deck_id):
     """
     Busca um baralho específico pelo ID.
@@ -143,6 +146,7 @@ def get_deck(user_id, subject_id, deck_id):
 
 
 @deck_bp.post("")
+@require_auth
 def create_deck(user_id, subject_id):
     """
     Cria um novo baralho em uma matéria.
@@ -204,6 +208,7 @@ def create_deck(user_id, subject_id):
 
 
 @deck_bp.delete("/<int:deck_id>")
+@require_auth
 def delete_deck(user_id, subject_id, deck_id):
     """
     Deleta um baralho pelo ID.
@@ -249,6 +254,7 @@ def delete_deck(user_id, subject_id, deck_id):
 
 
 @deck_bp.get("/<int:deck_id>/study")
+@require_auth
 def get_study_queue(user_id, subject_id, deck_id):
     """
     Monta a fila de estudo (SRS) de um baralho: cards vencidos primeiro

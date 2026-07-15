@@ -31,7 +31,7 @@ def fake_subject():
     )
 
 
-def test_get_deck(client):
+def test_get_deck(client, auth_headers):
     print(client.application.url_map)
 
     for rule in client.application.url_map.iter_rules():
@@ -47,7 +47,7 @@ def test_get_deck(client):
         "routes.deck_routes.get_subject_db",
         return_value=fake_subject(),
     ):
-        response = client.get("/users/10/subjects/2/decks/1")
+        response = client.get("/users/10/subjects/2/decks/1", headers=auth_headers(10))
 
     print(response.status_code)
     print(response.get_json())

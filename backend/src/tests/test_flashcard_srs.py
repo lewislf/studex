@@ -130,8 +130,8 @@ def test_apply_review_rating_invalido_levanta_value_error():
 # Fixture auxiliar: cria user/subject/deck pra testes de banco
 # ---------------------------------------------------------------------------
 
-def _setup_deck(db_path, key_path):
-    user_id = save_user_db("Felipe", "123456", "felipe@email.com", db_path=db_path, key_path=key_path)
+def _setup_deck(db_path):
+    user_id = save_user_db("Felipe", "123456", "felipe@email.com", db_path=db_path)
     subject_id = save_subject_db(
         user_id=user_id,
         name="Redes",
@@ -160,8 +160,8 @@ def _setup_deck(db_path, key_path):
 # ---------------------------------------------------------------------------
 
 def test_get_study_queue_vencidos_antes_de_novos(temp_db):
-    db_path, key_path = temp_db
-    _, _, deck_id = _setup_deck(db_path, key_path)
+    db_path = temp_db
+    _, _, deck_id = _setup_deck(db_path)
 
     novo_id = save_flashcard_db(
         deck_id, "Pergunta nova", "Resposta nova", FlashcardStatus.NOVO.value, date.today(), db_path=db_path
@@ -185,8 +185,8 @@ def test_get_study_queue_vencidos_antes_de_novos(temp_db):
 
 
 def test_get_study_queue_respeita_limit(temp_db):
-    db_path, key_path = temp_db
-    _, _, deck_id = _setup_deck(db_path, key_path)
+    db_path = temp_db
+    _, _, deck_id = _setup_deck(db_path)
 
     for i in range(5):
         save_flashcard_db(
@@ -198,8 +198,8 @@ def test_get_study_queue_respeita_limit(temp_db):
 
 
 def test_get_study_queue_deck_sem_cards_retorna_vazio(temp_db):
-    db_path, key_path = temp_db
-    _, _, deck_id = _setup_deck(db_path, key_path)
+    db_path = temp_db
+    _, _, deck_id = _setup_deck(db_path)
 
     queue = get_study_queue_db(deck_id, limit=20, today=TODAY, db_path=db_path)
     assert queue == []
@@ -210,8 +210,8 @@ def test_get_study_queue_deck_sem_cards_retorna_vazio(temp_db):
 # ---------------------------------------------------------------------------
 
 def test_refresh_deck_counters_conta_reaprendendo_como_aprendendo(temp_db):
-    db_path, key_path = temp_db
-    _, _, deck_id = _setup_deck(db_path, key_path)
+    db_path = temp_db
+    _, _, deck_id = _setup_deck(db_path)
 
     save_flashcard_db(deck_id, "Q1", "R1", FlashcardStatus.NOVO.value, date.today(), db_path=db_path)
     id_aprendendo = save_flashcard_db(deck_id, "Q2", "R2", FlashcardStatus.APRENDENDO.value, date.today(), db_path=db_path)
@@ -271,13 +271,13 @@ def fake_flashcard(**overrides):
     return card
 
 
-def test_study_route_200(client):
+def test_study_route_200(client, auth_headers):
     with patch("routes.deck_routes.match_subject_user_db", return_value=True), \
          patch("routes.deck_routes.get_deck_db", return_value=fake_deck()), \
          patch("routes.deck_routes.get_subject_db", return_value=fake_subject()), \
          patch("routes.deck_routes.get_study_queue_db", return_value=[fake_flashcard()]):
 
-        response = client.get("/users/10/subjects/2/decks/1/study")
+        response = client.get("/users/10/subjects/2/decks/1/study", headers=auth_headers(10))
 
     assert response.status_code == 200
     body = response.get_json()
@@ -286,13 +286,13 @@ def test_study_route_200(client):
     assert len(body["cards"]) == 1
 
 
-def test_study_route_deck_sem_cards_ainda_e_200(client):
+def test_study_route_deck_sem_cards_ainda_e_200(client, auth_headers):
     with patch("routes.deck_routes.match_subject_user_db", return_value=True), \
          patch("routes.deck_routes.get_deck_db", return_value=fake_deck()), \
          patch("routes.deck_routes.get_subject_db", return_value=fake_subject()), \
          patch("routes.deck_routes.get_study_queue_db", return_value=[]):
 
-        response = client.get("/users/10/subjects/2/decks/1/study")
+        response = client.get("/users/10/subjects/2/decks/1/study", headers=auth_headers(10))
 
     assert response.status_code == 200
     body = response.get_json()
@@ -300,29 +300,30 @@ def test_study_route_deck_sem_cards_ainda_e_200(client):
     assert body["total"] == 0
 
 
-def test_study_route_deck_not_found_404(client):
+def test_study_route_deck_not_found_404(client, auth_headers):
     with patch("routes.deck_routes.match_subject_user_db", return_value=True), \
          patch("routes.deck_routes.get_deck_db", return_value=None):
 
-        response = client.get("/users/10/subjects/2/decks/999/study")
+        response = client.get("/users/10/subjects/2/decks/999/study", headers=auth_headers(10))
 
     assert response.status_code == 404
 
 
-def test_review_route_rating_invalido_400(client):
+def test_review_route_rating_invalido_400(client, auth_headers):
     with patch("routes.flashcard_routes.match_subject_user_db", return_value=True), \
          patch("routes.flashcard_routes.get_deck_db", return_value=fake_deck()), \
          patch("routes.flashcard_routes.get_flashcard_db", return_value=fake_flashcard()):
 
         response = client.post(
             "/users/10/subjects/2/decks/1/flashcards/5/review",
-            json={"rating": "excelente"},
+            headers=auth_headers(10),
+        json={"rating": "excelente"},
         )
 
     assert response.status_code == 400
 
 
-def test_review_route_fluxo_feliz_200(client):
+def test_review_route_fluxo_feliz_200(client, auth_headers):
     card = fake_flashcard(status="novo")
 
     with patch("routes.flashcard_routes.match_subject_user_db", return_value=True), \
@@ -333,7 +334,8 @@ def test_review_route_fluxo_feliz_200(client):
 
         response = client.post(
             "/users/10/subjects/2/decks/1/flashcards/5/review",
-            json={"rating": "bom"},
+            headers=auth_headers(10),
+        json={"rating": "bom"},
         )
 
     assert response.status_code == 200
@@ -344,14 +346,15 @@ def test_review_route_fluxo_feliz_200(client):
     mock_refresh.assert_called_once_with(1)
 
 
-def test_review_route_flashcard_not_found_404(client):
+def test_review_route_flashcard_not_found_404(client, auth_headers):
     with patch("routes.flashcard_routes.match_subject_user_db", return_value=True), \
          patch("routes.flashcard_routes.get_deck_db", return_value=fake_deck()), \
          patch("routes.flashcard_routes.get_flashcard_db", return_value=None):
 
         response = client.post(
             "/users/10/subjects/2/decks/1/flashcards/999/review",
-            json={"rating": "bom"},
+            headers=auth_headers(10),
+        json={"rating": "bom"},
         )
 
     assert response.status_code == 404

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { parseSubjectsList } from '../utils/userHelpers';
+import { getAuthHeaders } from './useAuth';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -28,7 +29,7 @@ export function useSubjects(userId) {
         try {
             // Busca as matérias reais do usuário. O parser enriquece com ícone/cor
             // do mock só como fallback visual, mas o id vem do banco (integer).
-            const response = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/subjects`);
+            const response = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/subjects`, { headers: getAuthHeaders() });
             if (!response.ok) {
                 throw new Error(`Falha ao carregar matérias (status ${response.status})`);
             }
@@ -57,7 +58,7 @@ export function useSubjects(userId) {
         try {
             const response = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/subjects`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({
                     user_id: userId,
                     name,

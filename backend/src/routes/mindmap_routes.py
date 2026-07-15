@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 import json
 
+from auth import require_auth
 from database.database import (
     get_subject_db,
     get_mindmap_db,
@@ -13,6 +14,7 @@ from database.database import (
 mindmap_bp = Blueprint("mindmaps", __name__, url_prefix="/users/<int:user_id>/subjects/<int:subject_id>/mindmaps")
 
 @mindmap_bp.get("")
+@require_auth
 def get_mindmaps(user_id, subject_id):
     """
     Lista os Mapas mentais de um usuário.
@@ -61,6 +63,7 @@ def get_mindmaps(user_id, subject_id):
 
 
 @mindmap_bp.get("/<int:mindmap_id>")
+@require_auth
 def get_mindmap(user_id, subject_id, mindmap_id):
     """
     Busca o Mapa mental de um usuário.
@@ -112,6 +115,7 @@ def get_mindmap(user_id, subject_id, mindmap_id):
 
 
 @mindmap_bp.post("")
+@require_auth
 def create_mindmap(user_id, subject_id):
     """
     Cria um novo mapa mental para um usuário.
@@ -219,6 +223,7 @@ def create_mindmap(user_id, subject_id):
 
 
 @mindmap_bp.delete("/<int:mindmap_id>")
+@require_auth
 def delete_mindmap(user_id, subject_id, mindmap_id):
     """
     Remove um Mapa mental pelo id.

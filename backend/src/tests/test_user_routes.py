@@ -23,7 +23,7 @@ def fake_user(**kwargs):
     )
 
 
-def test_login_success(client):
+def test_login_success(client, auth_headers):
     fake_counters = {"summaries": 2, "mind_maps": 1}
     fake_gamification = {"current_streak": 3, "streak": 3}
 
@@ -40,45 +40,46 @@ def test_login_success(client):
 
         response = client.post(
             "/users/login",
-            json={"email": "maria@email.com", "password": "senha123"},
+            headers=auth_headers(1),
+        json={"email": "maria@email.com", "password": "senha123"},
         )
 
     assert response.status_code == 200
 
     body = response.get_json()
 
-    assert body == {
-        "id": 1,
-        "name": "Maria",
-        "email": "maria@email.com",
-        "counters": fake_counters,
-        "gamification": fake_gamification,
-    }
+    assert body["id"] == 1
+    assert body["name"] == "Maria"
+    assert body["email"] == "maria@email.com"
+    assert body["counters"] == fake_counters
+    assert body["gamification"] == fake_gamification
+    assert "token" in body
     mock_login.assert_called_once_with("maria@email.com", "senha123")
     mock_counters.assert_called_once_with(1)
     mock_gamification.assert_called_once()
 
 
-def test_login_invalid_credentials(client):
+def test_login_invalid_credentials(client, auth_headers):
     with patch(
         "routes.user_routes.login_user_db",
         return_value=None,
     ):
         response = client.post(
             "/users/login",
-            json={"email": "maria@email.com", "password": "errada"},
+            headers=auth_headers(1),
+        json={"email": "maria@email.com", "password": "errada"},
         )
 
     assert response.status_code == 401
 
 
-def test_login_missing_fields(client):
-    response = client.post("/users/login", json={"email": "maria@email.com"})
+def test_login_missing_fields(client, auth_headers):
+    response = client.post("/users/login", headers=auth_headers(1), json={"email": "maria@email.com"})
 
     assert response.status_code == 400
 
 
-def test_create_user_duplicate_email(client):
+def test_create_user_duplicate_email(client, auth_headers):
     # Email UNIQUE: cadastro duplicado deve virar 409, não 500.
     with patch(
         "routes.user_routes.save_user_db",
@@ -86,13 +87,14 @@ def test_create_user_duplicate_email(client):
     ):
         response = client.post(
             "/users",
-            json={"name": "Maria", "email": "maria@email.com", "password": "senha123"},
+            headers=auth_headers(1),
+        json={"name": "Maria", "email": "maria@email.com", "password": "senha123"},
         )
 
     assert response.status_code == 409
 
 
-def test_delete_user_success(client):
+def test_delete_user_success(client, auth_headers):
     with patch(
         "routes.user_routes.delete_user_db",
         return_value=True,
@@ -100,23 +102,23 @@ def test_delete_user_success(client):
         "routes.user_routes.delete_vectors_by_metadata",
     ) as mock_delete_vectors:
 
-        response = client.delete("/users/1")
+        response = client.delete("/users/1", headers=auth_headers(1))
 
     assert response.status_code == 204
     mock_delete_vectors.assert_called_once_with(user_id=1)
 
 
-def test_delete_user_not_found(client):
+def test_delete_user_not_found(client, auth_headers):
     with patch(
         "routes.user_routes.delete_user_db",
         return_value=False,
     ):
-        response = client.delete("/users/1")
+        response = client.delete("/users/1", headers=auth_headers(1))
 
     assert response.status_code == 404
 
 
-def test_delete_user_qdrant_failure_does_not_block_204(client):
+def test_delete_user_qdrant_failure_does_not_block_204(client, auth_headers):
     """Erro na limpeza do Qdrant não pode impedir o delete de completar."""
     with patch(
         "routes.user_routes.delete_user_db",
@@ -125,6 +127,6 @@ def test_delete_user_qdrant_failure_does_not_block_204(client):
         "routes.user_routes.delete_vectors_by_metadata",
         side_effect=Exception("qdrant indisponível"),
     ):
-        response = client.delete("/users/1")
+        response = client.delete("/users/1", headers=auth_headers(1))
 
     assert response.status_code == 204

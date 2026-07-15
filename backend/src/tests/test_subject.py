@@ -13,14 +13,13 @@ from database.database import (
 
 
 def test_save_subject(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id != None
@@ -52,14 +51,13 @@ def test_save_subject(temp_db):
 
 
 def test_delete_subject(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id != None
@@ -87,14 +85,13 @@ def test_delete_subject(temp_db):
 
 
 def test_search_subject(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id != None
@@ -120,7 +117,7 @@ def test_search_subject(temp_db):
     assert subjects[0].name == "Redes de Computadores"
 
 def test_subject_invalid_user(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     with pytest.raises(sqlite3.IntegrityError):
         save_subject_db(
@@ -135,14 +132,13 @@ def test_subject_invalid_user(temp_db):
         )
 
 def test_count_subject(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert user_id != None

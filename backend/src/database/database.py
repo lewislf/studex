@@ -1,15 +1,13 @@
-import hashlib
-import hmac
 import json
 import os
 import sqlite3
 from sqlite3 import Connection
 from pathlib import Path
-from typing import Any
-from cryptography.fernet import Fernet
 import numpy as np
 import logging
 from datetime import date, timedelta
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 
 from user import Usuario
 from materia import Materia
@@ -20,9 +18,9 @@ from flashcard import Flashcard
 from enums.flashcard_status import FlashcardStatus
 
 DB_PATH = Path("users.db")
-KEY_PATH = Path("db_key.key")
 
 logger = logging.getLogger(__name__)
+_ph = PasswordHasher()
 
 
 def _get_connection(
@@ -43,43 +41,6 @@ def _get_connection(
 
     return conn, False
 
-def _get_or_create_key(key_path: Path = KEY_PATH) -> bytes:
-    """
-    Get or create the encription key for the database. 
-    The key is used to encrypt the user names and stored in a db_key.key file.
-    """
-    
-    # Check if the key already exists
-    if key_path.exists():
-        key = key_path.read_bytes()
-        
-        return key
-
-    # Else, it creates the key
-    key = Fernet.generate_key()
-    key_path.write_bytes(key)
-    os.chmod(key_path, 0o600)
-
-    return key
-
-
-def _encrypt_passwd(passwd: str, key: bytes) -> bytes:
-    """
-    Encrypt the user passwd with Fernet symetric encryption.
-    """
-    cipher = Fernet(key)
-    
-    return cipher.encrypt(passwd.encode("utf-8"))
-
-
-def _decrypt_passwd(payload: bytes, key: bytes) -> str:
-    """
-    Decrypt the user passwd with Fernet symetric encryption.
-    """
-    cipher = Fernet(key)
-
-    return cipher.decrypt(payload).decode("utf-8")
-
 def _open_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
     """
     Open a connection to the SQLite database.
@@ -91,17 +52,10 @@ def _open_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
 
     return conn
 
-def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
+def init_db(db_path: Path = DB_PATH) -> None:
     """
-    Create the database and tables if they do not exist
-        - users: stores the user_id, name, email and encrypted password.
-        - subjects: stores all subjects
-        - summaries: stores all summaries of the database
-        - decks: a collection of flashcards
-        - flashcards: revision cards
+    Create the database and tables if they do not exist.
     """
-    _get_or_create_key(key_path)
-
     with _open_connection(db_path) as conn:
 
         conn.execute(
@@ -236,21 +190,19 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
 
 
 def save_user_db(
-    name: str, 
-    passwd: str, 
-    email: str, 
+    name: str,
+    passwd: str,
+    email: str,
     gamification: dict = None,
     counters: dict = None,
-    db_path: Path = DB_PATH, 
-    key_path: Path = KEY_PATH
+    db_path: Path = DB_PATH,
 ) -> int | None:
     """
-    Register a new user in the database. 
-    
+    Register a new user in the database.
+
     Returns the user_id of the new entry.
     """
-    key = _get_or_create_key(key_path)
-    encrypted_passwd = _encrypt_passwd(passwd, key)
+    encrypted_passwd = _ph.hash(passwd)
     
     if gamification is None:
         gamification = {
@@ -373,14 +325,9 @@ def login_user_db(
     email: str,
     passwd: str,
     db_path: Path = DB_PATH,
-    key_path: Path = KEY_PATH,
 ) -> Usuario | None:
     """
-    Autentica um usuário por email + senha.
-
-    A senha é guardada com Fernet (criptografia reversível e não
-    determinística), então a verificação decripta o valor armazenado
-    e compara com a senha informada.
+    Autentica um usuário por email + senha (argon2id).
 
     Retorna o usuário autenticado ou None se email/senha não conferem.
     """
@@ -389,14 +336,9 @@ def login_user_db(
     if user is None:
         return None
 
-    key = _get_or_create_key(key_path)
-
     try:
-        stored_passwd = _decrypt_passwd(user.hash_password, key)
-    except Exception:
-        return None
-
-    if stored_passwd != passwd:
+        _ph.verify(user.hash_password, passwd)
+    except (VerifyMismatchError, VerificationError, InvalidHashError):
         return None
 
     return user
@@ -425,7 +367,7 @@ def count_people_db(db_path: Path = DB_PATH) -> int:
         row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
         return int(row[0]) if row else 0
 
-def print_all_people_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
+def print_all_people_db(db_path: Path = DB_PATH) -> None:
     """
     Prints all registered users.
     """
@@ -439,7 +381,7 @@ def print_all_people_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> N
 
 ### SUBJECT ###
 
-def save_subject_db(user_id: int, name: str, desc: str, domain: int, icon: str, color: str, creation_date: date, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int | None:
+def save_subject_db(user_id: int, name: str, desc: str, domain: int, icon: str, color: str, creation_date: date, db_path: Path = DB_PATH) -> int | None:
     """
     Register a new subject in the database. 
     

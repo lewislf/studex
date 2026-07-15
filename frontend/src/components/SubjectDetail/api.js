@@ -1,6 +1,8 @@
 // Shared fetch helpers and formatting utilities for the subject detail pages
 // (materia overview, summary reader, mind map viewer, deck flashcards).
 
+import { getAuthHeaders } from '../../hooks/useAuth';
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 /**
@@ -92,7 +94,7 @@ export function deckDate(deck) {
 
 /** GETs a JSON resource; a 404 response resolves to null instead of throwing. */
 async function getJson(url) {
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: getAuthHeaders() });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`request failed (${res.status})`);
     return res.json();
@@ -162,7 +164,7 @@ export async function reviewFlashcard(userId, subjectId, deckId, flashcardId, ra
         `${API_URL}/users/${userId}/subjects/${subjectId}/decks/${deckId}/flashcards/${flashcardId}/review`,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
             body: JSON.stringify({ rating }),
         }
     );

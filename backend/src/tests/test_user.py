@@ -8,14 +8,13 @@ from database.database import (
 
 
 def test_save_user(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path
+        db_path=db_path
     )
 
     assert user_id == 1
@@ -35,14 +34,13 @@ def test_save_user(temp_db):
     assert user.counters["total_flashcards_created"] == 0
 
 def test_delete_user(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Ana",
         "123",
         "ana@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     assert count_people_db(db_path) == 1
@@ -53,14 +51,13 @@ def test_delete_user(temp_db):
     assert count_people_db(db_path) == 0
 
 def test_search_user(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     save_user_db(
         "Felipe",
         "123",
         "f@email.com",
-        db_path=db_path,
-        key_path=key_path
+        db_path=db_path
     )
 
     users = get_users_db(
@@ -73,7 +70,7 @@ def test_search_user(temp_db):
 
 
 def test_save_user_with_custom_data(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     custom_gamification = {
         "current_streak": 5,
@@ -93,8 +90,7 @@ def test_save_user_with_custom_data(temp_db):
         "felipe@email.com",
         gamification=custom_gamification,
         counters=custom_counters,
-        db_path=db_path,
-        key_path=key_path
+        db_path=db_path
     )
 
     assert user_id == 1

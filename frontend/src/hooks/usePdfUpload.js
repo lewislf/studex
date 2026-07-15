@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getAuthHeaders } from './useAuth';
 
 /**
  * Custom hook to handle asynchronous multipart PDF uploads to a given API endpoint.
@@ -54,6 +55,7 @@ export function usePdfUpload(endpointUrl) {
             // POST request
             const response = await fetch(endpointUrl, {
                 method: 'POST',
+                headers: getAuthHeaders(),
                 body: formData,
             });
 

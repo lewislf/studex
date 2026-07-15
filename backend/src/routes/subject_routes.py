@@ -2,6 +2,7 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
+from auth import require_auth
 from database.database import (
     count_flashcards_db,
     count_summaries_db,
@@ -22,6 +23,7 @@ subject_bp = Blueprint("subjects", __name__, url_prefix="/users/<int:user_id>/su
 
 
 @subject_bp.get("/<int:subject_id>")
+@require_auth
 def get_subject(user_id, subject_id):
     """
     Busca uma matéria pelo id.
@@ -68,6 +70,7 @@ def get_subject(user_id, subject_id):
             })
 
 @subject_bp.get("")
+@require_auth
 def get_subjects(user_id):
     """
     Lista as matérias de um usuário.
@@ -113,6 +116,7 @@ def get_subjects(user_id):
 
 
 @subject_bp.post("")
+@require_auth
 def create_subject(user_id):
     """
     Cria uma nova matéria para um usuário.
@@ -168,6 +172,7 @@ def create_subject(user_id):
 
 
 @subject_bp.delete("/<int:subject_id>")
+@require_auth
 def delete_subject(user_id, subject_id):
     """
     Remove uma matéria pelo id.

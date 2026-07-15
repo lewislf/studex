@@ -12,14 +12,13 @@ from database.database import (
 
 
 def test_save_deck(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     subject_id = save_subject_db(
@@ -57,14 +56,13 @@ def test_save_deck(temp_db):
 
 
 def test_delete_deck(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     subject_id = save_subject_db(
@@ -99,14 +97,13 @@ def test_delete_deck(temp_db):
 
 
 def test_search_deck(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     subject_id = save_subject_db(
@@ -141,14 +138,13 @@ def test_search_deck(temp_db):
 
 
 def test_count_deck(temp_db):
-    db_path, key_path = temp_db
+    db_path = temp_db
 
     user_id = save_user_db(
         "Felipe",
         "123456",
         "felipe@email.com",
-        db_path=db_path,
-        key_path=key_path,
+        db_path=db_path
     )
 
     subject_id = save_subject_db(

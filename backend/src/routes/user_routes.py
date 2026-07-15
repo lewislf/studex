@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from flask import Blueprint, jsonify, request
 
+from auth import create_token, require_auth
 from database.database import (
     get_user_db,
     get_users_db,
@@ -77,6 +78,7 @@ def _live_counters(user_id: int) -> dict:
 
 
 @user_bp.get("")
+@require_auth
 def get_users():
     """
     Busca todos os usuários do banco de dados.
@@ -104,6 +106,7 @@ def get_users():
     return jsonify(response)
 
 @user_bp.get("/<int:user_id>")
+@require_auth
 def get_user(user_id):
     """
     Busca um usuário pelo id.
@@ -216,10 +219,12 @@ def login_user():
     data = user.to_dict()
     data["counters"] = _live_counters(user.id)
     data["gamification"] = _gamification_with_streak(user, data.get("gamification"))
+    data["token"] = create_token(user.id)
     return jsonify(data), 200
 
 
 @user_bp.delete("/<int:user_id>")
+@require_auth
 def delete_user(user_id):
     """
     Remove um usuário pelo id.
@@ -249,6 +254,7 @@ def delete_user(user_id):
 
 
 @user_bp.get("/<int:user_id>/activity")
+@require_auth
 def get_user_activity(user_id):
     """
     Atividade diária do usuário (streak/heatmap): dias em que revisou ao

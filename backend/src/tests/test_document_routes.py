@@ -15,7 +15,7 @@ import routes.document_routes as document_routes
 from materials import MATERIAIS_VALIDOS
 
 
-def test_upload_persists_under_user_subject(client, tmp_path):
+def test_upload_persists_under_user_subject(client, auth_headers, tmp_path):
     materials = [{"tipo": "resumo", "titulo": "T", "conteudo": {}, "creation_date": "2026-07-07"}]
 
     with patch("routes.document_routes.DOCS_DIR", tmp_path), \
@@ -28,6 +28,7 @@ def test_upload_persists_under_user_subject(client, tmp_path):
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -41,7 +42,7 @@ def test_upload_persists_under_user_subject(client, tmp_path):
     mock_save.assert_called_once_with(3, materials)
 
 
-def test_upload_rejects_subject_of_another_user(client, tmp_path):
+def test_upload_rejects_subject_of_another_user(client, auth_headers, tmp_path):
     """Lacuna de autorização: subject_id de outro usuário não pode receber
     material via upload. match_subject_user_db devolvendo False -> 404, sem
     processar o PDF (load_documents nem deve ser chamado)."""
@@ -52,6 +53,7 @@ def test_upload_rejects_subject_of_another_user(client, tmp_path):
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -66,12 +68,13 @@ def test_upload_rejects_subject_of_another_user(client, tmp_path):
     mock_save.assert_not_called()
 
 
-def test_upload_missing_user_id_returns_400_before_saving_file(client, tmp_path):
+def test_upload_missing_user_id_returns_400_before_saving_file(client, auth_headers, tmp_path):
     """Bug 5: sem o campo user_id, a rota devolvia 500 com o PDF já salvo em
     disco. Agora valida antes de tocar no filesystem."""
     with patch("routes.document_routes.DOCS_DIR", tmp_path):
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 # user_id ausente
@@ -86,10 +89,11 @@ def test_upload_missing_user_id_returns_400_before_saving_file(client, tmp_path)
     assert list(tmp_path.glob("*.pdf")) == []
 
 
-def test_upload_non_numeric_user_id_returns_400(client, tmp_path):
+def test_upload_non_numeric_user_id_returns_400(client, auth_headers, tmp_path):
     with patch("routes.document_routes.DOCS_DIR", tmp_path):
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "não-é-um-numero",
@@ -101,7 +105,7 @@ def test_upload_non_numeric_user_id_returns_400(client, tmp_path):
     assert list(tmp_path.glob("*.pdf")) == []
 
 
-def test_upload_rejects_mismatched_user(client, tmp_path):
+def test_upload_rejects_mismatched_user(client, auth_headers, tmp_path):
     with patch("routes.document_routes.DOCS_DIR", tmp_path), \
          patch("routes.document_routes.load_documents"), \
          patch("routes.document_routes.split_into_nodes"), \
@@ -110,6 +114,7 @@ def test_upload_rejects_mismatched_user(client, tmp_path):
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "99",  # não bate com o id da URL
@@ -122,7 +127,7 @@ def test_upload_rejects_mismatched_user(client, tmp_path):
     mock_save.assert_not_called()
 
 
-def test_upload_saves_file_with_unique_name_on_disk(client, tmp_path):
+def test_upload_saves_file_with_unique_name_on_disk(client, auth_headers, tmp_path):
     """Bug 6: dois uploads simultâneos do mesmo nome de arquivo não podem
     colidir no mesmo path em disco. O nome salvo carrega um prefixo uuid, o
     original vira sufixo (só pro filename retornado na resposta seguir
@@ -139,6 +144,7 @@ def test_upload_saves_file_with_unique_name_on_disk(client, tmp_path):
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula1.pdf"),
                 "user_id": "10",
@@ -207,10 +213,11 @@ def test_mark_phase_done_ignores_stale_token():
     document_routes._clear_progress(user_id, token_b)
 
 
-def test_upload_rejects_non_pdf(client, tmp_path):
+def test_upload_rejects_non_pdf(client, auth_headers, tmp_path):
     with patch("routes.document_routes.DOCS_DIR", tmp_path):
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"nope"), "aula.txt"),
                 "user_id": "10",
@@ -225,12 +232,13 @@ def test_upload_rejects_non_pdf(client, tmp_path):
 # Campo opcional `materials`: subconjunto de materiais a gerar
 # ---------------------------------------------------------------------------
 
-def test_upload_invalid_materials_returns_400_before_saving_file(client, tmp_path):
+def test_upload_invalid_materials_returns_400_before_saving_file(client, auth_headers, tmp_path):
     """Valor fora de MATERIAIS_VALIDOS -> 400 explicando os valores aceitos,
     ANTES de salvar o PDF em disco (mesma regra do bug 5 pro user_id)."""
     with patch("routes.document_routes.DOCS_DIR", tmp_path):
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -246,7 +254,7 @@ def test_upload_invalid_materials_returns_400_before_saving_file(client, tmp_pat
     assert list(tmp_path.glob("*.pdf")) == []
 
 
-def test_upload_materials_flashcards_only_progresso_so_com_essa_fase(client, tmp_path):
+def test_upload_materials_flashcards_only_progresso_so_com_essa_fase(client, auth_headers, tmp_path):
     """materials="flashcards" -> generate_materials recebe tipos={"flashcards"}
     e o progresso inicial só rastreia essa fase (não resumo/mapa_mental)."""
     baralho = [{"tipo": "baralho", "titulo": "T", "conteudo": {"flashcards": [
@@ -277,6 +285,7 @@ def test_upload_materials_flashcards_only_progresso_so_com_essa_fase(client, tmp
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -291,7 +300,7 @@ def test_upload_materials_flashcards_only_progresso_so_com_essa_fase(client, tmp
     assert set(progresso_durante_geracao.keys()) == {"filename", "token", "flashcards"}
 
 
-def test_upload_flashcards_only_dedup_descarta_tudo_retorna_207(client, tmp_path):
+def test_upload_flashcards_only_dedup_descarta_tudo_retorna_207(client, auth_headers, tmp_path):
     """Caso especial: upload pedindo só flashcards, e o dedup descarta todos
     os cards por serem duplicados dos já existentes na matéria. Sem outros
     materiais pedidos/salvos, a resposta é 207 com "error" avisando o motivo
@@ -312,6 +321,7 @@ def test_upload_flashcards_only_dedup_descarta_tudo_retorna_207(client, tmp_path
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -327,7 +337,7 @@ def test_upload_flashcards_only_dedup_descarta_tudo_retorna_207(client, tmp_path
     mock_save.assert_not_called()
 
 
-def test_upload_materials_ausente_pede_os_tres(client, tmp_path):
+def test_upload_materials_ausente_pede_os_tres(client, auth_headers, tmp_path):
     """Sem o campo materials, generate_materials é chamado com tipos=None
     (os três materiais), comportamento default preservado."""
     materials = [{"tipo": "resumo", "titulo": "T", "conteudo": {}, "creation_date": "2026-07-07"}]
@@ -342,6 +352,7 @@ def test_upload_materials_ausente_pede_os_tres(client, tmp_path):
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -358,7 +369,7 @@ def test_upload_materials_ausente_pede_os_tres(client, tmp_path):
 # Dedup de resumo/mapa mental (reenvio do mesmo PDF não pode duplicar)
 # ---------------------------------------------------------------------------
 
-def test_upload_resumo_duplicado_descartado_tudo_duplicado_retorna_207(client, tmp_path):
+def test_upload_resumo_duplicado_descartado_tudo_duplicado_retorna_207(client, auth_headers, tmp_path):
     """Upload pedindo só resumo, e o dedup lexical descarta por ser
     quase-idêntico a um resumo já existente na matéria: nada sobra pra
     salvar, resposta é 207 com status "duplicate_materials"."""
@@ -379,6 +390,7 @@ def test_upload_resumo_duplicado_descartado_tudo_duplicado_retorna_207(client, t
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -395,7 +407,7 @@ def test_upload_resumo_duplicado_descartado_tudo_duplicado_retorna_207(client, t
     mock_save.assert_not_called()
 
 
-def test_upload_resumo_duplicado_mapa_mental_novo_salva_parcial_201(client, tmp_path):
+def test_upload_resumo_duplicado_mapa_mental_novo_salva_parcial_201(client, auth_headers, tmp_path):
     """Upload pedindo resumo + mapa mental: só o resumo é duplicado, o mapa
     mental sobrevive. Resposta continua 201, mas sem o resumo em
     "materiais"."""
@@ -427,6 +439,7 @@ def test_upload_resumo_duplicado_mapa_mental_novo_salva_parcial_201(client, tmp_
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",
@@ -442,7 +455,7 @@ def test_upload_resumo_duplicado_mapa_mental_novo_salva_parcial_201(client, tmp_
     mock_save.assert_called_once_with(3, [mapa_novo])
 
 
-def test_upload_dedup_resumo_mapa_falha_nao_bloqueia_salvar(client, tmp_path):
+def test_upload_dedup_resumo_mapa_falha_nao_bloqueia_salvar(client, auth_headers, tmp_path):
     """Mesmo princípio do dedup de flashcards: falha no dedup de
     resumo/mapa mental nunca pode impedir de salvar. Salva com o material
     original, sem dedup."""
@@ -462,6 +475,7 @@ def test_upload_dedup_resumo_mapa_falha_nao_bloqueia_salvar(client, tmp_path):
 
         response = client.post(
             "/users/10/documents",
+            headers=auth_headers(10),
             data={
                 "file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"),
                 "user_id": "10",

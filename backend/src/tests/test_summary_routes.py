@@ -38,7 +38,7 @@ def fake_summary():
     )
 
 
-def test_get_summary(client):
+def test_get_summary(client, auth_headers):
     with patch(
         "routes.summary_routes.get_summary_db",
         return_value=fake_summary(),
@@ -49,7 +49,7 @@ def test_get_summary(client):
         "routes.summary_routes.match_subject_user_db",
         return_value=True,
     ):
-        response = client.get("/users/10/subjects/2/summaries/1")
+        response = client.get("/users/10/subjects/2/summaries/1", headers=auth_headers(10))
 
     assert response.status_code == 200
 
@@ -61,17 +61,17 @@ def test_get_summary(client):
     assert body["conteudo"]["topicos_chave"] == ["A", "B"]
 
 
-def test_get_summary_not_found(client):
+def test_get_summary_not_found(client, auth_headers):
     with patch(
         "routes.summary_routes.get_summary_db",
         return_value=None,
     ):
-        response = client.get("/users/10/subjects/2/summaries/1")
+        response = client.get("/users/10/subjects/2/summaries/1", headers=auth_headers(10))
 
     assert response.status_code == 404
 
 
-def test_get_summaries(client):
+def test_get_summaries(client, auth_headers):
     with patch(
         "routes.summary_routes.get_summaries_db",
         return_value=[fake_summary(), fake_summary()],
@@ -82,7 +82,7 @@ def test_get_summaries(client):
         "routes.summary_routes.match_subject_user_db",
         return_value=True,
     ):
-        response = client.get("/users/10/subjects/2/summaries")
+        response = client.get("/users/10/subjects/2/summaries", headers=auth_headers(10))
 
     assert response.status_code == 200
 
@@ -93,17 +93,17 @@ def test_get_summaries(client):
     assert body[1]["conteudo"]["topicos_chave"] == ["A", "B"]
 
 
-def test_get_summaries_not_found(client):
+def test_get_summaries_not_found(client, auth_headers):
     with patch(
         "routes.summary_routes.get_summaries_db",
         return_value=None,
     ):
-        response = client.get("/users/10/subjects/2/summaries")
+        response = client.get("/users/10/subjects/2/summaries", headers=auth_headers(10))
 
     assert response.status_code == 404
 
 
-def test_create_summary(client):
+def test_create_summary(client, auth_headers):
     payload = {
         "titulo": "Planolândia",
         "creation_date": "2026-07-04",
@@ -122,7 +122,8 @@ def test_create_summary(client):
     ) as mock_save:
         response = client.post(
             "/users/10/subjects/2/summaries",
-            json=payload,
+            headers=auth_headers(10),
+        json=payload,
         )
 
     assert response.status_code == 201
@@ -131,7 +132,7 @@ def test_create_summary(client):
     mock_save.assert_called_once()
 
 
-def test_delete_summary(client):
+def test_delete_summary(client, auth_headers):
     with patch(
         "routes.summary_routes.get_summary_db",
         return_value=fake_summary(),
@@ -142,12 +143,12 @@ def test_delete_summary(client):
         "routes.summary_routes.delete_summary_db",
         return_value=True,
     ):
-        response = client.delete("/users/10/subjects/2/summaries/1")
+        response = client.delete("/users/10/subjects/2/summaries/1", headers=auth_headers(10))
 
     assert response.status_code == 204
 
 
-def test_delete_summary_not_found(client):
+def test_delete_summary_not_found(client, auth_headers):
     with patch(
         "routes.summary_routes.get_summary_db",
         return_value=None,
@@ -158,6 +159,6 @@ def test_delete_summary_not_found(client):
         "routes.summary_routes.delete_summary_db",
         return_value=False,
     ):
-        response = client.delete("/users/10/subjects/2/summaries/1")
+        response = client.delete("/users/10/subjects/2/summaries/1", headers=auth_headers(10))
 
     assert response.status_code == 404
