@@ -70,8 +70,8 @@ export function useAuth() {
                 );
             }
 
-            const { id } = await response.json();
-            const user = { id, name, email };
+            const { id, token } = await response.json();
+            const user = { id, name, email, token };
             saveSession(user);
             return user;
         } catch (err) {

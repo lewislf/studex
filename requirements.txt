@@ -16,8 +16,8 @@ iniconfig @ file:///home/conda/feedstock_root/build_artifacts/iniconfig_17608313
 itsdangerous @ file:///home/conda/feedstock_root/build_artifacts/itsdangerous_1733308265247/work
 Jinja2 @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_jinja2_1764517220/work
 llama-index
-llama-index-embeddings-ollama
-llama-index-llms-ollama
+llama-index-embeddings-google-genai
+llama-index-llms-google-genai
 llama-index-vector-stores-qdrant
 Markdown==3.10.2
 MarkupSafe @ file:///home/conda/feedstock_root/build_artifacts/markupsafe_1772444934960/work

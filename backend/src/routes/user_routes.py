@@ -175,7 +175,7 @@ def create_user():
         # Coluna email é UNIQUE: cadastro duplicado retorna 409 em vez de estourar.
         return jsonify({"error": "Email já cadastrado"}), 409
 
-    return jsonify({"id": user_id}), 201
+    return jsonify({"id": user_id, "token": create_token(user_id)}), 201
 
 
 @user_bp.post("/login")

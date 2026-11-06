@@ -31,7 +31,7 @@ export default function App() {
                 const withToken = { ...updated, token: session.token };
                 saveSession(withToken);
                 setSessionData(withToken);
-            } else if (res.status === 404) {
+            } else if (res.status === 404 || res.status === 401) {
                 clearSession();
                 setSessionData(null);
             }

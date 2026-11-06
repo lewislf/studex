@@ -7,8 +7,8 @@ PyJWT
 numpy
 pymupdf
 llama-index
-llama-index-embeddings-ollama
-llama-index-llms-ollama
+llama-index-embeddings-google-genai
+llama-index-llms-google-genai
 llama-index-vector-stores-qdrant
 nest-asyncio
 qdrant-client

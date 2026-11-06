@@ -13,31 +13,6 @@ services:
       retries: 5
       start_period: 10s
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      # Modelos ficam persistidos: baixa uma vez, sobrevive a rebuild/restart
-      - ollama_data:/root/.ollama
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    environment:
-      # Cada slot paralelo custa RAM/VRAM. Suba via env se tiver folga.
-      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-4}
-      OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-4096}
-      OLLAMA_FLASH_ATTENTION: ${OLLAMA_FLASH_ATTENTION:-false}
-      OLLAMA_KV_CACHE_TYPE: ${OLLAMA_KV_CACHE_TYPE:-f16}
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/11434' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    # Roda em CPU por default. Para usar GPU NVIDIA, adicione o override:
-    #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
-
   backend:
     build: ./backend
     ports:
@@ -46,10 +21,9 @@ services:
       - ./backend/src:/app
     environment:
       QDRANT_URL: http://qdrant:6333
-      # Default aponta para o serviço no compose; sobrescreva para usar Ollama no host
-      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
-      LLM_MODEL: ${LLM_MODEL:-llama3.2:latest}
-      LLM_CONTEXT_WINDOW: ${LLM_CONTEXT_WINDOW:-4096}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gemini-3.5-flash-lite}
+      EMBED_MODEL: ${EMBED_MODEL:-gemini-embedding-001}
       LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-2048}
       FLASK_DEBUG: ${FLASK_DEBUG:-0}
     extra_hosts:
@@ -62,8 +36,6 @@ services:
       start_period: 10s
     depends_on:
       qdrant:
-        condition: service_started
-      ollama:
         condition: service_started
   docs:
     build:
@@ -94,4 +66,3 @@ services:
 
 volumes:
   qdrant_data:
-  ollama_data:

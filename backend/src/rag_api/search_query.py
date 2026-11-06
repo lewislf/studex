@@ -21,41 +21,41 @@ from llama_index.core import (
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import BaseNode
 from llama_index.core.vector_stores import ExactMatchFilter, MetadataFilters
-from llama_index.embeddings.ollama import OllamaEmbedding
-from llama_index.llms.ollama import Ollama
+from google.genai import types
+from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
+from llama_index.llms.google_genai import GoogleGenAI
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_EMBED_HOST = os.environ.get("OLLAMA_EMBED_HOST", OLLAMA_HOST) # Permite apontar embedding e LLM pra hosts diferentes, se precisar.
-OLLAMA_LLM_HOST = os.environ.get("OLLAMA_LLM_HOST", OLLAMA_HOST)
-LLM_MODEL = os.environ.get("LLM_MODEL", "llama3.2:latest")
-LLM_CONTEXT_WINDOW = int(os.environ.get("LLM_CONTEXT_WINDOW", "4096"))
-
-# Se os livros forem muito grandes, precisa de mais tempo para processar tudo. Aumentar esse tempo ajuda a LLM conseguir processar.
-LLM_REQUEST_TIMEOUT = float(os.environ.get("LLM_REQUEST_TIMEOUT", "600"))
+GEMINI_API_KEY = (
+    os.environ.get("GEMINI_API_KEY")
+    or os.environ.get("GOOGLE_API_KEY")
+    or "missing-api-key"
+)
+LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-3.5-flash-lite")
+EMBED_MODEL = os.environ.get("EMBED_MODEL", "gemini-embedding-001")
+LLM_CONTEXT_WINDOW = int(os.environ.get("LLM_CONTEXT_WINDOW", "1048576"))
 
 # Teto de tokens gerados por chamada. Sem isso, modelos com "thinking" (ex: qwen3)
 # geram milhares de tokens de raciocínio e uma única chamada leva minutos.
 LLM_MAX_OUTPUT_TOKENS = int(os.environ.get("LLM_MAX_OUTPUT_TOKENS", "2048"))
 
-# embed_batch_size alto: bge-m3 é um modelo leve e a GPU tem VRAM de sobra,
-# então o gargalo é o número de round-trips HTTP ao Ollama, não o tamanho do
-# batch. Subir de 10 (default da lib) pra 64 reduz drasticamente as chamadas
-# num documento com muitos chunks (ex: 66 chunks vira 2 chamadas em vez de 7).
-embed_model = OllamaEmbedding(
-    model_name="bge-m3",
-    base_url=OLLAMA_EMBED_HOST,
-    request_timeout=LLM_REQUEST_TIMEOUT,
+# embed_batch_size alto: reduz o número de round-trips HTTP à API num documento
+# com muitos chunks (ex: 66 chunks vira 2 chamadas em vez de 7).
+embed_model = GoogleGenAIEmbedding(
+    model_name=EMBED_MODEL,
+    api_key=GEMINI_API_KEY,
     embed_batch_size=64,
 )
 
-llm = Ollama(
-    model=LLM_MODEL,  # ver modelos disponíveis com `ollama list`
-    base_url=OLLAMA_LLM_HOST,
-    request_timeout=LLM_REQUEST_TIMEOUT,
+llm = GoogleGenAI(
+    model=LLM_MODEL,
+    api_key=GEMINI_API_KEY,
     temperature=0.1,
     context_window=LLM_CONTEXT_WINDOW,
-    thinking=False,
-    additional_kwargs={"num_predict": LLM_MAX_OUTPUT_TOKENS},
+    max_tokens=LLM_MAX_OUTPUT_TOKENS,
+    generation_config=types.GenerateContentConfig(
+        temperature=0.1,
+        max_output_tokens=LLM_MAX_OUTPUT_TOKENS,
+    ),
 )
 
 Settings.embed_model = embed_model
