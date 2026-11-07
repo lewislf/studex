@@ -110,9 +110,9 @@ def load_documents(input_files, metadata: dict | None = None) -> list[Document]:
 
 
 # Limita a quantidade máxima de chunks por documento para caber com folga nas
-# cotas por minuto do Free Tier do Gemini (250k tokens/min no LLM e 100
-# embeddings/min no gemini-embedding-001), amostrando uniformemente livros grandes.
-MAX_DOCUMENT_CHUNKS = int(os.environ.get("MAX_DOCUMENT_CHUNKS", "56"))
+# cotas por minuto do Free Tier do Gemini (30k tokens/min no gemini-embedding-001
+# e 250k tokens/min no LLM), amostrando uniformemente livros grandes.
+MAX_DOCUMENT_CHUNKS = int(os.environ.get("MAX_DOCUMENT_CHUNKS", "24"))
 
 
 def split_into_nodes(docs: list[Document]) -> list[BaseNode]:
