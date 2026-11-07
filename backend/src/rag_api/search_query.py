@@ -109,12 +109,22 @@ def load_documents(input_files, metadata: dict | None = None) -> list[Document]:
     return docs
 
 
+# Limita a quantidade máxima de chunks por documento para caber com folga nas
+# cotas por minuto do Free Tier do Gemini (250k tokens/min no LLM e 100
+# embeddings/min no gemini-embedding-001), amostrando uniformemente livros grandes.
+MAX_DOCUMENT_CHUNKS = int(os.environ.get("MAX_DOCUMENT_CHUNKS", "56"))
+
+
 def split_into_nodes(docs: list[Document]) -> list[BaseNode]:
     """Divide os documentos em chunks uma única vez, para reaproveitar entre
     indexação, resumo em cascata e extração do mapa mental, em vez de cada
     etapa re-dividir o mesmo texto do zero."""
     splitter = SentenceSplitter(chunk_size=1024, chunk_overlap=20)
-    return splitter.get_nodes_from_documents(docs)
+    nodes = splitter.get_nodes_from_documents(docs)
+    if MAX_DOCUMENT_CHUNKS > 0 and len(nodes) > MAX_DOCUMENT_CHUNKS:
+        step = len(nodes) / MAX_DOCUMENT_CHUNKS
+        nodes = [nodes[int(i * step)] for i in range(MAX_DOCUMENT_CHUNKS)]
+    return nodes
 
 
 def build_vector_index(nodes: list[BaseNode], collection_name: str = COLLECTION_NAME) -> VectorStoreIndex:
