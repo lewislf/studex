@@ -4,10 +4,17 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
-QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
+QDRANT_URL = os.environ.get("QDRANT_URL")
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
+QDRANT_PATH = os.environ.get("QDRANT_PATH")
 COLLECTION_NAME = "studex_books"
 
-client = QdrantClient(url=QDRANT_URL)
+if QDRANT_URL:
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+elif QDRANT_PATH:
+    client = QdrantClient(path=QDRANT_PATH)
+else:
+    client = QdrantClient(url="http://localhost:6333")
 
 
 def collection_exists(collection_name: str = COLLECTION_NAME) -> bool:

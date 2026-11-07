@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements-docker.txt
 
 COPY src/ .
 
+ENV QDRANT_PATH=/tmp/qdrant_storage
 EXPOSE 5000
 
-CMD ["python", "main.py"]
+CMD ["sh", "-c", "python -c 'from database.database import init_db; init_db()' && gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 8 --timeout 180 main:app"]

@@ -17,7 +17,7 @@ from routes.study_routes import study_bp
 app = Flask(__name__)
 CORS(app)
 HOST = "0.0.0.0"
-SOCKET = 5000
+SOCKET = int(os.environ.get("PORT", 5000))
 
 FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"
 
