@@ -1,8 +1,13 @@
 import os
+import sys
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 from llama_index.vector_stores.qdrant import QdrantVectorStore
+
+# Garante uma única instância mesmo quando importado como `qdrant.qdrant_server` e `qdrant_server`
+sys.modules.setdefault("qdrant_server", sys.modules[__name__])
+sys.modules.setdefault("qdrant.qdrant_server", sys.modules[__name__])
 
 QDRANT_URL = os.environ.get("QDRANT_URL")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
