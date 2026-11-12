@@ -1,10 +1,12 @@
 import logging
+import re
 import sqlite3
 from datetime import date, timedelta
 
 from flask import Blueprint, jsonify, request
 
-from auth import create_token, require_auth
+from auth import create_token, require_auth, require_admin
+import rate_limit
 from database.database import (
     get_user_db,
     get_users_db,
@@ -26,6 +28,39 @@ logger = logging.getLogger(__name__)
 user_bp = Blueprint("users", __name__, url_prefix="/users")
 
 ACTIVITY_WINDOW_DAYS = 400
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$")
+MAX_LOGIN_FIELD = 1024  # evita DoS por hashing de senhas gigantes no login
+
+
+def _validate_signup(body):
+    """Valida o corpo do cadastro. Retorna (dados_normalizados, None) ou (None, msg_erro)."""
+    if not isinstance(body, dict):
+        return None, "Corpo da requisição inválido. Envie um JSON com nome, email e senha."
+
+    name, email, password = body.get("name"), body.get("email"), body.get("password")
+
+    if not isinstance(name, str) or not name.strip():
+        return None, "Informe seu nome."
+    name = name.strip()
+    if len(name) > 100:
+        return None, "O nome deve ter no máximo 100 caracteres."
+
+    if not isinstance(email, str) or not email.strip():
+        return None, "Informe seu email."
+    email = email.strip().lower()
+    if len(email) > 254 or not EMAIL_RE.match(email):
+        return None, "Email inválido."
+
+    if not isinstance(password, str) or not password:
+        return None, "Informe uma senha."
+    if len(password) < 8:
+        return None, "A senha deve ter ao menos 8 caracteres."
+    if len(password) > 128:
+        return None, "A senha deve ter no máximo 128 caracteres."
+
+    return {"name": name, "email": email, "password": password}, None
+
 
 
 def _gamification_with_streak(user, base_gamification: dict | None) -> dict:
@@ -78,18 +113,28 @@ def _live_counters(user_id: int) -> dict:
 
 
 @user_bp.get("")
-@require_auth
+@require_admin
 def get_users():
     """
-    Busca todos os usuários do banco de dados.
+    Lista todos os usuários (somente administradores).
+
+    Minimização (LGPD): o e-mail é exposto de propósito, a pedido do dono do
+    produto, mas só a administradores; cada acesso é auditado em
+    auth.require_admin (apenas o id de quem acessou).
+
+    Exige token de um usuário listado em ADMIN_USER_IDS. Minimização de
+    dados: retorna apenas id, name, email, counters e gamification; nunca
+    o hash da senha.
     ---
     tags:
       - Usuários
     responses:
       200:
-        description: Usuário encontrado
-      404:
-        description: Usuário não encontrado
+        description: Lista de usuários (id, name, email, counters, gamification)
+      401:
+        description: Token ausente ou inválido
+      403:
+        description: Usuário autenticado não é administrador
     """
     users = get_users_db("")
 
@@ -98,10 +143,15 @@ def get_users():
 
     response = []
     for user in users:
-        data = user.to_dict()
-        data["counters"] = _live_counters(user.id)
-        data["gamification"] = _gamification_with_streak(user, data.get("gamification"))
-        response.append(data)
+        # Lista explícita de campos (não depende de to_dict) para nunca vazar hash.
+        # E-mail só aparece aqui porque a rota é admin-only e auditada.
+        response.append({
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "counters": _live_counters(user.id),
+            "gamification": _gamification_with_streak(user, user.gamification),
+        })
 
     return jsonify(response)
 
@@ -153,26 +203,39 @@ def create_user():
             name: {type: string, example: "Maria"}
             password: {type: string, example: "senha123"}
             email: {type: string, example: "maria@email.com"}
-            gamification: {type: object, example: {"current_streak": 0, "active_yesterday": false}}
-            counters: {type: object, example: {"summaries": 0, "mind_maps": 0, "pending_flashcards_today": 0, "total_flashcards_created": 0}}
     responses:
       201:
         description: Usuário criado (retorna o id)
+      400:
+        description: Corpo inválido (nome 1-100, email válido até 254, senha 8-128)
+      429:
+        description: Muitas tentativas de cadastro deste IP
       409:
         description: Email já cadastrado
     """
-    body = request.get_json()
+    body = request.get_json(silent=True)
+    data, error = _validate_signup(body)
+    if error:
+        return jsonify({"error": error}), 400
+
+    if rate_limit.enabled():
+        # Só tentativas válidas consomem cota (o custo caro é o hash argon2),
+        # assim erros de digitação não bloqueiam. Checagem+registro atômicos.
+        cfg = rate_limit.limits()
+        wait = rate_limit.limiter.check_and_record(
+            rate_limit.mac_key("signup", rate_limit.client_ip()),
+            cfg["signup_ip_max"], cfg["signup_window"],
+        )
+        if wait:
+            logger.warning("rate limit: cadastro bloqueado por ip")
+            return rate_limit.too_many(wait)
 
     try:
-        user_id = save_user_db(
-            body["name"],
-            body["password"],
-            body["email"],
-            gamification=body.get("gamification"),
-            counters=body.get("counters"),
-        )
+        # gamification/counters nunca vêm do cliente (mass assignment): defaults do servidor.
+        user_id = save_user_db(data["name"], data["password"], data["email"])
     except sqlite3.IntegrityError:
-        # Coluna email é UNIQUE: cadastro duplicado retorna 409 em vez de estourar.
+        # Email duplicado (comparação case-insensitive no DB): 409 em vez de estourar.
+        # Obs.: a mensagem permite enumerar contas; é um trade-off de UX consciente.
         return jsonify({"error": "Email já cadastrado"}), 409
 
     return jsonify({"id": user_id, "token": create_token(user_id)}), 201
@@ -202,19 +265,71 @@ def login_user():
         description: Email ou senha ausentes
       401:
         description: Credenciais inválidas
+      429:
+        description: Muitas tentativas (por IP ou por conta); veja Retry-After
     """
-    body = request.get_json(silent=True) or {}
+    use_limit = rate_limit.enabled()
+    cfg = rate_limit.limits() if use_limit else None
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        body = {}
 
     email = body.get("email")
     password = body.get("password")
 
-    if not email or not password:
+    if (
+        not isinstance(email, str) or not isinstance(password, str)
+        or not email or not password
+    ):
         return jsonify({"error": "Email e senha são obrigatórios"}), 400
+    if len(email) > MAX_LOGIN_FIELD or len(password) > MAX_LOGIN_FIELD:
+        return jsonify({"error": "Email ou senha inválidos"}), 400
+
+    if use_limit:
+        # Só FALHAS contam, em três escopos: IP, par (e-mail+IP) e conta
+        # (teto mais alto, qualquer IP). O par evita que um atacante bloqueie
+        # a conta alheia de outro IP. Chaves são HMAC (sem identificadores).
+        # Checagem e registro são passos separados: sob concorrência o limite
+        # pode estourar em até (nº de threads) tentativas, o que é aceitável.
+        ip = rate_limit.client_ip()
+        em = rate_limit.normalise_email(email)
+        ip_key = rate_limit.mac_key("lip", ip)
+        pair_key = rate_limit.mac_key("lpair", ip, em)
+        acc_key = rate_limit.mac_key("lacc", em)
+        win = cfg["login_window"]
+        # Os TRÊS escopos são checados ANTES da senha, inclusive o da conta
+        # (qualquer IP), mesmo para senha correta: deixar a senha certa furar
+        # o teto viraria um oráculo (429 = errada, 200 = certa) e permitiria
+        # força bruta ilimitada. Trade-off aceito (risco REAL, declarado):
+        # um terceiro que erre a senha de alguém a partir de vários IPs (~6)
+        # trava o login dessa conta; se ele CONTINUAR tentando, o bloqueio se
+        # renova indefinidamente (vale para janela deslizante ou fixa: é
+        # inerente a qualquer bloqueio por conta). A solução definitiva é um
+        # desbloqueio fora do login (link por e-mail ou 2º fator) — pendente.
+        # Ajustável por env (RATELIMIT_LOGIN_EMAIL_MAX / _WINDOW_SECONDS).
+        # Toda falha de senha é SEMPRE registrada (nenhum return antes disso).
+        scopes = [
+            ("ip", ip_key, cfg["login_ip_max"]),
+            ("par", pair_key, cfg["login_pair_max"]),
+            ("conta", acc_key, cfg["login_email_max"]),
+        ]
+        for nome, key, lim in scopes:
+            wait = rate_limit.limiter.check_many([(key, lim)])
+            if wait:
+                logger.warning("rate limit: login bloqueado por %s", nome)
+                return rate_limit.too_many(wait)
 
     user = login_user_db(email, password)
 
     if user is None:
+        if use_limit:
+            rate_limit.limiter.record_many([(ip_key, win), (pair_key, win), (acc_key, win)])
         return jsonify({"error": "Email ou senha inválidos"}), 401
+
+    if use_limit:
+        # Sucesso zera só o par deste IP; não consome nem zera IP/conta.
+        rate_limit.limiter.reset(pair_key)
 
     data = user.to_dict()
     data["counters"] = _live_counters(user.id)

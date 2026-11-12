@@ -5,7 +5,7 @@ from sqlite3 import Connection
 from pathlib import Path
 import numpy as np
 import logging
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 
@@ -17,7 +17,10 @@ from baralho import Baralho
 from flashcard import Flashcard
 from enums.flashcard_status import FlashcardStatus
 
-DB_PATH = Path("users.db")
+# Caminho do banco configurável por env (ex: disco persistente). Lido no import
+# porque as funções abaixo usam DB_PATH como default de argumento. Sem a env,
+# continua "users.db" relativo ao cwd (comportamento anterior).
+DB_PATH = Path(os.environ.get("STUDEX_DB_PATH", "users.db"))
 
 logger = logging.getLogger(__name__)
 _ph = PasswordHasher()
@@ -48,7 +51,15 @@ def _open_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
     Enable foreign key (i.e. a column (or group of columns) in one table that references the primary key of another table.)
     """
     conn = sqlite3.connect(db_path)
+    # lower() do SQLite só mexe em ASCII; py_lower segue o Unicode do Python
+    # (mesma normalização usada no cadastro/login).
+    conn.create_function(
+        "py_lower", 1, lambda v: v.lower() if isinstance(v, str) else v,
+        deterministic=True,
+    )
     conn.execute("PRAGMA foreign_keys = ON;")
+    # espera até 5s por lock em vez de falhar na hora (várias threads do gunicorn)
+    conn.execute("PRAGMA busy_timeout = 5000;")
 
     return conn
 
@@ -56,7 +67,12 @@ def init_db(db_path: Path = DB_PATH) -> None:
     """
     Create the database and tables if they do not exist.
     """
+    # garante o diretório do banco (ex: disco persistente ainda sem a pasta)
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+
     with _open_connection(db_path) as conn:
+        # WAL é persistente no arquivo; cria users.db-wal/-shm ao lado do banco
+        conn.execute("PRAGMA journal_mode=WAL;")
 
         conn.execute(
             """
@@ -173,6 +189,17 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
+        # Metadados do banco. db_created_at permite ao dono verificar se o
+        # banco é recriado a cada deploy (se sempre igual ao último deploy,
+        # NÃO está persistente).
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);"
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO meta(key, value) VALUES('db_created_at', ?)",
+            (datetime.now(timezone.utc).isoformat(),),
+        )
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS activity_days (
@@ -185,6 +212,26 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
+        created = conn.execute(
+            "SELECT value FROM meta WHERE key = 'db_created_at'"
+        ).fetchone()
+        users_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+
+    # só contagem e caminho: nada de e-mail/nome nos logs
+    abs_path = Path(db_path).resolve()
+    persistent = os.environ.get("STUDEX_PERSISTENT_DIR")
+    if persistent:
+        try:
+            abs_path.relative_to(Path(persistent).resolve())
+            sob_persistente = True
+        except ValueError:
+            sob_persistente = False
+    else:
+        sob_persistente = None
+    logger.info(
+        "DB: path=%s db_created_at=%s users=%s under_persistent_dir=%s",
+        abs_path, created[0] if created else None, users_count, sob_persistente,
+    )
 
     return None
 
@@ -225,7 +272,14 @@ def save_user_db(
     with _open_connection(db_path) as conn:
         cur = conn.cursor()
 
-        cur.execute("BEGIN")
+        cur.execute("BEGIN IMMEDIATE")
+
+        # Unicidade case-insensitive sem reescrever e-mails antigos: a coluna
+        # UNIQUE só barra igualdade exata, então checamos lower(email) aqui.
+        if cur.execute("SELECT 1 FROM users WHERE py_lower(email) = ?", (email.lower(),)).fetchone():
+            conn.rollback()
+            raise sqlite3.IntegrityError("email já cadastrado")
+
         ins = """
             INSERT INTO users (name, email, passwd_encrypted, gamification, counters) 
             VALUES (?, ?, ?, ?, ?)
@@ -265,6 +319,12 @@ def get_users_db(
             users.append(Usuario(name, email, hash_passwd, user_id, gamification, counters))
         
         return users
+
+def user_exists_db(user_id: int, db_path: Path = DB_PATH) -> bool:
+    """Consulta leve (sem desserializar JSON) usada a cada requisição autenticada."""
+    with _open_connection(db_path) as conn:
+        return conn.execute("SELECT 1 FROM users WHERE id = ?", (int(user_id),)).fetchone() is not None
+
 
 def get_user_db(
     user_id: int,
@@ -308,7 +368,9 @@ def get_user_by_email_db(
     with _open_connection(db_path) as conn:
         row = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters
                                     FROM users
-                                    WHERE email = ?""", (email,)).fetchone()
+                                    WHERE py_lower(email) = ?
+                                    ORDER BY (email = ?) DESC, id
+                                    LIMIT 1""", (email.strip().lower(), email.strip())).fetchone()
 
         if row is None:
             return None

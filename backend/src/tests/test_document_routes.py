@@ -135,7 +135,7 @@ def test_upload_saves_file_with_unique_name_on_disk(client, auth_headers, tmp_pa
     materials = [{"tipo": "resumo", "titulo": "T", "conteudo": {}, "creation_date": "2026-07-07"}]
 
     with patch("routes.document_routes.DOCS_DIR", tmp_path), \
-         patch("routes.document_routes.load_documents"), \
+         patch("routes.document_routes.load_documents") as mock_load, \
          patch("routes.document_routes.split_into_nodes"), \
          patch("routes.document_routes.build_vector_index"), \
          patch("routes.document_routes.generate_materials", return_value=materials), \
@@ -157,10 +157,11 @@ def test_upload_saves_file_with_unique_name_on_disk(client, auth_headers, tmp_pa
     # nome de exibição segue limpo na resposta
     assert response.get_json()["filename"] == "aula1.pdf"
     # mas o arquivo em disco tem um prefixo uuid, não "aula1.pdf" puro
-    salvos = list(tmp_path.glob("*.pdf"))
-    assert len(salvos) == 1
-    assert salvos[0].name != "aula1.pdf"
-    assert salvos[0].name.endswith("aula1.pdf")
+    # (o PDF é removido ao fim do upload; o path usado fica no mock)
+    salvo = mock_load.call_args.args[0][0]
+    assert salvo.name != "aula1.pdf"
+    assert salvo.name.endswith("aula1.pdf")
+    assert not salvo.exists()
 
 
 # ---------------------------------------------------------------------------
@@ -487,3 +488,64 @@ def test_upload_dedup_resumo_mapa_falha_nao_bloqueia_salvar(client, auth_headers
 
     assert response.status_code == 201
     mock_save.assert_called_once_with(3, materiais_gerados)
+
+
+
+def _post_pdf(client, auth_headers, **patches):
+    return client.post(
+        "/users/10/documents",
+        headers=auth_headers(10),
+        data={"file": (BytesIO(b"%PDF-1.4 fake"), "aula.pdf"), "user_id": "10"},
+        content_type="multipart/form-data",
+    )
+
+
+def test_upload_removes_pdf_on_success(client, auth_headers, tmp_path):
+    docs = tmp_path / "docs"
+    with patch("routes.document_routes.DOCS_DIR", docs), \
+         patch("routes.document_routes.load_documents"), \
+         patch("routes.document_routes.split_into_nodes"), \
+         patch("routes.document_routes.build_vector_index"), \
+         patch("routes.document_routes.generate_materials", return_value=[]):
+        response = _post_pdf(client, auth_headers)
+
+    assert response.status_code == 201
+    assert list(docs.iterdir()) == []
+
+
+def test_upload_removes_pdf_on_failure(client, auth_headers, tmp_path):
+    docs = tmp_path / "docs"
+    with patch("routes.document_routes.DOCS_DIR", docs), \
+         patch("routes.document_routes.load_documents", side_effect=RuntimeError("boom")):
+        response = _post_pdf(client, auth_headers)
+
+    assert response.status_code == 500
+    assert list(docs.iterdir()) == []
+
+
+def test_cleanup_stale_uploads(tmp_path):
+    import os, time
+    velho = tmp_path / "velho.pdf"
+    novo = tmp_path / "novo.pdf"
+    keep = tmp_path / ".gitkeep"
+    outro = tmp_path / "notas.md"
+    for f in (velho, novo, keep, outro):
+        f.write_text("x")
+    antigo = time.time() - 48 * 3600
+    os.utime(velho, (antigo, antigo))
+    os.utime(keep, (antigo, antigo))
+    os.utime(outro, (antigo, antigo))
+    with patch("routes.document_routes.DOCS_DIR", tmp_path):
+        assert document_routes.cleanup_stale_uploads(24) == 1
+    assert not velho.exists() and novo.exists() and keep.exists() and outro.exists()
+
+
+def test_upload_removes_pdf_when_start_progress_raises(client, auth_headers, tmp_path):
+    docs = tmp_path / "docs"
+    with patch("routes.document_routes.DOCS_DIR", docs), \
+         patch("routes.document_routes._start_progress", side_effect=RuntimeError("boom")):
+        try:
+            _post_pdf(client, auth_headers)
+        except RuntimeError:
+            pass
+    assert list(docs.iterdir()) == []
