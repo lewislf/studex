@@ -20,7 +20,7 @@ export default function RevisionsDeckCardAction({ newCount, learningCount, revie
     const showBreakdown = nonZeroBuckets > 1;
 
     return (
-        <Group gap="xl">
+        <Group gap="xl" className={styles.deckActions}>
             {showBreakdown && (
                 <Box className={styles.countsGroup}>
                     {newCount > 0 && (

@@ -227,7 +227,7 @@ export default function FlashcardStudyPage() {
     }
 
     return (
-        <Container size="xl" py="md">
+        <Container size="xl" py={{ base: 0, sm: 'md' }} px={{ base: 0, sm: 'md' }}>
             <Box className={styles.page}>
                 <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
                     <SubjectBreadcrumb items={breadcrumbItems} />
@@ -372,6 +372,7 @@ function StudyCard({ card, isGlobal, revealed, respondedCount, total, progressPc
                                     size="md"
                                     variant="light"
                                     color={color}
+                                    className={styles.ratingButton}
                                     leftSection={Icon ? <Icon size={16} /> : null}
                                     disabled={submitting}
                                     onClick={() => onRate(value)}
