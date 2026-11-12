@@ -1,7 +1,10 @@
 import json
 import os
 import sqlite3
-from sqlite3 import Connection
+import threading
+from contextlib import contextmanager
+from urllib.parse import urlparse
+from typing import Any
 from pathlib import Path
 import numpy as np
 import logging
@@ -26,27 +29,169 @@ logger = logging.getLogger(__name__)
 _ph = PasswordHasher()
 
 
-def _get_connection(
-    conn: Connection | None,
-    db_path: Path,
-) -> tuple[Connection, bool]:
-    """
-    Returns the connection to use.
+# Tipo da conexão: sqlite3.Connection (modo sqlite) ou libsql.Connection (modo
+# turso). Só usamos o subconjunto comum: execute/cursor/fetch*/commit/rollback.
+Connection = Any
 
-    Returns
-    -------
-    conn : sqlite3.Connection
-    own_connection : bool
-        True if this function opened the connection.
-    """
-    if conn is None:
-        return _open_connection(db_path), True
+# Backend escolhido na importação: Turso (libSQL hospedado) se TURSO_DATABASE_URL
+# estiver definida e não vazia; senão SQLite local (padrão: dev/testes).
+BACKEND = "turso" if os.environ.get("TURSO_DATABASE_URL", "").strip() else "sqlite"
 
-    return conn, False
+# Modo turso: UMA conexão compartilhada, criada sob demanda. O RLock fica preso
+# durante todo o bloco `with db_connection()`, serializando todo acesso ao banco.
+# É correto e simples com 1 worker do gunicorn (o driver libsql não faz escritas
+# concorrentes nem é seguro entre threads); o custo é throughput, aceitável aqui.
+_TURSO_LOCK = threading.RLock()
+_turso_conn = None
+
+
+def _connect_turso():
+    """Abre a conexão remota com o Turso. `libsql` só é importado aqui (lazy),
+    para não ser dependência no modo sqlite (dev/testes)."""
+    import libsql  # noqa: PLC0415
+
+    conn = libsql.connect(
+        database=os.environ["TURSO_DATABASE_URL"],
+        auth_token=os.environ.get("TURSO_AUTH_TOKEN", ""),
+    )
+    # Tentamos ligar FK, mas NÃO dependemos disso: as exclusões são cascatas
+    # explícitas na aplicação (ver delete_*_db). journal_mode/busy_timeout não
+    # fazem sentido num banco remoto e por isso são pulados.
+    try:
+        _q(conn, "PRAGMA foreign_keys = ON;")
+    except Exception:
+        logger.debug("Turso: PRAGMA foreign_keys não aceito (ignorado)")
+    return conn
+
+
+def _drop_turso_conn() -> None:
+    """Descarta a conexão compartilhada; a próxima chamada reconecta."""
+    global _turso_conn
+    old, _turso_conn = _turso_conn, None
+    if old is not None:
+        try:
+            old.close()
+        except Exception:
+            pass
+
+
+def _q(conn, sql: str, params: tuple = ()):
+    """Executa via cursor e devolve o cursor. A DB-API não garante que
+    execute() devolva o cursor (o libsql pode devolver None), então SEMPRE
+    usamos cur.execute(...) e depois cur.fetch*() em linhas separadas."""
+    cur = conn.cursor()
+    cur.execute(sql, params)
+    return cur
+
+
+# Profundidade de db_connection por thread (modo turso): só o bloco mais externo
+# faz commit/rollback/descarte; blocos internos apenas repassam.
+_tls = threading.local()
+
+
+@contextmanager
+def db_connection(db_path: Path = DB_PATH):
+    """
+    Context manager de conexão com o banco.
+
+    Saída normal: commit. Exceção: rollback (se disponível) e re-raise. Sempre
+    libera a conexão.
+
+    - sqlite: abre uma conexão por chamada (com pragmas e py_lower) e FECHA no fim.
+    - turso: usa a conexão compartilhada sob RLock (db_path é ignorado). Se a
+      operação falhar com erro que não seja de integridade (ou se o rollback
+      falhar), a conexão é descartada para a próxima chamada reconectar.
+    """
+    if BACKEND == "turso":
+        global _turso_conn
+        with _TURSO_LOCK:
+            if _turso_conn is None:
+                _turso_conn = _connect_turso()
+            conn = _turso_conn
+            if getattr(_tls, "depth", 0) > 0:
+                # bloco aninhado: é a MESMA conexão/transação do externo; o commit
+                # (ou rollback) fica só com o nível mais externo. A exceção
+                # simplesmente propaga. (No modo sqlite cada `with` abre uma
+                # conexão nova e independente, então aninhar lá é diferente.)
+                yield conn
+                return
+            _tls.depth = 1
+            try:
+                yield conn
+                conn.commit()
+            except BaseException as exc:
+                # IntegrityError é erro de aplicação (conexão segue boa); qualquer
+                # outro erro pode ter deixado a conexão/stream remoto inválido.
+                descartar = not isinstance(exc, sqlite3.IntegrityError)
+                try:
+                    rollback = getattr(conn, "rollback", None)
+                    if rollback is not None:
+                        rollback()
+                    else:
+                        # sem rollback não dá para garantir que a transação
+                        # pendente foi desfeita: descarta a conexão.
+                        descartar = True
+                except Exception:
+                    descartar = True
+                if descartar:
+                    _drop_turso_conn()
+                raise
+            finally:
+                _tls.depth = 0
+        return
+
+    conn = _open_connection(db_path)
+    try:
+        yield conn
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+@contextmanager
+def _use_conn(conn: Connection | None, db_path: Path):
+    """Usa a conexão recebida (transação do chamador; sem commit aqui) ou abre
+    uma própria via db_connection."""
+    if conn is not None:
+        yield conn
+    else:
+        with db_connection(db_path) as own:
+            yield own
+
+
+def describe_backend() -> dict:
+    """Descreve o backend ativo SEM segredos: sqlite -> caminho absoluto;
+    turso -> apenas o host da URL (sem esquema/query/credenciais/token)."""
+    if BACKEND == "turso":
+        url = os.environ.get("TURSO_DATABASE_URL", "").strip()
+        if "://" not in url:
+            url = "//" + url
+        host = urlparse(url).hostname or ""
+        return {"backend": "turso", "location": host}
+    return {"backend": "sqlite", "location": str(Path(DB_PATH).resolve())}
+
+
+def _email_match(lowered: str) -> tuple[str, tuple]:
+    """Cláusula SQL + parâmetros do match case-insensitive de e-mail.
+
+    sqlite: py_lower(email) = ? (cobre contas legadas com Unicode/maiúsculas).
+    turso: sem UDF (create_function não é suportado), então comparamos o valor
+    exato OU lower() do SQLite. O banco Turso começa vazio e o cadastro sempre
+    grava e-mail em minúsculas, logo linhas legadas com maiúsculas só existem em
+    arquivos SQLite antigos; lower() ASCII basta.
+    """
+    if BACKEND == "turso":
+        return "(email = ? OR lower(email) = ?)", (lowered, lowered)
+    return "py_lower(email) = ?", (lowered,)
+
 
 def _open_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
     """
-    Open a connection to the SQLite database.
+    Open a connection to the local SQLite database (modo sqlite apenas; use
+    db_connection nas funções do módulo).
 
     Enable foreign key (i.e. a column (or group of columns) in one table that references the primary key of another table.)
     """
@@ -57,9 +202,9 @@ def _open_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
         "py_lower", 1, lambda v: v.lower() if isinstance(v, str) else v,
         deterministic=True,
     )
-    conn.execute("PRAGMA foreign_keys = ON;")
+    _q(conn, "PRAGMA foreign_keys = ON;")
     # espera até 5s por lock em vez de falhar na hora (várias threads do gunicorn)
-    conn.execute("PRAGMA busy_timeout = 5000;")
+    _q(conn, "PRAGMA busy_timeout = 5000;")
 
     return conn
 
@@ -67,14 +212,16 @@ def init_db(db_path: Path = DB_PATH) -> None:
     """
     Create the database and tables if they do not exist.
     """
-    # garante o diretório do banco (ex: disco persistente ainda sem a pasta)
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    if BACKEND != "turso":
+        # garante o diretório do banco (ex: disco persistente ainda sem a pasta)
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
-    with _open_connection(db_path) as conn:
-        # WAL é persistente no arquivo; cria users.db-wal/-shm ao lado do banco
-        conn.execute("PRAGMA journal_mode=WAL;")
+    with db_connection(db_path) as conn:
+        if BACKEND != "turso":
+            # WAL é persistente no arquivo; cria users.db-wal/-shm ao lado do banco
+            _q(conn, "PRAGMA journal_mode=WAL;")
 
-        conn.execute(
+        _q(conn,
             """
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,7 +234,7 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
-        conn.execute(
+        _q(conn,
             """
             CREATE TABLE IF NOT EXISTS subjects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,7 +251,7 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
-        conn.execute(
+        _q(conn,
             """
             CREATE TABLE IF NOT EXISTS summaries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,7 +265,7 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
-        conn.execute(
+        _q(conn,
             """
             CREATE TABLE IF NOT EXISTS decks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,7 +282,7 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
-        conn.execute(
+        _q(conn,
             """
             CREATE TABLE IF NOT EXISTS flashcards (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,23 +306,25 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
-        # ALTER TABLE tolerante: bancos criados antes destas colunas existirem
-        # ganham elas aqui; o "duplicate column" é ignorado se já existirem.
-        for coluna_sql in (
-            "ALTER TABLE flashcards ADD COLUMN embedding TEXT;",
-            "ALTER TABLE flashcards ADD COLUMN due_date TEXT;",
-            "ALTER TABLE flashcards ADD COLUMN interval_days REAL DEFAULT 0;",
-            "ALTER TABLE flashcards ADD COLUMN ease REAL DEFAULT 2.5;",
-            "ALTER TABLE flashcards ADD COLUMN reps INTEGER DEFAULT 0;",
-            "ALTER TABLE flashcards ADD COLUMN lapses INTEGER DEFAULT 0;",
+        # Migração tolerante: bancos criados antes destas colunas existirem
+        # ganham elas aqui. Consultamos as colunas atuais (PRAGMA table_info) e
+        # só fazemos ALTER das que faltam, sem depender da classe de exceção do
+        # driver (sqlite3 x libsql) para detectar "duplicate column".
+        existentes = {
+            row[1] for row in _q(conn, "PRAGMA table_info(flashcards)").fetchall()
+        }
+        for coluna, definicao in (
+            ("embedding", "TEXT"),
+            ("due_date", "TEXT"),
+            ("interval_days", "REAL DEFAULT 0"),
+            ("ease", "REAL DEFAULT 2.5"),
+            ("reps", "INTEGER DEFAULT 0"),
+            ("lapses", "INTEGER DEFAULT 0"),
         ):
-            try:
-                conn.execute(coluna_sql)
-            except sqlite3.OperationalError as exc:
-                if "duplicate column" not in str(exc).lower():
-                    raise
+            if coluna not in existentes:
+                _q(conn, f"ALTER TABLE flashcards ADD COLUMN {coluna} {definicao};")
 
-        conn.execute(
+        _q(conn,
             """
             CREATE TABLE IF NOT EXISTS mind_maps (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -192,15 +341,15 @@ def init_db(db_path: Path = DB_PATH) -> None:
         # Metadados do banco. db_created_at permite ao dono verificar se o
         # banco é recriado a cada deploy (se sempre igual ao último deploy,
         # NÃO está persistente).
-        conn.execute(
+        _q(conn,
             "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);"
         )
-        conn.execute(
+        _q(conn,
             "INSERT OR IGNORE INTO meta(key, value) VALUES('db_created_at', ?)",
             (datetime.now(timezone.utc).isoformat(),),
         )
 
-        conn.execute(
+        _q(conn,
             """
             CREATE TABLE IF NOT EXISTS activity_days (
                 user_id INTEGER NOT NULL,
@@ -212,12 +361,19 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
-        created = conn.execute(
+        created = _q(conn,
             "SELECT value FROM meta WHERE key = 'db_created_at'"
         ).fetchone()
-        users_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        users_count = _q(conn, "SELECT COUNT(*) FROM users").fetchone()[0]
 
-    # só contagem e caminho: nada de e-mail/nome nos logs
+    # só contagem e caminho/host: nada de e-mail/nome/token nos logs
+    if BACKEND == "turso":
+        logger.info(
+            "DB: backend=turso host=%s db_created_at=%s users=%s",
+            describe_backend()["location"], created[0] if created else None, users_count,
+        )
+        return None
+
     abs_path = Path(db_path).resolve()
     persistent = os.environ.get("STUDEX_PERSISTENT_DIR")
     if persistent:
@@ -269,28 +425,36 @@ def save_user_db(
     gamification_json = json.dumps(gamification)
     counters_json = json.dumps(counters)
     
-    with _open_connection(db_path) as conn:
-        cur = conn.cursor()
+    # Unicidade case-insensitive sem reescrever e-mails antigos: a coluna UNIQUE
+    # só barra igualdade exata, então checamos o e-mail em minúsculas. A checagem
+    # e o INSERT são UM ÚNICO statement (INSERT ... SELECT ... WHERE NOT EXISTS),
+    # atômico no SQLite sem precisar de BEGIN explícito; em turso o RLock ainda
+    # serializa tudo dentro do processo. A UNIQUE segue como segunda barreira.
+    cond, cond_params = _email_match(email.lower())
+    sql = f"""
+        INSERT INTO users (name, email, passwd_encrypted, gamification, counters)
+        SELECT ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (SELECT 1 FROM users WHERE {cond})
+        RETURNING id
+    """
+    params = (name, email, encrypted_passwd, gamification_json, counters_json) + cond_params
 
-        cur.execute("BEGIN IMMEDIATE")
+    with db_connection(db_path) as conn:
+        try:
+            row = _q(conn, sql, params).fetchone()
+        except sqlite3.IntegrityError:
+            raise
+        except Exception as exc:
+            # o driver libsql tem classes de erro próprias: normaliza a violação
+            # de UNIQUE para a IntegrityError que as rotas já tratam
+            if "unique constraint" in str(exc).lower():
+                raise sqlite3.IntegrityError("email já cadastrado") from exc
+            raise
 
-        # Unicidade case-insensitive sem reescrever e-mails antigos: a coluna
-        # UNIQUE só barra igualdade exata, então checamos lower(email) aqui.
-        if cur.execute("SELECT 1 FROM users WHERE py_lower(email) = ?", (email.lower(),)).fetchone():
-            conn.rollback()
+        if row is None:
             raise sqlite3.IntegrityError("email já cadastrado")
 
-        ins = """
-            INSERT INTO users (name, email, passwd_encrypted, gamification, counters) 
-            VALUES (?, ?, ?, ?, ?)
-        """
-
-        cur.execute(ins, (name, email, encrypted_passwd, gamification_json, counters_json))
-
-        user_id = cur.lastrowid
-
-        conn.commit()
-        return user_id
+        return row[0]
 
 
 def get_users_db(
@@ -303,8 +467,8 @@ def get_users_db(
     Returns the list of users with the same name
     """
 
-    with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters 
+    with db_connection(db_path) as conn:
+        rows = _q(conn, """SELECT id, name, email, passwd_encrypted, gamification, counters 
                                     FROM users 
                                     WHERE name LIKE ?""", (f"%{name}%",)).fetchall()  
         
@@ -322,8 +486,8 @@ def get_users_db(
 
 def user_exists_db(user_id: int, db_path: Path = DB_PATH) -> bool:
     """Consulta leve (sem desserializar JSON) usada a cada requisição autenticada."""
-    with _open_connection(db_path) as conn:
-        return conn.execute("SELECT 1 FROM users WHERE id = ?", (int(user_id),)).fetchone() is not None
+    with db_connection(db_path) as conn:
+        return _q(conn, "SELECT 1 FROM users WHERE id = ?", (int(user_id),)).fetchone() is not None
 
 
 def get_user_db(
@@ -336,8 +500,8 @@ def get_user_db(
     Returns the user, if it exists
     """
 
-    with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters 
+    with db_connection(db_path) as conn:
+        row = _q(conn, """SELECT id, name, email, passwd_encrypted, gamification, counters 
                                     FROM users 
                                     WHERE id = ?""", (user_id,)).fetchone()  
         
@@ -365,12 +529,14 @@ def get_user_by_email_db(
     Retorna o usuário com a senha ainda criptografada em `hash_password`,
     ou None se não existir.
     """
-    with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, name, email, passwd_encrypted, gamification, counters
+    cond, cond_params = _email_match(email.strip().lower())
+
+    with db_connection(db_path) as conn:
+        row = _q(conn, f"""SELECT id, name, email, passwd_encrypted, gamification, counters
                                     FROM users
-                                    WHERE py_lower(email) = ?
+                                    WHERE {cond}
                                     ORDER BY (email = ?) DESC, id
-                                    LIMIT 1""", (email.strip().lower(), email.strip())).fetchone()
+                                    LIMIT 1""", cond_params + (email.strip(),)).fetchone()
 
         if row is None:
             return None
@@ -412,29 +578,42 @@ def delete_user_db(user_id: int, db_path: Path = DB_PATH) -> bool:
     
     Returns True if a user was deleted, False if no such user_id exists.
     """
-    with _open_connection(db_path) as conn:
-        cur = conn.cursor()
-        cur.execute("BEGIN")
-        cur.execute("DELETE FROM users WHERE id = ?", (int(user_id),))
-        deleted = cur.rowcount > 0
-        conn.commit()
-        return deleted
+    uid = int(user_id)
+    with db_connection(db_path) as conn:
+        # Cascata explícita (filhos primeiro), tudo numa transação: não dependemos
+        # de PRAGMA foreign_keys (talvez ignorado no Turso) para o apagamento LGPD.
+        # O ON DELETE CASCADE do schema fica como segunda camada.
+        _q(conn,
+            """DELETE FROM flashcards WHERE deck_id IN (
+                   SELECT d.id FROM decks d JOIN subjects s ON s.id = d.subject_id
+                   WHERE s.user_id = ?)""", (uid,))
+        _q(conn,
+            "DELETE FROM decks WHERE subject_id IN (SELECT id FROM subjects WHERE user_id = ?)", (uid,))
+        _q(conn,
+            "DELETE FROM summaries WHERE subject_id IN (SELECT id FROM subjects WHERE user_id = ?)", (uid,))
+        _q(conn,
+            "DELETE FROM mind_maps WHERE subject_id IN (SELECT id FROM subjects WHERE user_id = ?)", (uid,))
+        _q(conn, "DELETE FROM subjects WHERE user_id = ?", (uid,))
+        _q(conn, "DELETE FROM activity_days WHERE user_id = ?", (uid,))
+        # RETURNING no lugar de rowcount (não confiável no driver libsql)
+        deleted = _q(conn, "DELETE FROM users WHERE id = ? RETURNING id", (uid,)).fetchall()
+        return len(deleted) > 0
 
 
 def count_people_db(db_path: Path = DB_PATH) -> int:
     """
     Returns the total number of registered people in the database.
     """
-    with _open_connection(db_path) as conn:
-        row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
+    with db_connection(db_path) as conn:
+        row = _q(conn, "SELECT COUNT(*) FROM users").fetchone()
         return int(row[0]) if row else 0
 
 def print_all_people_db(db_path: Path = DB_PATH) -> None:
     """
     Prints all registered users.
     """
-    with _open_connection(db_path) as conn:
-        rows = conn.execute("SELECT id, name FROM users").fetchall()
+    with db_connection(db_path) as conn:
+        rows = _q(conn, "SELECT id, name FROM users").fetchall()
         print("Registered people:")
         for user_id, name in rows:
             print(f"ID: {user_id}, Name: {name}")
@@ -449,21 +628,15 @@ def save_subject_db(user_id: int, name: str, desc: str, domain: int, icon: str, 
     
     Returns the subject_id of the new entry.
     """
-    with _open_connection(db_path) as conn:
-        cur = conn.cursor()
-
-        cur.execute("BEGIN")
+    with db_connection(db_path) as conn:
         ins = """
             INSERT INTO subjects (user_id, name, desc, creation_date, domain, icon, color) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
         """
 
-        cur.execute(ins, (user_id, name, desc, creation_date, domain, icon, color))
-
-        subject_id = cur.lastrowid
-
-        conn.commit()
-        return subject_id
+        # RETURNING id no lugar de cursor.lastrowid (não confiável no libsql)
+        return _q(conn, ins, (user_id, name, desc, creation_date, domain, icon, color)).fetchone()[0]
 
 
 def get_subjects_db(
@@ -476,8 +649,8 @@ def get_subjects_db(
     Returns the list of subjects with the same user_id
     """
 
-    with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain, icon, color 
+    with db_connection(db_path) as conn:
+        rows = _q(conn, """SELECT id, user_id, name, desc, creation_date, domain, icon, color 
                                     FROM subjects 
                                     WHERE user_id = ?
                                     ORDER BY creation_date DESC""", (user_id,)).fetchall()  
@@ -501,8 +674,8 @@ def get_subject_db(
     Returns the subject, if it exists
     """
 
-    with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, user_id, name, desc, creation_date, domain, icon, color 
+    with db_connection(db_path) as conn:
+        row = _q(conn, """SELECT id, user_id, name, desc, creation_date, domain, icon, color 
                                     FROM subjects 
                                     WHERE id = ?""", (subject_id,)).fetchone()  
         
@@ -522,20 +695,23 @@ def delete_subject_db(subject_id: int, db_path: Path = DB_PATH) -> bool:
     
     Returns True if a subject was deleted, False if no such subject_id exists.
     """
-    with _open_connection(db_path) as conn:
-        cur = conn.cursor()
-        cur.execute("BEGIN")
-        cur.execute("DELETE FROM subjects WHERE id = ?", (int(subject_id),))
-        deleted = cur.rowcount > 0
-        conn.commit()
-        return deleted
+    sid = int(subject_id)
+    with db_connection(db_path) as conn:
+        # cascata explícita, filhos primeiro (ver delete_user_db)
+        _q(conn,
+            "DELETE FROM flashcards WHERE deck_id IN (SELECT id FROM decks WHERE subject_id = ?)", (sid,))
+        _q(conn, "DELETE FROM decks WHERE subject_id = ?", (sid,))
+        _q(conn, "DELETE FROM summaries WHERE subject_id = ?", (sid,))
+        _q(conn, "DELETE FROM mind_maps WHERE subject_id = ?", (sid,))
+        deleted = _q(conn, "DELETE FROM subjects WHERE id = ? RETURNING id", (sid,)).fetchall()
+        return len(deleted) > 0
 
 def count_subjects_db(user_id: int, db_path: Path = DB_PATH) -> int:
     """
     Returns the total number of registered subjects in the database with given user_id.
     """
-    with _open_connection(db_path) as conn:
-        row = conn.execute("SELECT COUNT(*) FROM subjects WHERE user_id = ?", (user_id,),).fetchone()
+    with db_connection(db_path) as conn:
+        row = _q(conn, "SELECT COUNT(*) FROM subjects WHERE user_id = ?", (user_id,),).fetchone()
         return int(row[0]) if row else 0
 
 
@@ -547,31 +723,17 @@ def save_summary_db(subject_id: int, titulo: str, conteudo: str, creation_date: 
     
     Returns the summary_id of the new entry.
     """
-    conn, own_conn = _get_connection(conn, db_path)
-
-    try:
+    with _use_conn(conn, db_path) as conn:
         cur = conn.cursor()
 
         ins = """
             INSERT INTO summaries (subject_id, titulo, conteudo, creation_date) 
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?)RETURNING id
         """
 
+        # RETURNING id no lugar de cursor.lastrowid (não confiável no libsql)
         cur.execute(ins, (subject_id, titulo, conteudo, creation_date))
-
-        summary_id = cur.lastrowid
-
-        if own_conn:
-            conn.commit()
-
-        return summary_id
-    except:
-        if own_conn:
-            conn.rollback()
-        raise
-    finally:
-        if own_conn:
-            conn.close()
+        return cur.fetchone()[0]
 
 
 def get_summaries_db(
@@ -584,8 +746,8 @@ def get_summaries_db(
     Returns the list of summarys with the same name
     """
 
-    with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
+    with db_connection(db_path) as conn:
+        rows = _q(conn, """SELECT id, subject_id, titulo, conteudo, creation_date
                                     FROM summaries 
                                     WHERE subject_id = ?""", (subject_id,)).fetchall()  
         
@@ -608,8 +770,8 @@ def get_summary_db(
     Returns the summary, if it exists
     """
 
-    with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
+    with db_connection(db_path) as conn:
+        row = _q(conn, """SELECT id, subject_id, titulo, conteudo, creation_date
                                     FROM summaries 
                                     WHERE id = ?""", (summary_id,)).fetchone()  
         
@@ -629,20 +791,18 @@ def delete_summary_db(summary_id: int, db_path: Path = DB_PATH) -> bool:
     
     Returns True if a summary was deleted, False if no such summary_id exists.
     """
-    with _open_connection(db_path) as conn:
-        cur = conn.cursor()
-        cur.execute("BEGIN")
-        cur.execute("DELETE FROM summaries WHERE id = ?", (int(summary_id),))
-        deleted = cur.rowcount > 0
-        conn.commit()
-        return deleted
+    with db_connection(db_path) as conn:
+        deleted = _q(conn,
+            "DELETE FROM summaries WHERE id = ? RETURNING id", (int(summary_id),)
+        ).fetchall()
+        return len(deleted) > 0
 
 def count_summaries_db(subject_id: int, db_path: Path = DB_PATH) -> int:
     """
     Returns the total number of registered summaries in the database with given subject_id.
     """
-    with _open_connection(db_path) as conn:
-        row = conn.execute("SELECT COUNT(*) FROM summaries WHERE subject_id = ?", (subject_id,),).fetchone()
+    with db_connection(db_path) as conn:
+        row = _q(conn, "SELECT COUNT(*) FROM summaries WHERE subject_id = ?", (subject_id,),).fetchone()
         return int(row[0]) if row else 0
 
 ### MIND MAP ###
@@ -655,31 +815,17 @@ def save_mindmap_db(subject_id: int, titulo: str, conteudo: str, creation_date: 
 
     Returns the mind_map_id of the new entry.
     """
-    conn, own_conn = _get_connection(conn, db_path)
-
-    try:
+    with _use_conn(conn, db_path) as conn:
         cur = conn.cursor()
 
         ins = """
             INSERT INTO mind_maps (subject_id, titulo, conteudo, creation_date)
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?)RETURNING id
         """
 
+        # RETURNING id no lugar de cursor.lastrowid (não confiável no libsql)
         cur.execute(ins, (subject_id, titulo, conteudo, creation_date))
-
-        mind_map_id = cur.lastrowid
-
-        if own_conn:
-            conn.commit()
-
-        return mind_map_id
-    except:
-        if own_conn:
-            conn.rollback()
-        raise
-    finally:
-        if own_conn:
-            conn.close()
+        return cur.fetchone()[0]
 
 
 def get_mindmaps_db(
@@ -692,8 +838,8 @@ def get_mindmaps_db(
     Returns the list of mind maps with the same name
     """
 
-    with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
+    with db_connection(db_path) as conn:
+        rows = _q(conn, """SELECT id, subject_id, titulo, conteudo, creation_date
                                     FROM mind_maps
                                     WHERE subject_id = ?""", (subject_id,)).fetchall()
 
@@ -717,8 +863,8 @@ def get_mindmap_db(
     Returns the mind map, if it exists
     """
 
-    with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, subject_id, titulo, conteudo, creation_date
+    with db_connection(db_path) as conn:
+        row = _q(conn, """SELECT id, subject_id, titulo, conteudo, creation_date
                                     FROM mind_maps
                                     WHERE id = ?""", (mind_map_id,)).fetchone()
 
@@ -735,21 +881,19 @@ def delete_mindmap_db(mind_map_id: int, db_path: Path = DB_PATH) -> bool:
 
     Returns True if a mind map was deleted, False if no such mind_map_id exists.
     """
-    with _open_connection(db_path) as conn:
-        cur = conn.cursor()
-        cur.execute("BEGIN")
-        cur.execute("DELETE FROM mind_maps WHERE id = ?", (int(mind_map_id),))
-        deleted = cur.rowcount > 0
-        conn.commit()
-        return deleted
+    with db_connection(db_path) as conn:
+        deleted = _q(conn,
+            "DELETE FROM mind_maps WHERE id = ? RETURNING id", (int(mind_map_id),)
+        ).fetchall()
+        return len(deleted) > 0
 
 
 def count_mindmaps_db(subject_id: int, db_path: Path = DB_PATH) -> int:
     """
     Returns the total number of registered mind maps in the database with given subject_id.
     """
-    with _open_connection(db_path) as conn:
-        row = conn.execute("SELECT COUNT(*) FROM mind_maps WHERE subject_id = ?", (subject_id,),).fetchone()
+    with db_connection(db_path) as conn:
+        row = _q(conn, "SELECT COUNT(*) FROM mind_maps WHERE subject_id = ?", (subject_id,),).fetchone()
         return int(row[0]) if row else 0
 
 
@@ -761,32 +905,17 @@ def save_deck_db(subject_id: int, titulo: str, acuracia: int, novos: int, aprend
     
     Returns the deck_id of the new entry.
     """
-    conn, own_conn = _get_connection(conn, db_path)
-
-    try:
+    with _use_conn(conn, db_path) as conn:
         cur = conn.cursor()
 
         ins = """
             INSERT INTO decks (subject_id, titulo, acuracia, novos, aprendendo, review, creation_date) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)RETURNING id
         """
 
+        # RETURNING id no lugar de cursor.lastrowid (não confiável no libsql)
         cur.execute(ins, (subject_id, titulo, acuracia, novos, aprendendo, review, creation_date))
-
-        deck_id = cur.lastrowid
-
-        if own_conn:
-            conn.commit()
-
-        return deck_id
-    except:
-        if own_conn:
-            conn.rollback()
-        raise
-
-    finally:
-        if own_conn:
-            conn.close()
+        return cur.fetchone()[0]
 
 
 def get_decks_db(
@@ -799,8 +928,8 @@ def get_decks_db(
     Returns the list of decks with the same subject id
     """
 
-    with _open_connection(db_path) as conn:
-        rows = conn.execute("""SELECT id, subject_id, titulo, acuracia, novos, aprendendo, review, creation_date
+    with db_connection(db_path) as conn:
+        rows = _q(conn, """SELECT id, subject_id, titulo, acuracia, novos, aprendendo, review, creation_date
                                     FROM decks 
                                     WHERE subject_id LIKE ?""", (subject_id,)).fetchall()  
         
@@ -823,8 +952,8 @@ def get_deck_db(
     Returns the deck, if it exists
     """
 
-    with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT id, subject_id, titulo, acuracia, novos, aprendendo, review, creation_date
+    with db_connection(db_path) as conn:
+        row = _q(conn, """SELECT id, subject_id, titulo, acuracia, novos, aprendendo, review, creation_date
                                     FROM decks 
                                     WHERE id = ?""", (deck_id,)).fetchone()  
         
@@ -844,20 +973,19 @@ def delete_deck_db(deck_id: int, db_path: Path = DB_PATH) -> bool:
     
     Returns True if a deck was deleted, False if no such deck_id exists.
     """
-    with _open_connection(db_path) as conn:
-        cur = conn.cursor()
-        cur.execute("BEGIN")
-        cur.execute("DELETE FROM decks WHERE id = ?", (int(deck_id),))
-        deleted = cur.rowcount > 0
-        conn.commit()
-        return deleted
+    did = int(deck_id)
+    with db_connection(db_path) as conn:
+        # cascata explícita, filhos primeiro (ver delete_user_db)
+        _q(conn, "DELETE FROM flashcards WHERE deck_id = ?", (did,))
+        deleted = _q(conn, "DELETE FROM decks WHERE id = ? RETURNING id", (did,)).fetchall()
+        return len(deleted) > 0
 
 def count_deck_db(subject_id: int, db_path: Path = DB_PATH) -> int:
     """
     Returns the total number of registered deck in the database with given subject_id.
     """
-    with _open_connection(db_path) as conn:
-        row = conn.execute("SELECT COUNT(*) FROM decks WHERE subject_id = ?", (subject_id,),).fetchone()
+    with db_connection(db_path) as conn:
+        row = _q(conn, "SELECT COUNT(*) FROM decks WHERE subject_id = ?", (subject_id,),).fetchone()
         return int(row[0]) if row else 0
 
 
@@ -882,9 +1010,7 @@ def save_flashcard_db(
     Returns the flashcard_id of the new entry.
     """
 
-    conn, own_conn = _get_connection(conn, db_path)
-
-    try:
+    with _use_conn(conn, db_path) as conn:
         cur = conn.cursor()
 
         embedding_json = json.dumps(embedding) if embedding is not None else None
@@ -900,6 +1026,7 @@ def save_flashcard_db(
                 embedding
             )
             VALUES (?, ?, ?, ?, ?, ?)
+            RETURNING id
             """,
             (
                 deck_id,
@@ -911,20 +1038,7 @@ def save_flashcard_db(
             ),
         )
 
-        flashcard_id = cur.lastrowid
-
-        if own_conn:
-            conn.commit()
-
-        return flashcard_id
-    except:
-        if own_conn:
-            conn.rollback()
-        raise
-
-    finally:
-        if own_conn:
-            conn.close()
+        return cur.fetchone()[0]
 
 def get_flashcard_db(
     flashcard_id: int,
@@ -934,9 +1048,8 @@ def get_flashcard_db(
     Search a flashcard by id.
     """
 
-    with _open_connection(db_path) as conn:
-
-        row = conn.execute(
+    with db_connection(db_path) as conn:
+        row = _q(conn,
             """
             SELECT
                 id,
@@ -998,9 +1111,8 @@ def get_flashcards_db(
     Returns all flashcards from a deck.
     """
 
-    with _open_connection(db_path) as conn:
-
-        rows = conn.execute(
+    with db_connection(db_path) as conn:
+        rows = _q(conn,
             """
             SELECT
                 id,
@@ -1069,9 +1181,8 @@ def get_flashcards_by_subject_db(
     já existentes na matéria, não só os do baralho sendo criado.
     """
 
-    with _open_connection(db_path) as conn:
-
-        rows = conn.execute(
+    with db_connection(db_path) as conn:
+        rows = _q(conn,
             """
             SELECT
                 f.id,
@@ -1118,9 +1229,7 @@ def update_flashcard_embedding_db(
     calculado na primeira vez que o dedup semântico o encontra sem embedding).
     """
 
-    conn, own_conn = _get_connection(conn, db_path)
-
-    try:
+    with _use_conn(conn, db_path) as conn:
         cur = conn.cursor()
 
         cur.execute(
@@ -1128,15 +1237,6 @@ def update_flashcard_embedding_db(
             (json.dumps(embedding), flashcard_id),
         )
 
-        if own_conn:
-            conn.commit()
-    except:
-        if own_conn:
-            conn.rollback()
-        raise
-    finally:
-        if own_conn:
-            conn.close()
 
 def delete_flashcard_db(
     flashcard_id: int,
@@ -1148,25 +1248,11 @@ def delete_flashcard_db(
     Returns True if deleted.
     """
 
-    with _open_connection(db_path) as conn:
-
-        cur = conn.cursor()
-
-        cur.execute("BEGIN")
-
-        cur.execute(
-            """
-            DELETE FROM flashcards
-            WHERE id = ?
-            """,
-            (flashcard_id,),
-        )
-
-        deleted = cur.rowcount > 0
-
-        conn.commit()
-
-        return deleted
+    with db_connection(db_path) as conn:
+        deleted = _q(conn,
+            "DELETE FROM flashcards WHERE id = ? RETURNING id", (flashcard_id,)
+        ).fetchall()
+        return len(deleted) > 0
 
 def count_flashcards_db(
     deck_id: int,
@@ -1176,9 +1262,8 @@ def count_flashcards_db(
     Returns the total number of flashcards in a deck.
     """
 
-    with _open_connection(db_path) as conn:
-
-        row = conn.execute(
+    with db_connection(db_path) as conn:
+        row = _q(conn,
             """
             SELECT COUNT(*)
             FROM flashcards
@@ -1205,9 +1290,8 @@ def count_due_flashcards_db(
 
     today_iso = today.isoformat() if isinstance(today, date) else str(today)
 
-    with _open_connection(db_path) as conn:
-
-        row = conn.execute(
+    with db_connection(db_path) as conn:
+        row = _q(conn,
             """
             SELECT COUNT(*)
             FROM flashcards f
@@ -1232,9 +1316,8 @@ def count_flashcards_by_user_db(
     """
     Conta o total de flashcards criados em todos os baralhos do usuário.
     """
-    with _open_connection(db_path) as conn:
-
-        row = conn.execute(
+    with db_connection(db_path) as conn:
+        row = _q(conn,
             """
             SELECT COUNT(*)
             FROM flashcards f
@@ -1263,9 +1346,7 @@ def update_flashcard_review_db(
     Grava o resultado de uma revisão SRS (srs.apply_review) num flashcard.
     """
 
-    conn, own_conn = _get_connection(conn, db_path)
-
-    try:
+    with _use_conn(conn, db_path) as conn:
         cur = conn.cursor()
 
         cur.execute(
@@ -1277,15 +1358,6 @@ def update_flashcard_review_db(
             (status, due_date, interval_days, ease, reps, lapses, flashcard_id),
         )
 
-        if own_conn:
-            conn.commit()
-    except:
-        if own_conn:
-            conn.rollback()
-        raise
-    finally:
-        if own_conn:
-            conn.close()
 
 
 def get_study_queue_db(
@@ -1305,9 +1377,8 @@ def get_study_queue_db(
 
     today_iso = today.isoformat() if isinstance(today, date) else str(today)
 
-    with _open_connection(db_path) as conn:
-
-        rows = conn.execute(
+    with db_connection(db_path) as conn:
+        rows = _q(conn,
             """
             SELECT
                 id, deck_id, pergunta, resposta, status, creation_date,
@@ -1322,7 +1393,7 @@ def get_study_queue_db(
         remaining = max(0, limit - len(rows))
 
         if remaining > 0:
-            rows += conn.execute(
+            rows += _q(conn,
                 """
                 SELECT
                     id, deck_id, pergunta, resposta, status, creation_date,
@@ -1394,9 +1465,8 @@ def get_user_study_queue_db(
 
     today_iso = today.isoformat() if isinstance(today, date) else str(today)
 
-    with _open_connection(db_path) as conn:
-
-        rows = conn.execute(
+    with db_connection(db_path) as conn:
+        rows = _q(conn,
             """
             SELECT
                 f.id, f.deck_id, f.pergunta, f.resposta, f.status, f.creation_date,
@@ -1414,7 +1484,7 @@ def get_user_study_queue_db(
         remaining = max(0, limit - len(rows))
 
         if remaining > 0:
-            rows += conn.execute(
+            rows += _q(conn,
                 """
                 SELECT
                     f.id, f.deck_id, f.pergunta, f.resposta, f.status, f.creation_date,
@@ -1481,15 +1551,14 @@ def refresh_deck_counters_db(
     a linha do deck.
     """
 
-    conn, own_conn = _get_connection(conn, db_path)
-
-    try:
+    with _use_conn(conn, db_path) as conn:
         cur = conn.cursor()
 
-        rows = cur.execute(
+        cur.execute(
             "SELECT status, COUNT(*) FROM flashcards WHERE deck_id = ? GROUP BY status",
             (deck_id,),
-        ).fetchall()
+        )
+        rows = cur.fetchall()
 
         counts = {"novo": 0, "aprendendo": 0, "review": 0}
         for status, count in rows:
@@ -1506,15 +1575,6 @@ def refresh_deck_counters_db(
             (counts["novo"], counts["aprendendo"], counts["review"], deck_id),
         )
 
-        if own_conn:
-            conn.commit()
-    except:
-        if own_conn:
-            conn.rollback()
-        raise
-    finally:
-        if own_conn:
-            conn.close()
 
 
 ### MATERIALS ###
@@ -1537,80 +1597,71 @@ def save_materials_db(
         Output produced by the LLM.
     """
 
-    with _open_connection(db_path) as conn:
-        cur = conn.cursor()
+    # tudo numa transação do db_connection: se algo falhar, rollback total
+    with db_connection(db_path) as conn:
 
-        cur.execute("BEGIN")
+        for material in materials:
 
-        try:
+            tipo = material["tipo"]
 
-            for material in materials:
+            if tipo == "resumo":
 
-                tipo = material["tipo"]
+                save_summary_db(
+                    subject_id=subject_id,
+                    titulo=material["titulo"],
+                    conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
+                    creation_date=material["creation_date"],
+                    db_path=db_path,
+                    conn=conn
+                )
 
-                if tipo == "resumo":
+            elif tipo == "mapa_mental":
 
-                    save_summary_db(
-                        subject_id=subject_id,
-                        titulo=material["titulo"],
-                        conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
+                save_mindmap_db(
+                    subject_id=subject_id,
+                    titulo=material["titulo"],
+                    conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
+                    creation_date=material["creation_date"],
+                    db_path=db_path,
+                    conn=conn
+                )
+
+            elif tipo == "baralho":
+
+                deck_id = save_deck_db(
+                    subject_id=subject_id,
+                    titulo=material["titulo"],
+                    acuracia=0,
+                    novos=len(material["conteudo"]["flashcards"]),
+                    aprendendo=0,
+                    review=0,
+                    creation_date=material["creation_date"],
+                    db_path=db_path,
+                    conn=conn
+                )
+
+                for flashcard in material["conteudo"]["flashcards"]:
+
+                    save_flashcard_db(
+                        deck_id=deck_id,
+                        pergunta=flashcard["pergunta"],
+                        resposta=flashcard["resposta"],
+                        status=FlashcardStatus.NOVO.value,
                         creation_date=material["creation_date"],
                         db_path=db_path,
-                        conn=conn
+                        conn=conn,
+                        # embedding já calculado pelo dedup (rag_api/dedup.py),
+                        # não recalcula aqui
+                        embedding=flashcard.get("embedding"),
                     )
 
-                elif tipo == "mapa_mental":
+            else:
+                raise ValueError(f"Unknown material type: {tipo}")
 
-                    save_mindmap_db(
-                        subject_id=subject_id,
-                        titulo=material["titulo"],
-                        conteudo=json.dumps(material["conteudo"], ensure_ascii=False),
-                        creation_date=material["creation_date"],
-                        db_path=db_path,
-                        conn=conn
-                    )
-
-                elif tipo == "baralho":
-
-                    deck_id = save_deck_db(
-                        subject_id=subject_id,
-                        titulo=material["titulo"],
-                        acuracia=0,
-                        novos=len(material["conteudo"]["flashcards"]),
-                        aprendendo=0,
-                        review=0,
-                        creation_date=material["creation_date"],
-                        db_path=db_path,
-                        conn=conn
-                    )
-
-                    for flashcard in material["conteudo"]["flashcards"]:
-
-                        save_flashcard_db(
-                            deck_id=deck_id,
-                            pergunta=flashcard["pergunta"],
-                            resposta=flashcard["resposta"],
-                            status=FlashcardStatus.NOVO.value,
-                            creation_date=material["creation_date"],
-                            db_path=db_path,
-                            conn=conn,
-                            # embedding já calculado pelo dedup (rag_api/dedup.py),
-                            # não recalcula aqui
-                            embedding=flashcard.get("embedding"),
-                        )
-
-                else:
-                    raise ValueError(f"Unknown material type: {tipo}")
-
-            conn.commit()
-
-        except Exception:
-            conn.rollback()
-            raise
 
 def match_subject_user_db(subject_id:int, user_id:int, db_path: Path = DB_PATH):
-    with _open_connection(db_path) as conn:
-        row = conn.execute("""SELECT user_id
+    with db_connection(db_path) as conn:
+        row = _q(conn, """SELECT user_id
                                     FROM subjects
                                     WHERE id = ?""", (subject_id,)).fetchone()
 
@@ -1634,37 +1685,19 @@ def record_activity_db(
 
     Nunca levanta exceção: um erro aqui não pode derrubar a rota chamadora.
     """
-    conn_ = None
-    own_conn = False
-
     try:
-        conn_, own_conn = _get_connection(conn, db_path)
-        cur = conn_.cursor()
-
-        cur.execute(
-            """
-            INSERT INTO activity_days (user_id, day, count)
-            VALUES (?, ?, 1)
-            ON CONFLICT(user_id, day) DO UPDATE SET count = count + 1
-            """,
-            (user_id, day),
-        )
-
-        if own_conn:
-            conn_.commit()
+        with _use_conn(conn, db_path) as conn_:
+            conn_.execute(
+                """
+                INSERT INTO activity_days (user_id, day, count)
+                VALUES (?, ?, 1)
+                ON CONFLICT(user_id, day) DO UPDATE SET count = count + 1
+                """,
+                (user_id, day),
+            )
     except Exception:
+        # db_connection já fez rollback/release; aqui só engolimos o erro
         logger.exception("Falha ao registrar atividade do usuário %s no dia %s", user_id, day)
-        if own_conn and conn_ is not None:
-            try:
-                conn_.rollback()
-            except Exception:
-                pass
-    finally:
-        if own_conn and conn_ is not None:
-            try:
-                conn_.close()
-            except Exception:
-                pass
 
 
 def get_activity_days_db(
@@ -1676,8 +1709,8 @@ def get_activity_days_db(
     Retorna {day: count} com todos os dias de atividade do usuário a partir
     de `since_day` (inclusive).
     """
-    with _open_connection(db_path) as conn:
-        rows = conn.execute(
+    with db_connection(db_path) as conn:
+        rows = _q(conn,
             """
             SELECT day, count
             FROM activity_days

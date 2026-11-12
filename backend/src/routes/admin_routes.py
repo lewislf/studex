@@ -42,24 +42,27 @@ def status():
     """
     db_path = _db_path()
     abs_path = db_path.resolve()
+    turso = database.BACKEND == "turso"
+    info = database.describe_backend()  # nunca contém o token
 
     created_at = None
     users_count = None
-    if abs_path.is_file():
-        # as_uri() escapa ?, # e % no caminho; modo ro não cria arquivo
-        conn = sqlite3.connect(abs_path.as_uri() + "?mode=ro", uri=True)
-        try:
+    size = None
+    # No modo turso o banco é remoto: não toca no disco para o banco.
+    # No modo sqlite só consulta se o arquivo existir (não cria arquivo vazio).
+    if turso or abs_path.is_file():
+        with database.db_connection(db_path=db_path) as conn:
             try:
-                row = conn.execute("SELECT value FROM meta WHERE key='db_created_at'").fetchone()
+                row = _consulta(conn, "SELECT value FROM meta WHERE key='db_created_at'").fetchone()
                 created_at = row[0] if row else None
-            except sqlite3.OperationalError:
+            except Exception:
                 pass
-            users_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        finally:
-            conn.close()
+            users_count = _consulta(conn, "SELECT COUNT(*) FROM users").fetchone()[0]
+    if not turso:
+        size = abs_path.stat().st_size if abs_path.is_file() else 0
 
     persistent = os.environ.get("STUDEX_PERSISTENT_DIR") or None
-    if persistent:
+    if persistent and not turso:
         try:
             abs_path.relative_to(Path(persistent).resolve())
             under = True
@@ -75,11 +78,13 @@ def status():
 
     from rate_limit import client_ip_source
     return jsonify({
+        "backend": info.get("backend"),
+        "location": info.get("location"),
         "client_ip_source": client_ip_source(),
-        "db_path": str(abs_path),
+        "db_path": None if turso else str(abs_path),
         "db_created_at": created_at,
         "users_count": users_count,
-        "db_size_bytes": abs_path.stat().st_size if abs_path.is_file() else 0,
+        "db_size_bytes": size,
         "persistent_dir": persistent,
         "path_is_under_persistent_dir": under,
         "uploads_pending": pending,
@@ -89,7 +94,8 @@ def status():
 @admin_bp.get("/backup")
 def backup():
     """
-    Snapshot consistente do SQLite (API de backup do sqlite3) para download.
+    Snapshot portátil (esquema + linhas copiados para um .db novo; funciona em
+    SQLite local e em Turso) para download.
     Só existe com ADMIN_BACKUP_ENABLED=1; caso contrário 404 para todos.
     ---
     tags:
@@ -110,11 +116,62 @@ def backup():
     return _backup_admin()
 
 
+_CHUNK = 500
+
+
+def _consulta(conn, sql, params=()):
+    """cur.execute + cursor devolvido (execute() pode devolver None no libsql)."""
+    cur = conn.cursor()
+    cur.execute(sql, params)
+    return cur
+
+
+def _snapshot_para_sqlite(conn, destino: Path) -> None:
+    """Copia esquema + linhas do banco (sqlite ou turso) para um arquivo
+    sqlite3 novo. Portátil: não usa conn.backup (indisponível no libsql)."""
+    objetos = _consulta(
+        conn,
+        "SELECT type, name, sql FROM sqlite_master "
+        "WHERE type IN ('table','index') AND name NOT LIKE 'sqlite_%'",
+    ).fetchall()
+    dst = sqlite3.connect(destino)
+    try:
+        # tabelas primeiro, índices depois (carga mais rápida)
+        tabelas = [o for o in objetos if o[0] == "table" and o[2]]
+        indices = [o for o in objetos if o[0] == "index" and o[2]]
+        for _, _, ddl in tabelas:
+            dst.execute(ddl)
+        for _, nome, _ in tabelas:
+            q = nome.replace('"', '""')
+            # Paginação por rowid (keyset) só com execute/fetchall: o cursor do
+            # libsql pode não ter fetchmany. Todas as tabelas do schema têm rowid.
+            ultimo = 0
+            while True:
+                linhas = _consulta(
+                    conn,
+                    f'SELECT rowid, * FROM "{q}" WHERE rowid > ? ORDER BY rowid LIMIT ?',
+                    (ultimo, _CHUNK),
+                ).fetchall()
+                if not linhas:
+                    break
+                ultimo = linhas[-1][0]
+                marcadores = ",".join("?" * (len(linhas[0]) - 1))
+                dst.executemany(
+                    f'INSERT INTO "{q}" VALUES ({marcadores})',
+                    [tuple(r[1:]) for r in linhas],
+                )
+        for _, _, ddl in indices:
+            dst.execute(ddl)
+        dst.commit()
+    finally:
+        dst.close()
+
+
 @require_admin
 def _backup_admin():
     db_path = _db_path()
-    # sqlite3.connect criaria um arquivo vazio em caminho inexistente
-    if not db_path.is_file():
+    # sqlite: não criar/ler arquivo inexistente; turso: banco é remoto
+    if database.BACKEND != "turso" and not db_path.is_file():
         return jsonify({"error": "not found"}), 404
 
     # diretório temporário 0700 (mkdtemp) para o snapshot
@@ -125,13 +182,13 @@ def _backup_admin():
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
     try:
-        src = sqlite3.connect(db_path)
-        dst = sqlite3.connect(tmp_file)
-        try:
-            src.backup(dst)
-        finally:
-            dst.close()
-            src.close()
+        # um único bloco: neste processo nenhuma outra escrita acontece durante
+        # o snapshot (no modo turso o RLock fica preso até o fim — as demais
+        # requisições esperam; aceitável para um backup manual do admin). Um
+        # escritor EXTERNO (outra instância, CLI do Turso) poderia alterar o
+        # banco entre as páginas: o snapshot não é transacional nesse caso.
+        with database.db_connection(db_path=db_path) as conn:
+            _snapshot_para_sqlite(conn, tmp_file)
 
         # Abre o snapshot e já apaga diretório+arquivo: em POSIX o handle
         # aberto continua legível, então nada fica em disco mesmo que o envio

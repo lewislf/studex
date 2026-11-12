@@ -45,6 +45,7 @@ python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 pyyaml_env_tag==1.1
 qdrant-client
+libsql==0.1.11
 requests==2.34.2
 six==1.17.0
 tomli @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_tomli_1774492402/work

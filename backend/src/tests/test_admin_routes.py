@@ -5,7 +5,10 @@ temporário; é isso que as rotas /admin leem nos testes. Em produção vale o
 DB_PATH do módulo (env STUDEX_DB_PATH).
 """
 
+import contextlib
 import sqlite3
+
+import pytest
 
 import routes.document_routes as document_routes
 from database.database import init_db, save_user_db
@@ -46,6 +49,35 @@ def test_status_ok_for_admin(client, auth_headers, monkeypatch, temp_db, tmp_pat
     assert body["path_is_under_persistent_dir"] is True
     assert body["persistent_dir"] == str(tmp_path)
     assert "ana@x.com" not in r.get_data(as_text=True)
+    assert body["backend"] == "sqlite"
+    assert body["db_size_bytes"] > 0
+
+
+def test_status_turso_mode_does_not_touch_filesystem(client, auth_headers, monkeypatch, temp_db, tmp_path):
+    import database.database as db
+    _admin(monkeypatch)
+    save_user_db("Ana", "senha12345", "ana@x.com", db_path=temp_db)
+    monkeypatch.setattr(db, "BACKEND", "turso")
+    monkeypatch.setattr(db, "describe_backend", lambda: {"backend": "turso", "location": "libsql://x.turso.io"})
+    from main import app
+    # caminho inexistente: no modo turso não pode ser consultado/criado
+    ausente = tmp_path / "nao_existe.db"
+    monkeypatch.setitem(app.config, "DB_PATH", ausente)
+    # db_connection (fake do turso) ignora o arquivo e usa o banco temporário
+    import contextlib as cl
+    @cl.contextmanager
+    def fake(db_path=None):
+        c = sqlite3.connect(temp_db)
+        try:
+            yield c
+        finally:
+            c.close()
+    monkeypatch.setattr(db, "db_connection", fake)
+    body = client.get("/admin/status", headers=auth_headers(1)).get_json()
+    assert body["backend"] == "turso" and body["location"] == "libsql://x.turso.io"
+    assert body["db_size_bytes"] is None and body["db_path"] is None
+    assert body["users_count"] == 1 and body["db_created_at"]
+    assert not ausente.exists()
 
 
 def test_backup_404_when_disabled(client, auth_headers, monkeypatch):
@@ -90,6 +122,7 @@ def test_backup_returns_valid_sqlite(client, auth_headers, monkeypatch, temp_db,
     _admin(monkeypatch)
     monkeypatch.setenv("ADMIN_BACKUP_ENABLED", "1")
     save_user_db("Ana", "senha12345", "ana@x.com", db_path=temp_db)
+    save_user_db("Bia", "senha12345", "bia@x.com", db_path=temp_db)
     import tempfile
     tmpbase = tmp_path / "tmpbase"
     tmpbase.mkdir()
@@ -106,7 +139,18 @@ def test_backup_returns_valid_sqlite(client, auth_headers, monkeypatch, temp_db,
     r.close()
     conn = sqlite3.connect(out)
     try:
-        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 2
+        assert conn.execute("SELECT value FROM meta WHERE key='db_created_at'").fetchone()[0]
+        # mesmas tabelas/índices e mesma contagem de linhas que a origem
+        src = sqlite3.connect(temp_db)
+        try:
+            q = "SELECT name FROM sqlite_master WHERE type IN ('table','index') AND name NOT LIKE 'sqlite_%' ORDER BY name"
+            assert [r[0] for r in conn.execute(q)] == [r[0] for r in src.execute(q)]
+            for (t,) in src.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
+                assert (conn.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]
+                        == src.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]), t
+        finally:
+            src.close()
     finally:
         conn.close()
 
