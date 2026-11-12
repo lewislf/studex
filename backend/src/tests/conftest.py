@@ -1,4 +1,14 @@
+import os
 from pathlib import Path
+
+# Os testes NUNCA devem falar com um Turso real: se o terminal tiver
+# TURSO_DATABASE_URL/TURSO_AUTH_TOKEN exportados (ex.: depois de rodar o
+# scripts/turso_smoke.py), o backend escolheria "turso" na importação e a
+# suíte inteira iria para a rede (lenta e escrevendo no banco remoto).
+# Removemos ANTES de importar o app; o modo turso é testado só com o
+# driver falso (tests/fake_libsql.py), que liga as variáveis por conta própria.
+for _var in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"):
+    os.environ.pop(_var, None)
 
 import pytest
 
@@ -50,3 +60,16 @@ def _assume_user_exists(request, monkeypatch):
     @pytest.mark.real_user_check para exercitar a checagem real."""
     if request.node.get_closest_marker("real_user_check") is None:
         monkeypatch.setattr(auth, "_user_exists", lambda user_id: True)
+
+
+@pytest.fixture(autouse=True)
+def _isolar_banco_padrao(tmp_path, monkeypatch):
+    """Cada teste roda numa pasta temporária própria. O banco padrão
+    (DB_PATH = "users.db", relativo à pasta atual) passa a ser um arquivo
+    descartável dessa pasta, já com as tabelas — então nenhum teste cria ou
+    altera o users.db da pasta do projeto, mesmo quando uma rota chama uma
+    função de banco que o teste não substituiu (ex.: record_activity_db)."""
+    pasta = tmp_path / "cwd"
+    pasta.mkdir()
+    monkeypatch.chdir(pasta)
+    init_db(db_path=Path("users.db"))

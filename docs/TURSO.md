@@ -20,9 +20,12 @@ fora do servidor. O backend usa o pacote Python `libsql` (versão fixada em
    turso db create studex-teste --location <regiao>   # banco DESCARTÁVEL para o smoke test
    turso db create studex-prod  --location <regiao>   # banco de produção
    ```
-3. Escolha a região mais próxima da região do serviço no Render
-   (`turso db locations` lista as opções). Menor latência = rotas mais rápidas,
-   pois cada consulta é uma ida e volta de rede.
+3. **Escolha a região mais próxima da região do serviço no Render** (veja em
+   Render → Settings; `turso db locations` lista as opções do Turso — confira
+   o comando na documentação). Isso é o que mais pesa no desempenho: cada
+   consulta é uma ida e volta de rede, e o app atende uma consulta por vez.
+   Teste real (Brasil → Turso fora do país): centenas de ms por consulta. Na
+   mesma região do Render, poucos ms.
 4. Obtenha a URL de cada banco (confira na documentação do Turso o comando
    atual; hoje seria `turso db show studex-prod --url`) no formato `libsql://<nome>-<org>.turso.io`).
 
@@ -51,8 +54,10 @@ cd backend/src
 python ../../scripts/turso_smoke.py --i-understand-this-writes-test-data
 ```
 
-O script cria/remove um usuário de teste, exercita matéria/baralho/flashcard,
-roda 8 threads em paralelo, confere que a exclusão do usuário não deixa linhas
+O script mede a latência (informativo), cria/remove um usuário de teste,
+exercita matéria/baralho/flashcard, roda um passo de concorrência leve
+(padrão 2 threads x 1 iteração; ajuste com `--threads N --iter N` — rodando do
+Brasil, cargas maiores levam muitos minutos só pela latência, não é travamento), confere que a exclusão do usuário não deixa linhas
 e **testa atomicidade**: grava uma linha dentro de uma transação, força uma
 exceção e confere que a linha NÃO persistiu. Imprime `PASS` ou `FAIL`.
 

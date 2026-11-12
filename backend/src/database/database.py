@@ -81,7 +81,16 @@ def _q(conn, sql: str, params: tuple = ()):
     usamos cur.execute(...) e depois cur.fetch*() em linhas separadas."""
     cur = conn.cursor()
     cur.execute(sql, params)
+    if not _is_read_only(sql):
+        _tls.dirty = True
     return cur
+
+
+def _is_read_only(sql: str) -> bool:
+    """SELECT e PRAGMA não escrevem nada; qualquer outro comando (INSERT,
+    UPDATE, DELETE, CREATE, WITH ...) é tratado como escrita, por segurança."""
+    primeira = sql.lstrip().split(None, 1)[0].upper() if sql.strip() else ""
+    return primeira in ("SELECT", "PRAGMA")
 
 
 # Profundidade de db_connection por thread (modo turso): só o bloco mais externo
@@ -116,9 +125,16 @@ def db_connection(db_path: Path = DB_PATH):
                 yield conn
                 return
             _tls.depth = 1
+            _tls.dirty = False
             try:
                 yield conn
-                conn.commit()
+                # Cada commit é uma ida à rede no Turso. Bloco só de leitura
+                # (SELECT/PRAGMA) não precisa de commit — MAS só pulamos se o
+                # driver confirmar que não há transação aberta (in_transaction
+                # False). Se o driver não expuser esse atributo, faz o commit
+                # como antes (comportamento seguro).
+                if _tls.dirty or getattr(conn, "in_transaction", True):
+                    conn.commit()
             except BaseException as exc:
                 # IntegrityError é erro de aplicação (conexão segue boa); qualquer
                 # outro erro pode ter deixado a conexão/stream remoto inválido.
@@ -138,6 +154,7 @@ def db_connection(db_path: Path = DB_PATH):
                 raise
             finally:
                 _tls.depth = 0
+                _tls.dirty = False
         return
 
     conn = _open_connection(db_path)
@@ -1309,6 +1326,57 @@ def count_due_flashcards_db(
         return int(row[0]) if row else 0
 
 
+def get_subject_counters_db(
+    user_id: int | None = None,
+    subject_id: int | None = None,
+    db_path: Path = DB_PATH,
+) -> dict[int, dict[str, int]]:
+    """
+    Contadores (resumos, mapas mentais, flashcards) de várias matérias numa
+    ÚNICA consulta, em vez de 1 consulta por matéria/baralho (N+1). Com banco
+    remoto (Turso) cada consulta é uma ida à rede, então isso importa muito.
+
+    Filtra por user_id (todas as matérias do usuário) ou por subject_id (uma).
+    Retorna {subject_id: {"summaries": n, "mind_maps": n, "flashcards": n}}.
+    """
+    if user_id is None and subject_id is None:
+        raise ValueError("informe user_id ou subject_id")
+    campo, valor = ("s.user_id", user_id) if subject_id is None else ("s.id", subject_id)
+    with db_connection(db_path) as conn:
+        rows = _q(conn,
+            f"""
+            SELECT s.id,
+                   (SELECT COUNT(*) FROM summaries su WHERE su.subject_id = s.id),
+                   (SELECT COUNT(*) FROM mind_maps m WHERE m.subject_id = s.id),
+                   (SELECT COUNT(*) FROM flashcards f
+                      JOIN decks d ON d.id = f.deck_id
+                     WHERE d.subject_id = s.id)
+            FROM subjects s
+            WHERE {campo} = ?
+            """,
+            (valor,),
+        ).fetchall()
+    return {
+        int(r[0]): {"summaries": int(r[1]), "mind_maps": int(r[2]), "flashcards": int(r[3])}
+        for r in rows
+    }
+
+
+def count_user_materials_db(user_id: int, db_path: Path = DB_PATH) -> tuple[int, int]:
+    """(total de resumos, total de mapas mentais) de todas as matérias do
+    usuário, numa única consulta."""
+    with db_connection(db_path) as conn:
+        row = _q(conn,
+            """
+            SELECT
+              (SELECT COUNT(*) FROM summaries su JOIN subjects s ON s.id = su.subject_id WHERE s.user_id = ?),
+              (SELECT COUNT(*) FROM mind_maps m JOIN subjects s ON s.id = m.subject_id WHERE s.user_id = ?)
+            """,
+            (user_id, user_id),
+        ).fetchone()
+    return (int(row[0]), int(row[1])) if row else (0, 0)
+
+
 def count_flashcards_by_user_db(
     user_id: int,
     db_path: Path = DB_PATH,
@@ -1687,7 +1755,7 @@ def record_activity_db(
     """
     try:
         with _use_conn(conn, db_path) as conn_:
-            conn_.execute(
+            _q(conn_,
                 """
                 INSERT INTO activity_days (user_id, day, count)
                 VALUES (?, ?, 1)

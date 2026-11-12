@@ -4,12 +4,9 @@ from flask import Blueprint, jsonify, request
 
 from auth import require_auth
 from database.database import (
-    count_flashcards_db,
-    count_summaries_db,
-    count_mindmaps_db,
+    get_subject_counters_db,
     get_subject_db,
     get_subjects_db,
-    get_decks_db,
     save_subject_db,
     delete_subject_db,
     match_subject_user_db,
@@ -55,18 +52,14 @@ def get_subject(user_id, subject_id):
     if has_subj is False:
         return jsonify({"error": "User does not have this subject!"}), 404
 
-    decks = get_decks_db(subject_id)
-    
-    
-    total_flashcards = 0
-    if decks is not None:
-        for deck in decks:
-            total_flashcards += count_flashcards_db(deck.id)
+    # uma única consulta para os três contadores (antes: 1 por baralho + 2)
+    counters = get_subject_counters_db(subject_id=subject_id).get(
+        subject_id, {"summaries": 0, "mind_maps": 0, "flashcards": 0})
 
     return jsonify(subject.to_dict() | {"total_topics": 0, "pending_in_queue": 0, "counters": {
-                "summaries": count_summaries_db(subject_id),
-                "mind_maps": count_mindmaps_db(subject_id),
-                "flashcards": total_flashcards }
+                "summaries": counters["summaries"],
+                "mind_maps": counters["mind_maps"],
+                "flashcards": counters["flashcards"] }
             })
 
 @subject_bp.get("")
@@ -95,20 +88,17 @@ def get_subjects(user_id):
         return jsonify({"error": "Subjects not found"}), 404
     
 
-    # Estrutura a resposta e calcula a quantidade de flashcards
-    response = [] 
+    # Contadores de TODAS as matérias numa única consulta (antes era N+1:
+    # baralhos + 1 contagem por baralho + resumos + mapas, para cada matéria).
+    todos = get_subject_counters_db(user_id=user_id)
+    vazio = {"summaries": 0, "mind_maps": 0, "flashcards": 0}
+    response = []
     for subject in subjects:
-        total_flashcards = 0
-        decks = get_decks_db(subject.id,)
-    
-        if decks is not None:
-            for deck in decks:
-                total_flashcards += count_flashcards_db(deck.id,)
-        
+        c = todos.get(subject.id, vazio)
         response.append(subject.to_dict() | {"total_topics": 0, "pending_in_queue": 0, "counters": {
-                "summaries": count_summaries_db(subject.id,),
-                "mind_maps": count_mindmaps_db(subject.id,),
-                "flashcards": total_flashcards }
+                "summaries": c["summaries"],
+                "mind_maps": c["mind_maps"],
+                "flashcards": c["flashcards"] }
         })
         
 

@@ -73,9 +73,12 @@ from dedup import (
 # getter do banco pra buscar os materiais já existentes na matéria, por tipo,
 # no mesmo estilo que as rotas de summary/mindmap já usam (nenhuma função
 # nova em database.py)
+# lambdas (e não as funções direto): o nome é resolvido na hora da chamada,
+# então substituir get_summaries_db/get_mindmaps_db neste módulo (ex.: em
+# testes) tem efeito. Guardar a referência travava a função da importação.
 _MATERIAL_DEDUP_GETTERS = {
-    "resumo": get_summaries_db,
-    "mapa_mental": get_mindmaps_db,
+    "resumo": lambda subject_id: get_summaries_db(subject_id),
+    "mapa_mental": lambda subject_id: get_mindmaps_db(subject_id),
 }
 
 

@@ -20,6 +20,7 @@ class _Stats:
         self.statements = []         # todo SQL executado
         self.active = 0
         self.max_active = 0
+        self.commits = 0             # quantos commit() o app chamou
         self._lock = threading.Lock()
 
     def enter(self):
@@ -35,6 +36,7 @@ class _Stats:
 stats = _Stats()
 db_file = None  # definido pela fixture
 autocommit = False  # True simula driver que confirma cada comando na hora
+expor_in_transaction = True  # False simula driver sem o atributo in_transaction
 
 
 class _Cursor:
@@ -94,7 +96,16 @@ class _Conn:
         return _Cursor(self._raw.cursor())
 
     def commit(self):
+        stats.commits += 1
         self._raw.commit()
+
+    @property
+    def in_transaction(self):
+        # o sqlite3 só abre transação implícita em escrita; expor_in_transaction
+        # = False simula um driver sem esse atributo (o app deve fazer commit).
+        if not expor_in_transaction:
+            raise AttributeError("in_transaction")
+        return self._raw.in_transaction
 
     def rollback(self):
         self._raw.rollback()

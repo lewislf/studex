@@ -66,6 +66,9 @@ def test_get_subjects(client, auth_headers):
     ) as mock_get, patch(
         "routes.subject_routes.match_subject_user_db",
         return_value=True,
+    ), patch(
+        "routes.subject_routes.get_subject_counters_db",
+        return_value={1: {"summaries": 2, "mind_maps": 1, "flashcards": 5}},
     ):
 
         response = client.get("/users/10/subjects", headers=auth_headers(10))
@@ -78,6 +81,8 @@ def test_get_subjects(client, auth_headers):
     assert body[0]["id"] == 1
     assert body[0]["title"] == "Redes"
     assert body[1]["title"] == "POO"
+    assert body[0]["counters"] == {"summaries": 2, "mind_maps": 1, "flashcards": 5}
+    assert body[1]["counters"] == {"summaries": 0, "mind_maps": 0, "flashcards": 0}
 
     mock_get.assert_called_once_with(10)
 
@@ -99,11 +104,15 @@ def test_get_subject(client, auth_headers):
     ), patch(
         "routes.subject_routes.match_subject_user_db",
         return_value=True,
+    ), patch(
+        "routes.subject_routes.get_subject_counters_db",
+        return_value={1: {"summaries": 2, "mind_maps": 1, "flashcards": 5}},
     ):
 
         response = client.get("/users/10/subjects/1", headers=auth_headers(10))
 
     assert response.status_code == 200
+    assert response.get_json()["counters"] == {"summaries": 2, "mind_maps": 1, "flashcards": 5}
 
     body = response.get_json()
 
@@ -135,7 +144,10 @@ def test_create_subject(client, auth_headers):
     with patch(
         "routes.subject_routes.save_subject_db",
         return_value=7,
-    ) as mock_save:
+    ) as mock_save, patch(
+        "routes.subject_routes.get_subjects_db",
+        return_value=[],
+    ):
 
         response = client.post(
             "/users/10/subjects",
@@ -179,6 +191,9 @@ def test_delete_subject_success(client, auth_headers):
 
 def test_delete_subject_not_found(client, auth_headers):
     with patch(
+        "routes.subject_routes.get_subject_db",
+        return_value=None,
+    ), patch(
         "routes.subject_routes.match_subject_user_db",
         return_value=True,
     ), patch(

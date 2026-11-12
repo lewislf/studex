@@ -20,8 +20,11 @@ import uuid
 from pathlib import Path
 
 FLAG = "--i-understand-this-writes-test-data"
-N_THREADS = 8
-N_ITER = 5
+# Carga do passo de concorrência. Padrão leve: do Brasil até o Turso cada
+# consulta leva ~centenas de ms e tudo é serializado pela trava do app, então
+# 8x5 levava muitos minutos. Ajuste com --threads / --iter.
+N_THREADS = 2
+N_ITER = 1
 
 _resultados: list[tuple[str, bool, str]] = []
 
@@ -34,6 +37,10 @@ def parse_args(argv=None):
         FLAG, dest="confirmado", action="store_true",
         help="confirma que o alvo é um banco Turso DESCARTÁVEL de teste",
     )
+    p.add_argument("--threads", type=int, default=N_THREADS,
+                   help=f"threads no passo de concorrência (padrão {N_THREADS})")
+    p.add_argument("--iter", type=int, default=N_ITER,
+                   help=f"iterações por thread (padrão {N_ITER})")
     return p.parse_args(argv)
 
 
@@ -94,6 +101,9 @@ def _preparar_ambiente() -> None:
     os.environ.setdefault("JWT_SECRET", "smoke-test-secret-" + "x" * 32)
     os.environ.setdefault("GEMINI_API_KEY", "dummy")
     os.environ.setdefault("RATELIMIT_ENABLED", "0")
+    # como no Docker do Render: Qdrant em memória (sem isso o app tenta um
+    # servidor Qdrant em localhost:6333 e enche a saída de "Connection refused")
+    os.environ.setdefault("QDRANT_PATH", ":memory:")
     src = Path(__file__).resolve().parent.parent / "backend" / "src"
     if str(src) not in sys.path:
         sys.path.insert(0, str(src))
@@ -128,6 +138,21 @@ def _executar() -> None:
     database.init_db()
     base = _contagens(database)  # linha de base (o banco pode já ter dados)
     check("init_db criou as tabelas", "users" in base and "meta" in base, str(sorted(base)))
+
+    print("== Latência (informativo)")
+    import time
+    amostras = []
+    for _ in range(5):
+        t0 = time.perf_counter()
+        with database.db_connection() as conn:
+            database._q(conn, "SELECT 1").fetchall()
+        amostras.append((time.perf_counter() - t0) * 1000)
+    with database.db_connection() as conn:
+        tem_in_tx = hasattr(conn, "in_transaction")
+    print(f"  consulta de leitura: média {sum(amostras)/len(amostras):.0f} ms "
+          f"(min {min(amostras):.0f}, max {max(amostras):.0f})")
+    print(f"  driver expõe in_transaction: {'sim (leituras sem commit)' if tem_in_tx else 'não (commit em toda consulta)'}")
+    print("  dica: em produção o Turso deve ficar na MESMA região do Render.")
 
     print("== Atomicidade (rollback)")
     ok_at, det_at = verificar_atomicidade(database)
@@ -231,7 +256,9 @@ def _executar() -> None:
 
 
 def main(argv=None) -> int:
+    global N_THREADS, N_ITER
     args = parse_args(argv)
+    N_THREADS, N_ITER = max(1, args.threads), max(1, args.iter)
     if not args.confirmado:
         print(f"RECUSADO: este script ESCREVE dados de teste no Turso.\n"
               f"Use um banco DESCARTÁVEL e passe {FLAG}.", file=sys.stderr)

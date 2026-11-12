@@ -13,9 +13,7 @@ from database.database import (
     save_user_db,
     delete_user_db,
     login_user_db,
-    get_subjects_db,
-    count_summaries_db,
-    count_mindmaps_db,
+    count_user_materials_db,
     count_due_flashcards_db,
     count_flashcards_by_user_db,
     get_activity_days_db,
@@ -92,14 +90,8 @@ def _live_counters(user_id: int) -> dict:
     cards vencidos (due_date <= hoje). "total_flashcards_created" é a
     contagem de todos os flashcards do usuário.
     """
-    subjects = get_subjects_db(user_id) or []
-
-    summaries = 0
-    mind_maps = 0
-
-    for subject in subjects:
-        summaries += count_summaries_db(subject.id)
-        mind_maps += count_mindmaps_db(subject.id)
+    # uma consulta para os dois totais (antes: 2 consultas por matéria)
+    summaries, mind_maps = count_user_materials_db(user_id)
 
     pending_flashcards_today = count_due_flashcards_db(user_id)
     total_flashcards_created = count_flashcards_by_user_db(user_id)
