@@ -9,6 +9,9 @@ const PHASES = [
     { key: 'flashcards', label: 'Criando flashcards', color: 'orange' },
 ];
 
+// Etapa final: os materiais já foram gravados e os contadores atualizados.
+const SAVE_PHASE = { key: 'salvo', label: 'Salvando na matéria', color: 'green' };
+
 /**
  * Dashboard pane rendered in place of the dropzone while the backend processes the PDF.
  *
@@ -27,7 +30,10 @@ const PHASES = [
  *   backend default of generating everything when `materials` is not sent).
  */
 export default function HomeUploadProgress({ fileName, progress, phases }) {
-    const visiblePhases = phases ? PHASES.filter(({ key }) => phases.has(key)) : PHASES;
+    const visiblePhases = [
+        ...(phases ? PHASES.filter(({ key }) => phases.has(key)) : PHASES),
+        SAVE_PHASE,
+    ];
 
     return (
         <Stack gap="md" py="lg" px="md">
