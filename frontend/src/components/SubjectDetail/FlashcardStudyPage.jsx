@@ -307,7 +307,7 @@ function CompletionState({ stats, backTo, onRestart }) {
             <Stack align="center" justify="center" gap="lg" className={styles.centerState}>
                 <IconTrophy size={56} color="var(--mantine-color-orange-6)" />
                 <Title order={2}>Sessão concluída!</Title>
-                <SimpleGrid cols={4} spacing="lg" className={styles.statsGrid}>
+                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg" className={styles.statsGrid}>
                     <StatTile label="Fácil" value={stats.facil} color="green" />
                     <StatTile label="Bom" value={stats.bom} color="blue" />
                     <StatTile label="Difícil" value={stats.dificil} color="orange" />

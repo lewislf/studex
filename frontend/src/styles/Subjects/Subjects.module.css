@@ -131,3 +131,10 @@
 .openLink:hover {
     color: var(--mantine-color-dark-9);
 }
+
+/* Celular: menos margem para sobrar largura útil */
+@media (max-width: $mantine-breakpoint-sm) {
+    .container {
+        padding: var(--mantine-spacing-md);
+    }
+}

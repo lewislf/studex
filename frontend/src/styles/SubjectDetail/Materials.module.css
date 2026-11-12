@@ -238,3 +238,10 @@
     font-size: 0.7rem;
     color: var(--mantine-color-gray-5);
 }
+
+/* Celular: menos margem para sobrar largura útil */
+@media (max-width: $mantine-breakpoint-sm) {
+    .page {
+        padding: var(--mantine-spacing-md);
+    }
+}
