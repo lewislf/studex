@@ -21,6 +21,7 @@ services:
       - ./backend/src:/app
     environment:
       QDRANT_URL: http://qdrant:6333
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET antes do docker compose up}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-gemini-3.5-flash-lite}
       EMBED_MODEL: ${EMBED_MODEL:-gemini-embedding-001}

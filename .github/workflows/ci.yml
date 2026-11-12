@@ -71,6 +71,8 @@ jobs:
   backend-tests:
     name: Backend Tests (Pytest)
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-only-${{ github.run_id }}-${{ github.run_attempt }}-not-a-real-secret
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository

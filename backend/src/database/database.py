@@ -20,43 +20,34 @@ from baralho import Baralho
 from flashcard import Flashcard
 from enums.flashcard_status import FlashcardStatus
 
-# Caminho do banco configurável por env (ex: disco persistente). Lido no import
-# porque as funções abaixo usam DB_PATH como default de argumento. Sem a env,
-# continua "users.db" relativo ao cwd (comportamento anterior).
+# Lido no import porque as funções abaixo usam DB_PATH como default de argumento.
 DB_PATH = Path(os.environ.get("STUDEX_DB_PATH", "users.db"))
 
 logger = logging.getLogger(__name__)
 _ph = PasswordHasher()
 
 
-# Tipo da conexão: sqlite3.Connection (modo sqlite) ou libsql.Connection (modo
-# turso). Só usamos o subconjunto comum: execute/cursor/fetch*/commit/rollback.
+# sqlite3.Connection ou libsql.Connection; só se usa o subconjunto comum.
 Connection = Any
 
-# Backend escolhido na importação: Turso (libSQL hospedado) se TURSO_DATABASE_URL
-# estiver definida e não vazia; senão SQLite local (padrão: dev/testes).
+# Turso se TURSO_DATABASE_URL estiver definida; senão SQLite local.
 BACKEND = "turso" if os.environ.get("TURSO_DATABASE_URL", "").strip() else "sqlite"
 
-# Modo turso: UMA conexão compartilhada, criada sob demanda. O RLock fica preso
-# durante todo o bloco `with db_connection()`, serializando todo acesso ao banco.
-# É correto e simples com 1 worker do gunicorn (o driver libsql não faz escritas
-# concorrentes nem é seguro entre threads); o custo é throughput, aceitável aqui.
+# Modo turso: uma conexão compartilhada. O RLock fica preso durante todo o
+# `with db_connection()` porque o driver libsql não faz escritas concorrentes.
 _TURSO_LOCK = threading.RLock()
 _turso_conn = None
 
 
 def _connect_turso():
-    """Abre a conexão remota com o Turso. `libsql` só é importado aqui (lazy),
-    para não ser dependência no modo sqlite (dev/testes)."""
+    """Abre a conexão com o Turso; libsql é importado aqui para não ser exigido no modo sqlite."""
     import libsql  # noqa: PLC0415
 
     conn = libsql.connect(
         database=os.environ["TURSO_DATABASE_URL"],
         auth_token=os.environ.get("TURSO_AUTH_TOKEN", ""),
     )
-    # Tentamos ligar FK, mas NÃO dependemos disso: as exclusões são cascatas
-    # explícitas na aplicação (ver delete_*_db). journal_mode/busy_timeout não
-    # fazem sentido num banco remoto e por isso são pulados.
+    # As exclusões são cascatas explícitas (delete_*_db), sem depender de FK.
     try:
         _q(conn, "PRAGMA foreign_keys = ON;")
     except Exception:
@@ -76,9 +67,7 @@ def _drop_turso_conn() -> None:
 
 
 def _q(conn, sql: str, params: tuple = ()):
-    """Executa via cursor e devolve o cursor. A DB-API não garante que
-    execute() devolva o cursor (o libsql pode devolver None), então SEMPRE
-    usamos cur.execute(...) e depois cur.fetch*() em linhas separadas."""
+    """Executa via cursor e o devolve; execute() pode retornar None no libsql."""
     cur = conn.cursor()
     cur.execute(sql, params)
     if not _is_read_only(sql):
@@ -87,29 +76,22 @@ def _q(conn, sql: str, params: tuple = ()):
 
 
 def _is_read_only(sql: str) -> bool:
-    """SELECT e PRAGMA não escrevem nada; qualquer outro comando (INSERT,
-    UPDATE, DELETE, CREATE, WITH ...) é tratado como escrita, por segurança."""
+    """Só SELECT e PRAGMA contam como leitura; o resto é tratado como escrita."""
     primeira = sql.lstrip().split(None, 1)[0].upper() if sql.strip() else ""
     return primeira in ("SELECT", "PRAGMA")
 
 
-# Profundidade de db_connection por thread (modo turso): só o bloco mais externo
-# faz commit/rollback/descarte; blocos internos apenas repassam.
+# Estado de db_connection por thread (modo turso): só o bloco mais externo faz commit/rollback.
 _tls = threading.local()
 
 
 @contextmanager
 def db_connection(db_path: Path = DB_PATH):
     """
-    Context manager de conexão com o banco.
+    Conexão com o banco: commit na saída normal, rollback e re-raise em exceção.
 
-    Saída normal: commit. Exceção: rollback (se disponível) e re-raise. Sempre
-    libera a conexão.
-
-    - sqlite: abre uma conexão por chamada (com pragmas e py_lower) e FECHA no fim.
-    - turso: usa a conexão compartilhada sob RLock (db_path é ignorado). Se a
-      operação falhar com erro que não seja de integridade (ou se o rollback
-      falhar), a conexão é descartada para a próxima chamada reconectar.
+    sqlite abre e fecha uma conexão por chamada. turso usa a conexão compartilhada
+    sob RLock (db_path ignorado) e a descarta se houver erro que não seja de integridade.
     """
     if BACKEND == "turso":
         global _turso_conn
@@ -118,34 +100,26 @@ def db_connection(db_path: Path = DB_PATH):
                 _turso_conn = _connect_turso()
             conn = _turso_conn
             if getattr(_tls, "depth", 0) > 0:
-                # bloco aninhado: é a MESMA conexão/transação do externo; o commit
-                # (ou rollback) fica só com o nível mais externo. A exceção
-                # simplesmente propaga. (No modo sqlite cada `with` abre uma
-                # conexão nova e independente, então aninhar lá é diferente.)
+                # bloco aninhado: mesma transação; só o mais externo faz commit/rollback
                 yield conn
                 return
             _tls.depth = 1
             _tls.dirty = False
             try:
                 yield conn
-                # Cada commit é uma ida à rede no Turso. Bloco só de leitura
-                # (SELECT/PRAGMA) não precisa de commit — MAS só pulamos se o
-                # driver confirmar que não há transação aberta (in_transaction
-                # False). Se o driver não expuser esse atributo, faz o commit
-                # como antes (comportamento seguro).
+                # Cada commit é uma ida à rede: pula em leitura pura, mas só se o
+                # driver confirmar que não há transação aberta.
                 if _tls.dirty or getattr(conn, "in_transaction", True):
                     conn.commit()
             except BaseException as exc:
-                # IntegrityError é erro de aplicação (conexão segue boa); qualquer
-                # outro erro pode ter deixado a conexão/stream remoto inválido.
+                # IntegrityError não invalida a conexão; outros erros podem invalidar
                 descartar = not isinstance(exc, sqlite3.IntegrityError)
                 try:
                     rollback = getattr(conn, "rollback", None)
                     if rollback is not None:
                         rollback()
                     else:
-                        # sem rollback não dá para garantir que a transação
-                        # pendente foi desfeita: descarta a conexão.
+                        # sem rollback não há garantia de transação desfeita
                         descartar = True
                 except Exception:
                     descartar = True
@@ -170,8 +144,7 @@ def db_connection(db_path: Path = DB_PATH):
 
 @contextmanager
 def _use_conn(conn: Connection | None, db_path: Path):
-    """Usa a conexão recebida (transação do chamador; sem commit aqui) ou abre
-    uma própria via db_connection."""
+    """Usa a conexão recebida (sem commit) ou abre uma via db_connection."""
     if conn is not None:
         yield conn
     else:
@@ -180,8 +153,7 @@ def _use_conn(conn: Connection | None, db_path: Path):
 
 
 def describe_backend() -> dict:
-    """Descreve o backend ativo SEM segredos: sqlite -> caminho absoluto;
-    turso -> apenas o host da URL (sem esquema/query/credenciais/token)."""
+    """Backend ativo sem segredos: caminho absoluto (sqlite) ou só o host (turso)."""
     if BACKEND == "turso":
         url = os.environ.get("TURSO_DATABASE_URL", "").strip()
         if "://" not in url:
@@ -194,11 +166,8 @@ def describe_backend() -> dict:
 def _email_match(lowered: str) -> tuple[str, tuple]:
     """Cláusula SQL + parâmetros do match case-insensitive de e-mail.
 
-    sqlite: py_lower(email) = ? (cobre contas legadas com Unicode/maiúsculas).
-    turso: sem UDF (create_function não é suportado), então comparamos o valor
-    exato OU lower() do SQLite. O banco Turso começa vazio e o cadastro sempre
-    grava e-mail em minúsculas, logo linhas legadas com maiúsculas só existem em
-    arquivos SQLite antigos; lower() ASCII basta.
+    py_lower é só do sqlite (o libsql não suporta create_function); no turso
+    basta lower() ASCII, pois o cadastro grava e-mail em minúsculas.
     """
     if BACKEND == "turso":
         return "(email = ? OR lower(email) = ?)", (lowered, lowered)
@@ -207,20 +176,18 @@ def _email_match(lowered: str) -> tuple[str, tuple]:
 
 def _open_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
     """
-    Open a connection to the local SQLite database (modo sqlite apenas; use
-    db_connection nas funções do módulo).
+    Open a connection to the local SQLite database (sqlite mode only).
 
     Enable foreign key (i.e. a column (or group of columns) in one table that references the primary key of another table.)
     """
     conn = sqlite3.connect(db_path)
-    # lower() do SQLite só mexe em ASCII; py_lower segue o Unicode do Python
-    # (mesma normalização usada no cadastro/login).
+    # lower() do SQLite só trata ASCII; py_lower segue o Unicode do Python
     conn.create_function(
         "py_lower", 1, lambda v: v.lower() if isinstance(v, str) else v,
         deterministic=True,
     )
     _q(conn, "PRAGMA foreign_keys = ON;")
-    # espera até 5s por lock em vez de falhar na hora (várias threads do gunicorn)
+    # espera até 5s por lock em vez de falhar na hora
     _q(conn, "PRAGMA busy_timeout = 5000;")
 
     return conn
@@ -230,12 +197,10 @@ def init_db(db_path: Path = DB_PATH) -> None:
     Create the database and tables if they do not exist.
     """
     if BACKEND != "turso":
-        # garante o diretório do banco (ex: disco persistente ainda sem a pasta)
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
     with db_connection(db_path) as conn:
         if BACKEND != "turso":
-            # WAL é persistente no arquivo; cria users.db-wal/-shm ao lado do banco
             _q(conn, "PRAGMA journal_mode=WAL;")
 
         _q(conn,
@@ -323,10 +288,8 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
-        # Migração tolerante: bancos criados antes destas colunas existirem
-        # ganham elas aqui. Consultamos as colunas atuais (PRAGMA table_info) e
-        # só fazemos ALTER das que faltam, sem depender da classe de exceção do
-        # driver (sqlite3 x libsql) para detectar "duplicate column".
+        # Adiciona as colunas que bancos antigos não têm; consulta table_info em
+        # vez de capturar "duplicate column", cuja exceção varia entre os drivers.
         existentes = {
             row[1] for row in _q(conn, "PRAGMA table_info(flashcards)").fetchall()
         }
@@ -355,9 +318,7 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
-        # Metadados do banco. db_created_at permite ao dono verificar se o
-        # banco é recriado a cada deploy (se sempre igual ao último deploy,
-        # NÃO está persistente).
+        # db_created_at: data da criação do banco
         _q(conn,
             "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);"
         )
@@ -383,7 +344,7 @@ def init_db(db_path: Path = DB_PATH) -> None:
         ).fetchone()
         users_count = _q(conn, "SELECT COUNT(*) FROM users").fetchone()[0]
 
-    # só contagem e caminho/host: nada de e-mail/nome/token nos logs
+    # LGPD: só contagem e caminho/host no log
     if BACKEND == "turso":
         logger.info(
             "DB: backend=turso host=%s db_created_at=%s users=%s",
@@ -442,11 +403,8 @@ def save_user_db(
     gamification_json = json.dumps(gamification)
     counters_json = json.dumps(counters)
     
-    # Unicidade case-insensitive sem reescrever e-mails antigos: a coluna UNIQUE
-    # só barra igualdade exata, então checamos o e-mail em minúsculas. A checagem
-    # e o INSERT são UM ÚNICO statement (INSERT ... SELECT ... WHERE NOT EXISTS),
-    # atômico no SQLite sem precisar de BEGIN explícito; em turso o RLock ainda
-    # serializa tudo dentro do processo. A UNIQUE segue como segunda barreira.
+    # A coluna UNIQUE só barra e-mail idêntico; checagem e INSERT num único
+    # statement tornam a unicidade case-insensitive atômica.
     cond, cond_params = _email_match(email.lower())
     sql = f"""
         INSERT INTO users (name, email, passwd_encrypted, gamification, counters)
@@ -462,8 +420,7 @@ def save_user_db(
         except sqlite3.IntegrityError:
             raise
         except Exception as exc:
-            # o driver libsql tem classes de erro próprias: normaliza a violação
-            # de UNIQUE para a IntegrityError que as rotas já tratam
+            # o libsql tem classes de erro próprias; normaliza para IntegrityError
             if "unique constraint" in str(exc).lower():
                 raise sqlite3.IntegrityError("email já cadastrado") from exc
             raise
@@ -597,9 +554,7 @@ def delete_user_db(user_id: int, db_path: Path = DB_PATH) -> bool:
     """
     uid = int(user_id)
     with db_connection(db_path) as conn:
-        # Cascata explícita (filhos primeiro), tudo numa transação: não dependemos
-        # de PRAGMA foreign_keys (talvez ignorado no Turso) para o apagamento LGPD.
-        # O ON DELETE CASCADE do schema fica como segunda camada.
+        # cascata explícita, filhos primeiro: o PRAGMA foreign_keys pode ser ignorado no Turso
         _q(conn,
             """DELETE FROM flashcards WHERE deck_id IN (
                    SELECT d.id FROM decks d JOIN subjects s ON s.id = d.subject_id
@@ -612,7 +567,7 @@ def delete_user_db(user_id: int, db_path: Path = DB_PATH) -> bool:
             "DELETE FROM mind_maps WHERE subject_id IN (SELECT id FROM subjects WHERE user_id = ?)", (uid,))
         _q(conn, "DELETE FROM subjects WHERE user_id = ?", (uid,))
         _q(conn, "DELETE FROM activity_days WHERE user_id = ?", (uid,))
-        # RETURNING no lugar de rowcount (não confiável no driver libsql)
+        # RETURNING porque rowcount não é confiável no libsql
         deleted = _q(conn, "DELETE FROM users WHERE id = ? RETURNING id", (uid,)).fetchall()
         return len(deleted) > 0
 
@@ -652,7 +607,7 @@ def save_subject_db(user_id: int, name: str, desc: str, domain: int, icon: str, 
             RETURNING id
         """
 
-        # RETURNING id no lugar de cursor.lastrowid (não confiável no libsql)
+        # RETURNING porque lastrowid não é confiável no libsql
         return _q(conn, ins, (user_id, name, desc, creation_date, domain, icon, color)).fetchone()[0]
 
 
@@ -748,7 +703,7 @@ def save_summary_db(subject_id: int, titulo: str, conteudo: str, creation_date: 
             VALUES (?, ?, ?, ?)RETURNING id
         """
 
-        # RETURNING id no lugar de cursor.lastrowid (não confiável no libsql)
+        # RETURNING porque lastrowid não é confiável no libsql
         cur.execute(ins, (subject_id, titulo, conteudo, creation_date))
         return cur.fetchone()[0]
 
@@ -840,7 +795,7 @@ def save_mindmap_db(subject_id: int, titulo: str, conteudo: str, creation_date: 
             VALUES (?, ?, ?, ?)RETURNING id
         """
 
-        # RETURNING id no lugar de cursor.lastrowid (não confiável no libsql)
+        # RETURNING porque lastrowid não é confiável no libsql
         cur.execute(ins, (subject_id, titulo, conteudo, creation_date))
         return cur.fetchone()[0]
 
@@ -930,7 +885,7 @@ def save_deck_db(subject_id: int, titulo: str, acuracia: int, novos: int, aprend
             VALUES (?, ?, ?, ?, ?, ?, ?)RETURNING id
         """
 
-        # RETURNING id no lugar de cursor.lastrowid (não confiável no libsql)
+        # RETURNING porque lastrowid não é confiável no libsql
         cur.execute(ins, (subject_id, titulo, acuracia, novos, aprendendo, review, creation_date))
         return cur.fetchone()[0]
 
@@ -1332,9 +1287,7 @@ def get_subject_counters_db(
     db_path: Path = DB_PATH,
 ) -> dict[int, dict[str, int]]:
     """
-    Contadores (resumos, mapas mentais, flashcards) de várias matérias numa
-    ÚNICA consulta, em vez de 1 consulta por matéria/baralho (N+1). Com banco
-    remoto (Turso) cada consulta é uma ida à rede, então isso importa muito.
+    Contadores (resumos, mapas mentais, flashcards) por matéria, numa única consulta.
 
     Filtra por user_id (todas as matérias do usuário) ou por subject_id (uma).
     Retorna {subject_id: {"summaries": n, "mind_maps": n, "flashcards": n}}.
@@ -1363,8 +1316,7 @@ def get_subject_counters_db(
 
 
 def count_user_materials_db(user_id: int, db_path: Path = DB_PATH) -> tuple[int, int]:
-    """(total de resumos, total de mapas mentais) de todas as matérias do
-    usuário, numa única consulta."""
+    """(total de resumos, total de mapas mentais) de todas as matérias do usuário."""
     with db_connection(db_path) as conn:
         row = _q(conn,
             """
@@ -1665,7 +1617,7 @@ def save_materials_db(
         Output produced by the LLM.
     """
 
-    # tudo numa transação do db_connection: se algo falhar, rollback total
+    # numa única transação: se algo falhar, nada é salvo
     with db_connection(db_path) as conn:
 
         for material in materials:
@@ -1764,7 +1716,6 @@ def record_activity_db(
                 (user_id, day),
             )
     except Exception:
-        # db_connection já fez rollback/release; aqui só engolimos o erro
         logger.exception("Falha ao registrar atividade do usuário %s no dia %s", user_id, day)
 
 

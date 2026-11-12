@@ -28,7 +28,7 @@ user_bp = Blueprint("users", __name__, url_prefix="/users")
 ACTIVITY_WINDOW_DAYS = 400
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$")
-MAX_LOGIN_FIELD = 1024  # evita DoS por hashing de senhas gigantes no login
+MAX_LOGIN_FIELD = 1024  # limita o custo do hash da senha no login
 
 
 def _validate_signup(body):
@@ -60,7 +60,6 @@ def _validate_signup(body):
     return {"name": name, "email": email, "password": password}, None
 
 
-
 def _gamification_with_streak(user, base_gamification: dict | None) -> dict:
     """
     Injeta o streak real (calculado a partir de activity_days) no bloco de
@@ -90,7 +89,6 @@ def _live_counters(user_id: int) -> dict:
     cards vencidos (due_date <= hoje). "total_flashcards_created" é a
     contagem de todos os flashcards do usuário.
     """
-    # uma consulta para os dois totais (antes: 2 consultas por matéria)
     summaries, mind_maps = count_user_materials_db(user_id)
 
     pending_flashcards_today = count_due_flashcards_db(user_id)
@@ -108,15 +106,7 @@ def _live_counters(user_id: int) -> dict:
 @require_admin
 def get_users():
     """
-    Lista todos os usuários (somente administradores).
-
-    Minimização (LGPD): o e-mail é exposto de propósito, a pedido do dono do
-    produto, mas só a administradores; cada acesso é auditado em
-    auth.require_admin (apenas o id de quem acessou).
-
-    Exige token de um usuário listado em ADMIN_USER_IDS. Minimização de
-    dados: retorna apenas id, name, email, counters e gamification; nunca
-    o hash da senha.
+    Lista todos os usuários (somente administradores, ADMIN_USER_IDS).
     ---
     tags:
       - Usuários
@@ -135,8 +125,7 @@ def get_users():
 
     response = []
     for user in users:
-        # Lista explícita de campos (não depende de to_dict) para nunca vazar hash.
-        # E-mail só aparece aqui porque a rota é admin-only e auditada.
+        # campos explícitos, para não vazar o hash da senha
         response.append({
             "id": user.id,
             "name": user.name,
@@ -211,8 +200,7 @@ def create_user():
         return jsonify({"error": error}), 400
 
     if rate_limit.enabled():
-        # Só tentativas válidas consomem cota (o custo caro é o hash argon2),
-        # assim erros de digitação não bloqueiam. Checagem+registro atômicos.
+        # só cadastros válidos consomem cota (o custo é o hash argon2)
         cfg = rate_limit.limits()
         wait = rate_limit.limiter.check_and_record(
             rate_limit.mac_key("signup", rate_limit.client_ip()),
@@ -223,11 +211,10 @@ def create_user():
             return rate_limit.too_many(wait)
 
     try:
-        # gamification/counters nunca vêm do cliente (mass assignment): defaults do servidor.
+        # gamification/counters não vêm do cliente
         user_id = save_user_db(data["name"], data["password"], data["email"])
     except sqlite3.IntegrityError:
-        # Email duplicado (comparação case-insensitive no DB): 409 em vez de estourar.
-        # Obs.: a mensagem permite enumerar contas; é um trade-off de UX consciente.
+        # a mensagem permite enumerar contas; trade-off de UX
         return jsonify({"error": "Email já cadastrado"}), 409
 
     return jsonify({"id": user_id, "token": create_token(user_id)}), 201
@@ -279,28 +266,18 @@ def login_user():
         return jsonify({"error": "Email ou senha inválidos"}), 400
 
     if use_limit:
-        # Só FALHAS contam, em três escopos: IP, par (e-mail+IP) e conta
-        # (teto mais alto, qualquer IP). O par evita que um atacante bloqueie
-        # a conta alheia de outro IP. Chaves são HMAC (sem identificadores).
-        # Checagem e registro são passos separados: sob concorrência o limite
-        # pode estourar em até (nº de threads) tentativas, o que é aceitável.
+        # Só falhas contam, por IP, por par e-mail+IP e por conta (qualquer IP).
+        # Checagem e registro são separados: sob concorrência o limite pode
+        # estourar em até o nº de threads.
         ip = rate_limit.client_ip()
         em = rate_limit.normalise_email(email)
         ip_key = rate_limit.mac_key("lip", ip)
         pair_key = rate_limit.mac_key("lpair", ip, em)
         acc_key = rate_limit.mac_key("lacc", em)
         win = cfg["login_window"]
-        # Os TRÊS escopos são checados ANTES da senha, inclusive o da conta
-        # (qualquer IP), mesmo para senha correta: deixar a senha certa furar
-        # o teto viraria um oráculo (429 = errada, 200 = certa) e permitiria
-        # força bruta ilimitada. Trade-off aceito (risco REAL, declarado):
-        # um terceiro que erre a senha de alguém a partir de vários IPs (~6)
-        # trava o login dessa conta; se ele CONTINUAR tentando, o bloqueio se
-        # renova indefinidamente (vale para janela deslizante ou fixa: é
-        # inerente a qualquer bloqueio por conta). A solução definitiva é um
-        # desbloqueio fora do login (link por e-mail ou 2º fator) — pendente.
-        # Ajustável por env (RATELIMIT_LOGIN_EMAIL_MAX / _WINDOW_SECONDS).
-        # Toda falha de senha é SEMPRE registrada (nenhum return antes disso).
+        # Os limites valem antes da senha, mesmo para senha correta; senão o
+        # 429 viraria um oráculo. Trade-off: quem errar a senha de uma conta a
+        # partir de vários IPs consegue bloqueá-la enquanto continuar tentando.
         scopes = [
             ("ip", ip_key, cfg["login_ip_max"]),
             ("par", pair_key, cfg["login_pair_max"]),
@@ -320,7 +297,7 @@ def login_user():
         return jsonify({"error": "Email ou senha inválidos"}), 401
 
     if use_limit:
-        # Sucesso zera só o par deste IP; não consome nem zera IP/conta.
+        # sucesso zera só o par e-mail+IP
         rate_limit.limiter.reset(pair_key)
 
     data = user.to_dict()

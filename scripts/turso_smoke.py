@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Teste de fumaça do driver real do Turso (libsql) para o Studex.
 
-USO (no SEU computador, contra um banco Turso DESCARTÁVEL, nunca o de produção):
+Uso, contra um banco Turso descartável (nunca o de produção):
 
     export TURSO_DATABASE_URL="libsql://<banco-de-teste>.turso.io"
     export TURSO_AUTH_TOKEN="<token do banco de teste>"
     cd backend/src
     python ../../scripts/turso_smoke.py --i-understand-this-writes-test-data
 
-O script escreve dados de teste (usuário, matéria, baralho, flashcard) e os
-apaga ao final. Mesmo assim, use um banco separado. O token nunca é impresso.
+Escreve dados de teste (usuário, matéria, baralho, flashcard) e os apaga ao
+final. O token nunca é impresso.
 """
 
 import argparse
@@ -20,9 +20,8 @@ import uuid
 from pathlib import Path
 
 FLAG = "--i-understand-this-writes-test-data"
-# Carga do passo de concorrência. Padrão leve: do Brasil até o Turso cada
-# consulta leva ~centenas de ms e tudo é serializado pela trava do app, então
-# 8x5 levava muitos minutos. Ajuste com --threads / --iter.
+# Carga do passo de concorrência; leve porque as consultas ao Turso são lentas
+# e serializadas pela trava do app. Ajustável com --threads / --iter.
 N_THREADS = 2
 N_ITER = 1
 
@@ -31,11 +30,11 @@ _resultados: list[tuple[str, bool, str]] = []
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
-        description="Teste de fumaça do Turso/libsql (escreve dados de teste!)."
+        description="Teste de fumaça do Turso/libsql (escreve dados de teste)."
     )
     p.add_argument(
         FLAG, dest="confirmado", action="store_true",
-        help="confirma que o alvo é um banco Turso DESCARTÁVEL de teste",
+        help="confirma que o alvo é um banco Turso descartável de teste",
     )
     p.add_argument("--threads", type=int, default=N_THREADS,
                    help=f"threads no passo de concorrência (padrão {N_THREADS})")
@@ -58,14 +57,14 @@ def check(nome: str, ok: bool, detalhe: str = "") -> bool:
 
 
 def _q(conn, sql, params=()):
-    """cur.execute + devolve o cursor (execute() pode devolver None no libsql)."""
+    """Executa e devolve o cursor (execute() pode devolver None no libsql)."""
     cur = conn.cursor()
     cur.execute(sql, params)
     return cur
 
 
 class _AbortarTeste(Exception):
-    """Exceção proposital para forçar rollback no teste de atomicidade."""
+    """Força o rollback no teste de atomicidade."""
 
 
 MSG_ATOMICIDADE = ("o driver confirmou o comando antes do commit: NÃO faça o deploy; "
@@ -73,9 +72,7 @@ MSG_ATOMICIDADE = ("o driver confirmou o comando antes do commit: NÃO faça o d
 
 
 def verificar_atomicidade(database) -> tuple[bool, str]:
-    """Insere uma linha dentro de db_connection e lança exceção; a linha NÃO pode
-    persistir. Se persistir, o driver faz autocommit por comando e as cascatas de
-    exclusão/gravação em lote deixariam dados parciais. Devolve (ok, detalhe)."""
+    """Insere uma linha em db_connection e aborta; se ela persistir, o driver faz autocommit. Devolve (ok, detalhe)."""
     chave = "smoke_atomicidade_" + uuid.uuid4().hex
     try:
         with database.db_connection() as conn:
@@ -86,7 +83,7 @@ def verificar_atomicidade(database) -> tuple[bool, str]:
     with database.db_connection() as conn:
         n = _q(conn, "SELECT COUNT(*) FROM meta WHERE key = ?", (chave,)).fetchone()[0]
         if n:
-            # limpa o resíduo antes de reportar
+            # remove o resíduo
             _q(conn, "DELETE FROM meta WHERE key = ?", (chave,))
     if n:
         return False, MSG_ATOMICIDADE
@@ -96,13 +93,12 @@ def verificar_atomicidade(database) -> tuple[bool, str]:
 def _preparar_ambiente() -> None:
     """Valida envs e põe backend/src no sys.path (o script fica em scripts/)."""
     if not os.environ.get("TURSO_DATABASE_URL") or not os.environ.get("TURSO_AUTH_TOKEN"):
-        sys.exit("Defina TURSO_DATABASE_URL e TURSO_AUTH_TOKEN (banco de TESTE).")
+        sys.exit("Defina TURSO_DATABASE_URL e TURSO_AUTH_TOKEN (banco de teste).")
     # valores fictícios só para o app importar; não afetam o Turso
     os.environ.setdefault("JWT_SECRET", "smoke-test-secret-" + "x" * 32)
     os.environ.setdefault("GEMINI_API_KEY", "dummy")
     os.environ.setdefault("RATELIMIT_ENABLED", "0")
-    # como no Docker do Render: Qdrant em memória (sem isso o app tenta um
-    # servidor Qdrant em localhost:6333 e enche a saída de "Connection refused")
+    # Qdrant em memória, para o app não tentar conectar em localhost:6333
     os.environ.setdefault("QDRANT_PATH", ":memory:")
     src = Path(__file__).resolve().parent.parent / "backend" / "src"
     if str(src) not in sys.path:
@@ -152,7 +148,7 @@ def _executar() -> None:
     print(f"  consulta de leitura: média {sum(amostras)/len(amostras):.0f} ms "
           f"(min {min(amostras):.0f}, max {max(amostras):.0f})")
     print(f"  driver expõe in_transaction: {'sim (leituras sem commit)' if tem_in_tx else 'não (commit em toda consulta)'}")
-    print("  dica: em produção o Turso deve ficar na MESMA região do Render.")
+    print("  dica: mantenha o Turso na mesma região do servidor.")
 
     print("== Atomicidade (rollback)")
     ok_at, det_at = verificar_atomicidade(database)
@@ -246,7 +242,7 @@ def _executar() -> None:
                 check("DELETE /users", False, f"{type(e).__name__}: {e}")
         try:
             depois = _contagens(database)
-            check("contagens de TODAS as tabelas voltaram à linha de base",
+            check("contagens de todas as tabelas voltaram à linha de base",
                   depois == base, f"antes={base} depois={depois}")
             with database.db_connection() as conn:
                 n = _q(conn, "SELECT COUNT(*) FROM users WHERE id = ?", (user_id,)).fetchone()[0] if user_id else 0
@@ -260,12 +256,12 @@ def main(argv=None) -> int:
     args = parse_args(argv)
     N_THREADS, N_ITER = max(1, args.threads), max(1, args.iter)
     if not args.confirmado:
-        print(f"RECUSADO: este script ESCREVE dados de teste no Turso.\n"
-              f"Use um banco DESCARTÁVEL e passe {FLAG}.", file=sys.stderr)
+        print(f"Recusado: este script escreve dados de teste no Turso.\n"
+              f"Use um banco descartável e passe {FLAG}.", file=sys.stderr)
         return 2
     try:
         _executar()
-    except Exception as exc:  # erro fora dos checks (ex.: init_db): nunca vaza o token
+    except Exception as exc:  # erro fora dos checks; o token nunca vaza
         _resultados.append(("execução interrompida", False,
                             _mascarar(f"{type(exc).__name__}: {exc}")))
     falhas = [r for r in _resultados if not r[1]]
@@ -273,7 +269,7 @@ def main(argv=None) -> int:
     for nome, _, det in falhas:
         print(f" - {nome}: {_mascarar(det)}")
     if any("atomicidade" in nome.lower() or "rollback" in nome.lower() for nome, ok, _ in _resultados if not ok):
-        print("\n!!! " + MSG_ATOMICIDADE)
+        print("\n" + MSG_ATOMICIDADE)
     return 0 if not falhas else 1
 
 

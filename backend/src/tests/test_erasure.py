@@ -1,4 +1,4 @@
-"""LGPD art. 18: excluir o usuário apaga tudo dele em cascata."""
+"""Excluir o usuário apaga tudo dele em cascata."""
 
 import sqlite3
 

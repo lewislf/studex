@@ -17,7 +17,16 @@ from routes.admin_routes import admin_bp
 from routes.document_routes import cleanup_stale_uploads
 
 app = Flask(__name__)
-CORS(app)
+
+# Origens permitidas; CORS_ORIGINS (separadas por vírgula) sobrescreve o padrão.
+_CORS_PADRAO = (
+    "https://studex-dusky.vercel.app,"
+    "http://localhost:5173,http://127.0.0.1:5173"   # Vite em desenvolvimento
+)
+CORS_ORIGINS = [
+    o.strip() for o in os.environ.get("CORS_ORIGINS", _CORS_PADRAO).split(",") if o.strip()
+]
+CORS(app, origins=CORS_ORIGINS)
 HOST = "0.0.0.0"
 SOCKET = int(os.environ.get("PORT", 5000))
 
@@ -59,8 +68,7 @@ app.register_blueprint(summary_bp)
 app.register_blueprint(study_bp)
 app.register_blueprint(admin_bp)
 
-# Varredura única na subida: remove PDFs órfãos (>24h) de uploads interrompidos.
-# Nunca pode impedir o app de subir.
+# Remove PDFs órfãos de uploads interrompidos; falha aqui não pode impedir a subida.
 try:
     cleanup_stale_uploads(24)
 except Exception:

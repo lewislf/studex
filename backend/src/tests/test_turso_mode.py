@@ -242,7 +242,7 @@ def test_sqlite_db_connection_commits_rolls_back_and_closes(temp_db):
     with db.db_connection(temp_db) as conn:
         conn.execute("INSERT INTO meta(key, value) VALUES('a', '1')")
     with pytest.raises(sqlite3.ProgrammingError):
-        conn.execute("SELECT 1")  # conexão foi fechada (antes vazava)
+        conn.execute("SELECT 1")  # conexão foi fechada
     with pytest.raises(ValueError):
         with db.db_connection(temp_db) as conn:
             conn.execute("INSERT INTO meta(key, value) VALUES('b', '1')")

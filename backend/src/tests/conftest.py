@@ -1,14 +1,13 @@
 import os
 from pathlib import Path
 
-# Os testes NUNCA devem falar com um Turso real: se o terminal tiver
-# TURSO_DATABASE_URL/TURSO_AUTH_TOKEN exportados (ex.: depois de rodar o
-# scripts/turso_smoke.py), o backend escolheria "turso" na importação e a
-# suíte inteira iria para a rede (lenta e escrevendo no banco remoto).
-# Removemos ANTES de importar o app; o modo turso é testado só com o
-# driver falso (tests/fake_libsql.py), que liga as variáveis por conta própria.
+# Removido antes de importar o app, para a suíte não usar um Turso real; o modo
+# turso é testado só com o driver falso (fake_libsql.py).
 for _var in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"):
     os.environ.pop(_var, None)
+
+# auth.py exige JWT_SECRET
+os.environ.setdefault("JWT_SECRET", "segredo-de-teste-" + "x" * 32)
 
 import pytest
 
@@ -25,7 +24,7 @@ def client(temp_db):
 
     app.config["TESTING"] = True
     app.config["DB_PATH"] = db_path
-    # Rate limit desligado por padrão nos testes; os testes de rate limit (test_user_security.py) ligam explicitamente.
+    # os testes de rate limit (test_user_security.py) ligam explicitamente
     app.config["RATELIMIT_ENABLED"] = False
 
     with app.test_client() as client:
@@ -55,20 +54,14 @@ def pytest_configure(config):
 
 @pytest.fixture(autouse=True)
 def _assume_user_exists(request, monkeypatch):
-    """Os testes de rota criam tokens sem linha em users; por padrao a checagem
-    de existencia do usuario (auth._user_exists) devolve True. Use
-    @pytest.mark.real_user_check para exercitar a checagem real."""
+    """Tokens de teste não têm linha em users; _user_exists devolve True, salvo com real_user_check."""
     if request.node.get_closest_marker("real_user_check") is None:
         monkeypatch.setattr(auth, "_user_exists", lambda user_id: True)
 
 
 @pytest.fixture(autouse=True)
 def _isolar_banco_padrao(tmp_path, monkeypatch):
-    """Cada teste roda numa pasta temporária própria. O banco padrão
-    (DB_PATH = "users.db", relativo à pasta atual) passa a ser um arquivo
-    descartável dessa pasta, já com as tabelas — então nenhum teste cria ou
-    altera o users.db da pasta do projeto, mesmo quando uma rota chama uma
-    função de banco que o teste não substituiu (ex.: record_activity_db)."""
+    """Roda cada teste numa pasta temporária, com o users.db padrão já inicializado."""
     pasta = tmp_path / "cwd"
     pasta.mkdir()
     monkeypatch.chdir(pasta)

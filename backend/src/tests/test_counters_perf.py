@@ -10,8 +10,7 @@ from test_turso_mode import turso  # noqa: F401  (reusa a fixture do modo turso 
 
 
 def _popular(db_path=db.DB_PATH):
-    """Usuário com 2 matérias: A (2 resumos, 1 mapa, 2 baralhos com 3+1 cards)
-    e B (vazia). Outro usuário com 1 matéria, para garantir o filtro."""
+    """Usuário com as matérias A (2 resumos, 1 mapa, 2 baralhos com 3+1 cards) e B (vazia), mais outro usuário."""
     hoje = date.today()
     uid = db.save_user_db("Ana", "senha12345", "ana@x.com", db_path=db_path)
     outro = db.save_user_db("Bia", "senha12345", "bia@x.com", db_path=db_path)
@@ -75,7 +74,7 @@ def test_rotas_listam_os_mesmos_contadores_turso(turso, client, auth_headers):
 
 def test_listagem_usa_poucas_consultas_turso(turso, client, auth_headers):
     uid, a, b, x = _popular()
-    for i in range(10):  # muitas matérias: antes eram ~4 consultas por matéria
+    for i in range(10):  # muitas matérias
         db.save_subject_db(uid, f"extra{i}", "d", 1, "i", "c", date.today())
     antes = len(turso.stats.statements)
     assert client.get(f"/users/{uid}/subjects", headers=auth_headers(uid)).status_code == 200

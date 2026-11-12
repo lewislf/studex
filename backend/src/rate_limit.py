@@ -1,15 +1,8 @@
 """
-Rate limiting em memória (janela deslizante), sem dependências externas.
+Rate limiting em memória (janela deslizante).
 
-ATENÇÃO (escala): o estado vive no processo. Em produção o gunicorn roda com
-1 worker + 8 threads, então um único dicionário protegido por lock é correto.
-Com mais de 1 worker ou mais de 1 instância, cada processo teria seu próprio
-contador (o limite efetivo multiplicaria) e este módulo deve migrar para um
-armazenamento compartilhado (ex.: Redis).
-
-LGPD: só guardamos timestamps associados a chaves opacas (HMAC-SHA256 com
-chave aleatória do processo, para IP e e-mail). Nenhum identificador é
-logado. Timestamps vencidos são descartados a cada acesso.
+O estado vive no processo: só vale com 1 worker (gunicorn 1 worker + 8 threads);
+com mais workers ou instâncias o limite efetivo multiplica.
 """
 
 import hashlib
@@ -22,11 +15,9 @@ from collections import deque
 
 from flask import current_app, jsonify, request
 
-_MAX_KEYS = 50_000  # trava de segurança contra crescimento ilimitado da memória
+_MAX_KEYS = 50_000  # teto de chaves em memória
 
-# Chave aleatória só deste processo (nunca persistida): as chaves de IP e
-# e-mail são HMAC-SHA256 com ela, então nem um dump de memória revela IP/e-mail
-# e o hash não pode ser revertido por enumeração.
+# Chave só deste processo: IP e e-mail não ficam em claro na memória.
 _MAC_KEY = secrets.token_bytes(32)
 
 
@@ -44,8 +35,7 @@ class SlidingWindowLimiter:
     def __init__(self, clock=time.monotonic):
         self._clock = clock
         self._lock = threading.Lock()
-        # chave -> [janela_em_segundos, deque de timestamps]; cada chave
-        # expira pela PRÓPRIA janela.
+        # chave -> [janela_em_segundos, deque de timestamps]
         self._hits: dict[str, list] = {}
         self._ops = 0
 
@@ -68,8 +58,7 @@ class SlidingWindowLimiter:
         for k in list(self._hits):
             self._prune(k, now)
         if len(self._hits) >= _MAX_KEYS:
-            # Sem clear(): remove as chaves com último hit mais antigo até
-            # ficar abaixo de 90% do teto (não zera quem está bloqueado).
+            # descarta as mais antigas em vez de clear(), para não liberar quem está bloqueado
             ordered = sorted(self._hits, key=lambda k: self._hits[k][1][-1])
             for k in ordered[: len(self._hits) - int(_MAX_KEYS * 0.9)]:
                 del self._hits[k]
@@ -134,29 +123,18 @@ limiter = SlidingWindowLimiter()
 
 def client_ip() -> str:
     """
-    IP do cliente para fins de rate limit.
+    IP do cliente para rate limit.
 
-    O Render fica atrás da Cloudflare e seu proxy só ANEXA ao X-Forwarded-For
-    (não limpa), então XFF é forjável e remote_addr é o IP do proxy (todos os
-    usuários pareceriam um só). Por isso usamos SOMENTE o header de
-    RATELIMIT_IP_HEADER (default "CF-Connecting-IP"), que a Cloudflare define
-    e sobrescreve em todos os planos. NÃO usamos True-Client-IP: ele só é
-    sobrescrito no plano Enterprise; nos demais o cliente poderia enviar o
-    próprio True-Client-IP e girá-lo para burlar todos os limites por IP.
-    Sem o header, cai em request.remote_addr. Se o /admin/status mostrar
-    "remote_addr" em produção, o limite por IP vira GLOBAL (todos compartilham
-    o IP do proxy) e RATELIMIT_IP_HEADER precisa ser corrigido. Em dev local,
-    sem Cloudflare, o header seria forjável; irrelevante, pois o IP só serve
-    para limitar.
+    Usa só o header de RATELIMIT_IP_HEADER (padrão CF-Connecting-IP): a
+    Cloudflare sempre o sobrescreve, enquanto X-Forwarded-For é forjável e
+    True-Client-IP só é sobrescrito no plano Enterprise. Sem o header, cai em
+    request.remote_addr.
     """
     return _client_ip_and_source()[0]
 
 
 def client_ip_source() -> str:
-    """Qual fonte forneceu o IP nesta requisição (nome do header ou
-    "remote_addr"). Não revela o IP; serve para o admin conferir no
-    /admin/status se o Render está mesmo enviando o header da Cloudflare.
-    Se aparecer "remote_addr" em produção, o limite por IP vira global."""
+    """Fonte do IP nesta requisição (nome do header ou "remote_addr"), sem revelar o IP."""
     return _client_ip_and_source()[1]
 
 
@@ -177,7 +155,7 @@ def _int_env(name: str, default: int) -> int:
 
 
 def enabled() -> bool:
-    """Desligável via app.config["RATELIMIT_ENABLED"] (testes) ou env."""
+    """Lê RATELIMIT_ENABLED de app.config ou do ambiente."""
     cfg = current_app.config.get("RATELIMIT_ENABLED")
     if cfg is not None:
         return bool(cfg)
@@ -185,7 +163,7 @@ def enabled() -> bool:
 
 
 def limits() -> dict:
-    """Limites configuráveis por env (lidos a cada requisição)."""
+    """Limites lidos do ambiente a cada chamada."""
     return {
         "login_ip_max": _int_env("RATELIMIT_LOGIN_IP_MAX", 50),  # falhas por IP
         "login_pair_max": _int_env("RATELIMIT_LOGIN_PAIR_MAX", 5),  # falhas por e-mail+IP
@@ -198,7 +176,7 @@ def limits() -> dict:
 
 def too_many(retry_after: int):
     """Resposta 429 padrão com Retry-After."""
-    minutes = max(1, -(-retry_after // 60))  # ceil
+    minutes = max(1, -(-retry_after // 60))
     resp = jsonify({"error": f"Muitas tentativas. Tente novamente em {minutes} minutos."})
     resp.status_code = 429
     resp.headers["Retry-After"] = str(retry_after)

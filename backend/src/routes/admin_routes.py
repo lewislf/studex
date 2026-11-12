@@ -18,9 +18,7 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
 def _db_path() -> Path:
-    # app.config["DB_PATH"] só é definido nos testes; em produção vale o
-    # DB_PATH do módulo (env STUDEX_DB_PATH ou "users.db"). Lido a cada
-    # chamada para poder ser sobrescrito por monkeypatch.
+    # app.config["DB_PATH"] (testes) tem prioridade sobre o DB_PATH do módulo
     return Path(current_app.config.get("DB_PATH") or database.DB_PATH)
 
 
@@ -43,13 +41,12 @@ def status():
     db_path = _db_path()
     abs_path = db_path.resolve()
     turso = database.BACKEND == "turso"
-    info = database.describe_backend()  # nunca contém o token
+    info = database.describe_backend()
 
     created_at = None
     users_count = None
     size = None
-    # No modo turso o banco é remoto: não toca no disco para o banco.
-    # No modo sqlite só consulta se o arquivo existir (não cria arquivo vazio).
+    # sqlite: só abre se o arquivo existir, para não criar um banco vazio
     if turso or abs_path.is_file():
         with database.db_connection(db_path=db_path) as conn:
             try:
@@ -94,8 +91,7 @@ def status():
 @admin_bp.get("/backup")
 def backup():
     """
-    Snapshot portátil (esquema + linhas copiados para um .db novo; funciona em
-    SQLite local e em Turso) para download.
+    Snapshot do banco (SQLite ou Turso) em um .db novo.
     Só existe com ADMIN_BACKUP_ENABLED=1; caso contrário 404 para todos.
     ---
     tags:
@@ -106,11 +102,7 @@ def backup():
       404:
         description: Backup desabilitado ou banco inexistente
     """
-    # Existe para o dono poder fazer backup antes de deploys. ATENÇÃO: o
-    # arquivo contém TODOS os dados pessoais (LGPD): guarde criptografado /
-    # offline e apague quando não for mais necessário. Por isso fica atrás de
-    # uma env explícita. A env é checada ANTES da autenticação: desligado,
-    # a rota nem revela que existe (404 até sem token).
+    # Checado antes da autenticação: desligada, a rota responde 404 até sem token.
     if os.environ.get("ADMIN_BACKUP_ENABLED") != "1":
         return jsonify({"error": "not found"}), 404
     return _backup_admin()
@@ -127,8 +119,7 @@ def _consulta(conn, sql, params=()):
 
 
 def _snapshot_para_sqlite(conn, destino: Path) -> None:
-    """Copia esquema + linhas do banco (sqlite ou turso) para um arquivo
-    sqlite3 novo. Portátil: não usa conn.backup (indisponível no libsql)."""
+    """Copia esquema e linhas para um sqlite3 novo (conn.backup não existe no libsql)."""
     objetos = _consulta(
         conn,
         "SELECT type, name, sql FROM sqlite_master "
@@ -136,15 +127,14 @@ def _snapshot_para_sqlite(conn, destino: Path) -> None:
     ).fetchall()
     dst = sqlite3.connect(destino)
     try:
-        # tabelas primeiro, índices depois (carga mais rápida)
+        # índices depois das linhas, para a carga ser mais rápida
         tabelas = [o for o in objetos if o[0] == "table" and o[2]]
         indices = [o for o in objetos if o[0] == "index" and o[2]]
         for _, _, ddl in tabelas:
             dst.execute(ddl)
         for _, nome, _ in tabelas:
             q = nome.replace('"', '""')
-            # Paginação por rowid (keyset) só com execute/fetchall: o cursor do
-            # libsql pode não ter fetchmany. Todas as tabelas do schema têm rowid.
+            # paginação por rowid: o cursor do libsql pode não ter fetchmany
             ultimo = 0
             while True:
                 linhas = _consulta(
@@ -170,11 +160,10 @@ def _snapshot_para_sqlite(conn, destino: Path) -> None:
 @require_admin
 def _backup_admin():
     db_path = _db_path()
-    # sqlite: não criar/ler arquivo inexistente; turso: banco é remoto
+    # turso é remoto, então só o sqlite precisa do arquivo
     if database.BACKEND != "turso" and not db_path.is_file():
         return jsonify({"error": "not found"}), 404
 
-    # diretório temporário 0700 (mkdtemp) para o snapshot
     tmp_dir = Path(tempfile.mkdtemp(prefix="studex-backup-"))
     tmp_file = tmp_dir / "snapshot.db"
 
@@ -182,17 +171,12 @@ def _backup_admin():
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
     try:
-        # um único bloco: neste processo nenhuma outra escrita acontece durante
-        # o snapshot (no modo turso o RLock fica preso até o fim — as demais
-        # requisições esperam; aceitável para um backup manual do admin). Um
-        # escritor EXTERNO (outra instância, CLI do Turso) poderia alterar o
-        # banco entre as páginas: o snapshot não é transacional nesse caso.
+        # Em turso o RLock fica preso até o fim e as outras requisições esperam.
+        # Escritor externo pode alterar o banco entre as páginas (snapshot não transacional).
         with database.db_connection(db_path=db_path) as conn:
             _snapshot_para_sqlite(conn, tmp_file)
 
-        # Abre o snapshot e já apaga diretório+arquivo: em POSIX o handle
-        # aberto continua legível, então nada fica em disco mesmo que o envio
-        # falhe ou a conexão caia. O werkzeug fecha o handle ao fim da resposta.
+        # Apaga o arquivo com o handle aberto (POSIX): nada fica em disco se o envio falhar.
         handle = open(tmp_file, "rb")
         _cleanup()
 
@@ -205,7 +189,7 @@ def _backup_admin():
                 download_name=f"studex-backup-{stamp}.db",
             )
         except Exception:
-            handle.close()  # send_file falhou: ninguem mais fecharia o handle
+            handle.close()
             raise
     except Exception:
         _cleanup()

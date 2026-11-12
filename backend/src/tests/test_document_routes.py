@@ -157,7 +157,7 @@ def test_upload_saves_file_with_unique_name_on_disk(client, auth_headers, tmp_pa
     # nome de exibição segue limpo na resposta
     assert response.get_json()["filename"] == "aula1.pdf"
     # mas o arquivo em disco tem um prefixo uuid, não "aula1.pdf" puro
-    # (o PDF é removido ao fim do upload; o path usado fica no mock)
+    # o PDF é removido ao fim do upload; o path fica registrado no mock
     salvo = mock_load.call_args.args[0][0]
     assert salvo.name != "aula1.pdf"
     assert salvo.name.endswith("aula1.pdf")
@@ -488,7 +488,6 @@ def test_upload_dedup_resumo_mapa_falha_nao_bloqueia_salvar(client, auth_headers
 
     assert response.status_code == 201
     mock_save.assert_called_once_with(3, materiais_gerados)
-
 
 
 def _post_pdf(client, auth_headers, **patches):

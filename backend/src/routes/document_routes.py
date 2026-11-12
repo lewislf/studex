@@ -73,9 +73,7 @@ from dedup import (
 # getter do banco pra buscar os materiais já existentes na matéria, por tipo,
 # no mesmo estilo que as rotas de summary/mindmap já usam (nenhuma função
 # nova em database.py)
-# lambdas (e não as funções direto): o nome é resolvido na hora da chamada,
-# então substituir get_summaries_db/get_mindmaps_db neste módulo (ex.: em
-# testes) tem efeito. Guardar a referência travava a função da importação.
+# lambdas para resolver o nome na hora da chamada (permite substituir os getters nos testes)
 _MATERIAL_DEDUP_GETTERS = {
     "resumo": lambda subject_id: get_summaries_db(subject_id),
     "mapa_mental": lambda subject_id: get_mindmaps_db(subject_id),
@@ -153,10 +151,7 @@ ALLOWED_EXTENSIONS = {".pdf"}
 
 
 def _remove_stored_pdf(path: Path) -> None:
-    """Apaga o PDF enviado (LGPD: limitação de armazenamento/finalidade; o
-    conteúdo já foi indexado/processado). Nunca pode derrubar a requisição.
-    Loga só o prefixo uuid (32 chars) do nome salvo; o resto é o nome
-    original do usuário e nunca vai para o log."""
+    """Apaga o PDF enviado sem nunca levantar; loga só o prefixo uuid (o resto do nome é do usuário)."""
     ref = path.name[:32]
     try:
         path.unlink(missing_ok=True)
@@ -166,9 +161,7 @@ def _remove_stored_pdf(path: Path) -> None:
 
 
 def cleanup_stale_uploads(max_age_hours: float = 24) -> int:
-    """Rede de segurança: remove de DOCS_DIR arquivos mais velhos que
-    max_age_hours (ex: sobras de um worker morto no meio do upload). Preserva
-    apenas arquivos *.pdf (qualquer outro, ex: .gitkeep, fica). Devolve quantos arquivos foram removidos."""
+    """Remove de DOCS_DIR os *.pdf mais velhos que max_age_hours e devolve quantos foram."""
     removidos = 0
     if not DOCS_DIR.is_dir():
         return 0
@@ -329,22 +322,19 @@ def upload_document(user_id):
     # arquivo (ex: "aula1.pdf") não colidem no mesmo path. O nome original
     # segue como sufixo só pra debug.
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
-    upload_ref = uuid4().hex  # id opaco do upload, usado nos logs (nome original pode ser dado pessoal)
+    upload_ref = uuid4().hex  # id opaco para os logs
     stored_filename = f"{upload_ref}_{filename}"
     saved_path = DOCS_DIR / stored_filename
     try:
         file.save(saved_path)
     except BaseException:
-        # gravação parcial: não deixa arquivo órfão
+        # não deixa gravação parcial
         _remove_stored_pdf(saved_path)
         raise
 
-    # Tudo após o save fica sob o try/finally: qualquer exceção (inclusive em
-    # _start_progress) remove o PDF.
     token = None
     try:
-        # Envio conta como atividade mesmo que a geração de materiais falhe
-        # depois. Nunca pode derrubar o upload.
+        # conta como atividade mesmo que a geração falhe; não pode derrubar o upload
         try:
             record_activity_db(user_id, date.today().isoformat())
         except Exception:
@@ -355,8 +345,7 @@ def upload_document(user_id):
             docs = load_documents([saved_path], metadata=doc_metadata)
             nodes = split_into_nodes(docs)
         except Exception as exc:
-            # Só o tipo da exceção: a mensagem/traceback pode conter o caminho
-            # do PDF (com o nome original, dado pessoal).
+            # só o tipo: a mensagem pode conter o caminho do PDF
             logger.error("Falha ao ler/dividir documento (upload %s): %s", upload_ref, type(exc).__name__)
             return jsonify({"error": "Falha ao indexar o documento"}), 500
 
@@ -458,8 +447,7 @@ def upload_document(user_id):
             "materiais": materials,
         }), 201
     finally:
-        # O PDF sai PRIMEIRO: se _clear_progress levantar, o arquivo já foi
-        # apagado (não é mais necessário após o processamento, sucesso ou falha).
+        # antes de _clear_progress, que pode levantar
         _remove_stored_pdf(saved_path)
         # Limpa o progresso independente do resultado, mas só se a entrada
         # ainda for deste upload (token bate); senão apagaria o progresso de

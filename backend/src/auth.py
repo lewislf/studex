@@ -7,8 +7,23 @@ from functools import wraps
 import jwt
 from flask import g, jsonify, request
 
-_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production")
 _ALGORITHM = "HS256"
+
+
+def _carregar_segredo() -> str:
+    """Lê JWT_SECRET do ambiente; sem ele o app não sobe."""
+    segredo = os.environ.get("JWT_SECRET", "")
+    if not segredo.strip():
+        raise RuntimeError("JWT_SECRET não definido")
+    if len(segredo) < 32:
+        # só avisa: não dá para saber o tamanho do segredo já em uso
+        logging.getLogger(__name__).warning(
+            "JWT_SECRET com menos de 32 caracteres; recomenda-se um valor mais longo."
+        )
+    return segredo
+
+
+_SECRET = _carregar_segredo()
 _TTL_DAYS = 30
 
 _audit_logger = logging.getLogger("studex.audit")
@@ -23,8 +38,7 @@ def create_token(user_id: int) -> str:
 
 
 def _user_exists(user_id: int) -> bool:
-    """Confere no banco se o usuário ainda existe (custo: 1 SELECT leve
-    por requisição autenticada). Token válido de usuário apagado (LGPD) é rejeitado."""
+    """Rejeita token válido de usuário que já foi apagado."""
     from database.database import user_exists_db
     return user_exists_db(user_id)
 
@@ -50,11 +64,7 @@ def require_auth(fn):
 
 
 def _admin_ids() -> set[int]:
-    """IDs de administradores, lidos de ADMIN_USER_IDS (ex: "1,7").
-
-    Lido a cada requisição para que remover alguém da variável no Render
-    revogue o acesso imediatamente. Vazio/ausente = ninguém é admin.
-    """
+    """IDs de ADMIN_USER_IDS (lista separada por vírgula), lidos a cada chamada."""
     raw = os.environ.get("ADMIN_USER_IDS", "")
     ids = set()
     for part in raw.split(","):
@@ -69,12 +79,7 @@ def is_admin(user_id: int) -> bool:
 
 
 def require_admin(fn):
-    """Exige token válido E que o usuário esteja em ADMIN_USER_IDS.
-
-    O papel de admin NÃO vai no token: é decidido no servidor a cada
-    requisição. Cada acesso permitido é registrado (só o id, nunca e-mail),
-    como trilha de auditoria para a LGPD.
-    """
+    """Exige token válido de um usuário em ADMIN_USER_IDS; o acesso é logado só com o id."""
     @wraps(fn)
     def wrapper(*args, **kwargs):
         auth = request.headers.get("Authorization", "")

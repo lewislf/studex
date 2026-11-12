@@ -1,9 +1,4 @@
-"""Testes das rotas /admin (status e backup) e da persistência configurável.
-
-O fixture `client` (conftest) já aponta app.config["DB_PATH"] para um banco
-temporário; é isso que as rotas /admin leem nos testes. Em produção vale o
-DB_PATH do módulo (env STUDEX_DB_PATH).
-"""
+"""Testes das rotas /admin (status e backup)."""
 
 import contextlib
 import sqlite3
@@ -16,8 +11,7 @@ from database.database import init_db, save_user_db
 
 def _admin(monkeypatch, uid=1):
     monkeypatch.setenv("ADMIN_USER_IDS", str(uid))
-    # require_admin confere se o admin ainda existe (via DB_PATH padrão do
-    # módulo); aqui o banco das rotas é temporário, então simulamos a busca.
+    # require_admin consulta o DB_PATH padrão; aqui o banco é temporário
     import database.database as db
     monkeypatch.setattr(db, "user_exists_db", lambda user_id, *a, **k: user_id == uid)
 

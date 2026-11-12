@@ -52,7 +52,6 @@ def get_subject(user_id, subject_id):
     if has_subj is False:
         return jsonify({"error": "User does not have this subject!"}), 404
 
-    # uma única consulta para os três contadores (antes: 1 por baralho + 2)
     counters = get_subject_counters_db(subject_id=subject_id).get(
         subject_id, {"summaries": 0, "mind_maps": 0, "flashcards": 0})
 
@@ -88,8 +87,6 @@ def get_subjects(user_id):
         return jsonify({"error": "Subjects not found"}), 404
     
 
-    # Contadores de TODAS as matérias numa única consulta (antes era N+1:
-    # baralhos + 1 contagem por baralho + resumos + mapas, para cada matéria).
     todos = get_subject_counters_db(user_id=user_id)
     vazio = {"summaries": 0, "mind_maps": 0, "flashcards": 0}
     response = []

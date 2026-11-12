@@ -1,10 +1,4 @@
-"""
-Testes de segurança de usuários: GET /users admin-only, validação de
-cadastro, e-mail case-insensitive e rate limiting.
-
-As rotas usam o DB_PATH padrão, então redirecionamos as funções *_db da
-rota para o banco temporário (functools.partial com db_path).
-"""
+"""Testes de segurança de usuários: GET /users admin-only, validação de cadastro, e-mail case-insensitive e rate limiting."""
 
 import sqlite3
 from functools import partial

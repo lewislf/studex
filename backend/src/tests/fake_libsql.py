@@ -1,8 +1,7 @@
-"""Driver `libsql` FALSO para testar o modo "turso" sem rede nem o pacote real.
+"""Driver `libsql` falso para testar o modo "turso" sem rede.
 
-Instalado em sys.modules apenas pela fixture `turso_mode` (NÃO fica no PYTHONPATH).
-Simula o pior caso do driver real: levanta erro em tudo que o libsql 0.1.x não
-suporta ou que consideramos inseguro, para provar que o código não usa isso.
+Instalado em sys.modules pela fixture `turso_mode`. Levanta erro em tudo que o
+libsql não suporta ou que é inseguro nele.
 """
 
 import sqlite3
@@ -40,8 +39,7 @@ expor_in_transaction = True  # False simula driver sem o atributo in_transaction
 
 
 class _Cursor:
-    """Cursor sem lastrowid/rowcount/fetchmany (AttributeError, como no driver
-    real) e cujo execute() devolve None (a DB-API não garante devolver o cursor)."""
+    """Cursor sem lastrowid/rowcount/fetchmany e com execute() devolvendo None, como o libsql."""
 
     def __init__(self, raw):
         object.__setattr__(self, "_raw", raw)
@@ -49,14 +47,13 @@ class _Cursor:
     def execute(self, sql, params=()):
         stats.enter()
         try:
-            time.sleep(0.001)  # alarga a janela para expor concorrência indevida
+            time.sleep(0.001)  # alarga a janela para expor concorrência
             stats.statements.append(sql)
             if sql.strip().upper().startswith("PRAGMA FOREIGN_KEYS"):
-                # pior caso: FK silenciosamente ignorada -> sem cascata no schema
+                # FK ignorada em silêncio
                 return None
             self._raw.execute(*_check(sql, params))
             if autocommit:
-                # simula driver que confirma cada comando na hora (sem transação)
                 self._raw.connection.commit()
             return None
         finally:
@@ -69,7 +66,6 @@ class _Cursor:
         return self._raw.fetchall()
 
     def __getattr__(self, name):
-        # lastrowid / rowcount / fetchmany / qualquer outra coisa: indisponível
         raise AttributeError(f"libsql cursor não tem {name!r}")
 
 
@@ -87,7 +83,6 @@ class _Conn:
         object.__setattr__(self, "_raw", raw)
 
     def execute(self, sql, params=()):
-        # como no sqlite3: devolve o cursor (o código do app não depende disso)
         cur = _Cursor(self._raw.cursor())
         cur.execute(sql, params)
         return cur
@@ -101,8 +96,7 @@ class _Conn:
 
     @property
     def in_transaction(self):
-        # o sqlite3 só abre transação implícita em escrita; expor_in_transaction
-        # = False simula um driver sem esse atributo (o app deve fazer commit).
+        # expor_in_transaction=False simula um driver sem esse atributo
         if not expor_in_transaction:
             raise AttributeError("in_transaction")
         return self._raw.in_transaction
