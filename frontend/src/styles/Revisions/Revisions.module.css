@@ -392,3 +392,11 @@
     color: #2ec4b6;
     font-weight: 700;
 }
+/* Celular: menos margem para sobrar largura útil */
+@media (max-width: $mantine-breakpoint-sm) {
+    .container,
+    .decksSection,
+    .weeklyProjection {
+        padding: var(--mantine-spacing-md);
+    }
+}

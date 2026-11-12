@@ -1,6 +1,7 @@
 import { Title, Text, RingProgress, Progress, Container, Stack, Group, Flex } from "@mantine/core";
 import styles from '../../styles/Statistics/Statistics.module.css';
 import SubjectIcon from '../Common/SubjectIcon';
+import { useMediaQuery } from '@mantine/hooks';
 
 /**
  * StatisticsOverviewCard displays primary numeric indicators (such as streak count,
@@ -50,6 +51,7 @@ export default function StatisticsOverviewCard({ user, stats }) {
     };
 
     const rank = calculateUserRank();
+    const isMobile = useMediaQuery('(max-width: 48em)', false, { getInitialValueInEffect: false });
 
     return (
         <Container className={styles.leftCard}>
@@ -61,7 +63,7 @@ export default function StatisticsOverviewCard({ user, stats }) {
                     </Title>
 
                     {/* Responsive Flex block containing list stats and the rating ring progress chart */}
-                    <Flex direction={{ base: 'column', sm: 'row' }} justify="space-between" align="center" gap="md" mt="md" mb="md">
+                    <Flex direction={{ base: 'column-reverse', sm: 'row' }} justify="space-between" align="center" gap="md" mt="md" mb="md">
                         {/* List of Stats */}
                         <Stack className={styles.statList} gap="sm">
                             <Group gap="md" wrap="nowrap">
@@ -104,13 +106,13 @@ export default function StatisticsOverviewCard({ user, stats }) {
                         {/* Large Ring Chart displaying overall gamified rank tier */}
                         <Group gap="md" justify="center">
                             <RingProgress
-                                size={300}
-                                thickness={25}
+                                size={isMobile ? 190 : 300}
+                                thickness={isMobile ? 16 : 25}
                                 roundCaps
                                 sections={[{ value: rank.progressValue, color: rank.color }]}
                                 label={
                                     <Stack gap={0} align="center" justify="center">
-                                        <Text size="5rem" fw={900} c={rank.color} lh={1} className={styles.rankGrade}>
+                                        <Text size={isMobile ? '3.2rem' : '5rem'} fw={900} c={rank.color} lh={1} className={styles.rankGrade}>
                                             {rank.grade}
                                         </Text>
                                         <Text size="xs" fw={700} c="dimmed" tt="uppercase">

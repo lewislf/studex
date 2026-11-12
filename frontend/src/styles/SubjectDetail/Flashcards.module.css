@@ -79,3 +79,23 @@
 .statsGrid {
     max-width: 24rem;
 }
+
+/* Celular: menos margem para sobrar largura útil */
+@media (max-width: $mantine-breakpoint-sm) {
+    .page {
+        padding: var(--mantine-spacing-sm);
+    }
+
+    .studyCardInner {
+        padding: var(--mantine-spacing-md);
+        min-height: 55vh;
+    }
+
+    .question {
+        font-size: 1.3rem;
+    }
+
+    .answer {
+        font-size: 1.2rem;
+    }
+}

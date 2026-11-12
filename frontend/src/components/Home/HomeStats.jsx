@@ -1,4 +1,4 @@
-import { Group } from "@mantine/core";
+import { SimpleGrid } from "@mantine/core";
 import styles from '../../styles/Home/Home.module.css';
 import HomeCard from "./HomeCard";
 import SubjectIcon from "../Common/SubjectIcon";
@@ -8,7 +8,8 @@ import SubjectIcon from "../Common/SubjectIcon";
  */
 export default function HomeStats({ streak, summaries, mind_maps, totalFlashcards }) {
     return (
-        <Group justify="center" grow className={styles.stats}>
+        // 2 colunas no celular, 4 a partir do "sm"
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing={{ base: 'sm', sm: 'lg' }} className={styles.stats}>
             <HomeCard
                 title="STREAK"
                 text={`${streak} dias`}
@@ -18,6 +19,6 @@ export default function HomeStats({ streak, summaries, mind_maps, totalFlashcard
             <HomeCard title="RESUMOS" text={summaries}/>
             <HomeCard title="MAPAS MENTAIS" text={mind_maps}/>
             <HomeCard title="FLASHCARDS" text={totalFlashcards}/>
-        </Group>
+        </SimpleGrid>
     );
 }
