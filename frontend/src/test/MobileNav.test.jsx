@@ -5,13 +5,13 @@ import MobileNav from '../components/Common/MobileNav';
 import { isActiveLink } from '../utils/navHelpers';
 
 describe('MobileNav', () => {
-    it('mostra as quatro seções', () => {
+    it('mostra as cinco seções', () => {
         render(
             <MemoryRouter initialEntries={['/']}>
                 <MobileNav />
             </MemoryRouter>
         );
-        for (const label of ['Home', 'Revisões', 'Matérias', 'Estatísticas']) {
+        for (const label of ['Home', 'Revisões', 'Matérias', 'Chats', 'Estatísticas']) {
             expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
         }
     });

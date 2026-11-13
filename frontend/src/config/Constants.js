@@ -42,6 +42,7 @@ export const LINKS = [
     { link: '/', label: 'Home' },
     { link: '/revisoes', label: 'Revisões' },
     { link: '/materias', label: 'Matérias' },
+    { link: '/chats', label: 'Chats' },
     { link: '/estatisticas', label: 'Estatísticas' },
 ];
 

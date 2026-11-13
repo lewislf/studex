@@ -19,6 +19,7 @@ from mapa_mental import MapaMental
 from baralho import Baralho
 from flashcard import Flashcard
 from enums.flashcard_status import FlashcardStatus
+from conversa import Conversa
 
 # Lido no import porque as funções abaixo usam DB_PATH como default de argumento.
 DB_PATH = Path(os.environ.get("STUDEX_DB_PATH", "users.db"))
@@ -339,6 +340,34 @@ def init_db(db_path: Path = DB_PATH) -> None:
             """
         )
 
+        _q(conn,
+                    """
+                    CREATE TABLE IF NOT EXISTS chats (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        subject_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        titulo TEXT NOT NULL DEFAULT 'Novo chat',
+                        creation_date DATETIME,
+                        FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
+                    """
+        )
+
+        _q(conn,
+                    """
+                    CREATE TABLE IF NOT EXISTS chat_messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        chat_id INTEGER NOT NULL,
+                        msg TEXT NOT NULL,
+                        papel TEXT NOT NULL CHECK(papel IN ('user','assistant')),
+                        sources TEXT,
+                        creation_date DATETIME,
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+                    );
+                    """
+        )
+
         created = _q(conn,
             "SELECT value FROM meta WHERE key = 'db_created_at'"
         ).fetchone()
@@ -565,6 +594,9 @@ def delete_user_db(user_id: int, db_path: Path = DB_PATH) -> bool:
             "DELETE FROM summaries WHERE subject_id IN (SELECT id FROM subjects WHERE user_id = ?)", (uid,))
         _q(conn,
             "DELETE FROM mind_maps WHERE subject_id IN (SELECT id FROM subjects WHERE user_id = ?)", (uid,))
+        _q(conn,
+            "DELETE FROM chat_messages WHERE chat_id IN (SELECT id FROM chats WHERE user_id = ?)", (uid,))
+        _q(conn, "DELETE FROM chats WHERE user_id = ?", (uid,))
         _q(conn, "DELETE FROM subjects WHERE user_id = ?", (uid,))
         _q(conn, "DELETE FROM activity_days WHERE user_id = ?", (uid,))
         # RETURNING porque rowcount não é confiável no libsql
@@ -675,6 +707,9 @@ def delete_subject_db(subject_id: int, db_path: Path = DB_PATH) -> bool:
         _q(conn, "DELETE FROM decks WHERE subject_id = ?", (sid,))
         _q(conn, "DELETE FROM summaries WHERE subject_id = ?", (sid,))
         _q(conn, "DELETE FROM mind_maps WHERE subject_id = ?", (sid,))
+        _q(conn,
+            "DELETE FROM chat_messages WHERE chat_id IN (SELECT id FROM chats WHERE subject_id = ?)", (sid,))
+        _q(conn, "DELETE FROM chats WHERE subject_id = ?", (sid,))
         deleted = _q(conn, "DELETE FROM subjects WHERE id = ? RETURNING id", (sid,)).fetchall()
         return len(deleted) > 0
 
@@ -1246,6 +1281,153 @@ def count_flashcards_db(
 
         return int(row[0]) if row else 0
 
+### CHATS ###
+
+def save_chat_db(subject_id: int, user_id: int, titulo: str, creation_date: date, db_path: Path = DB_PATH, conn: Connection | None = None) -> int | None:
+    """
+    Register a new chat in the database.
+
+    Returns the chat_id of the new entry.
+    """
+    with _use_conn(conn, db_path) as conn:
+        cur = conn.cursor()
+
+        ins = """
+            INSERT INTO chats (subject_id, user_id, titulo, creation_date)
+            VALUES (?, ?, ?, ?) RETURNING id
+        """
+
+        # RETURNING porque lastrowid não é confiável no libsql
+        cur.execute(ins, (subject_id, user_id, titulo, creation_date))
+        return cur.fetchone()[0]
+
+
+def get_chats_db(
+    user_id: int,
+    subject_id: int | None = None,
+    db_path: Path = DB_PATH,
+) -> list:
+    """
+    Returns the chats of a user, newest first, optionally only from one subject.
+    """
+    sql = """SELECT c.id, c.subject_id, c.user_id, c.titulo, c.creation_date, s.name, s.color
+             FROM chats c JOIN subjects s ON s.id = c.subject_id
+             WHERE c.user_id = ?"""
+    params: tuple = (user_id,)
+    if subject_id is not None:
+        sql += " AND c.subject_id = ?"
+        params += (subject_id,)
+    sql += " ORDER BY c.id DESC"
+
+    with db_connection(db_path) as conn:
+        rows = _q(conn, sql, params).fetchall()
+
+    return [
+        Conversa(sid, uid, titulo, creation_date, chat_id, materia_nome=nome, materia_cor=cor)
+        for chat_id, sid, uid, titulo, creation_date, nome, cor in rows
+    ]
+
+
+def get_chat_db(
+    chat_id: int,
+    db_path: Path = DB_PATH,
+) -> Conversa | None:
+    """
+    Try to search a chat with id
+
+    Returns the chat, if it exists
+    """
+    with db_connection(db_path) as conn:
+        row = _q(conn, """SELECT id, subject_id, user_id, titulo, creation_date
+                          FROM chats
+                          WHERE id = ?""", (chat_id,)).fetchone()
+
+    if row is None:
+        return None
+
+    chat_id, subject_id, user_id, titulo, creation_date = row
+    return Conversa(subject_id, user_id, titulo, creation_date, chat_id)
+
+
+def update_chat_title_db(chat_id: int, titulo: str, db_path: Path = DB_PATH) -> None:
+    """
+    Sets the title from the first question; later calls keep the first title.
+    """
+    with db_connection(db_path) as conn:
+        _q(conn, "UPDATE chats SET titulo = ? WHERE id = ? AND titulo = 'Novo chat'", (titulo, chat_id))
+
+
+def delete_chat_db(chat_id: int, db_path: Path = DB_PATH) -> bool:
+    """
+    Atomic deletion of a chat and its messages. (LGPD - Right to be forgotten)
+
+    Returns True if a chat was deleted, False if no such chat_id exists.
+    """
+    cid = int(chat_id)
+    with db_connection(db_path) as conn:
+        # cascata explícita, filhos primeiro (ver delete_user_db)
+        _q(conn, "DELETE FROM chat_messages WHERE chat_id = ?", (cid,))
+        deleted = _q(conn, "DELETE FROM chats WHERE id = ? RETURNING id", (cid,)).fetchall()
+        return len(deleted) > 0
+
+
+def count_chats_db(subject_id: int, db_path: Path = DB_PATH) -> int:
+    """
+    Returns the total number of registered chats in the database with given subject_id.
+    """
+    with db_connection(db_path) as conn:
+        row = _q(conn, "SELECT COUNT(*) FROM chats WHERE subject_id = ?", (subject_id,),).fetchone()
+        return int(row[0]) if row else 0
+
+
+def save_chat_message_db(
+    chat_id: int,
+    papel: str,
+    msg: str,
+    sources: list | None = None,
+    creation_date: datetime | None = None,
+    db_path: Path = DB_PATH,
+) -> int:
+    """
+    Saves one message of a chat. papel is 'user' or 'assistant'; sources is
+    the list returned by the RAG (only for assistant messages).
+
+    Returns the message id.
+    """
+    sources_json = json.dumps(sources, ensure_ascii=False) if sources is not None else None
+    creation_date = creation_date or datetime.now(timezone.utc).isoformat()
+    with db_connection(db_path) as conn:
+        row = _q(conn,
+            """INSERT INTO chat_messages (chat_id, papel, msg, sources, creation_date)
+               VALUES (?, ?, ?, ?, ?) RETURNING id""",
+            (chat_id, papel, msg, sources_json, creation_date),
+        ).fetchone()
+        return row[0]
+
+
+def get_chat_messages_db(chat_id: int, db_path: Path = DB_PATH) -> list[dict]:
+    """
+    Returns the messages of a chat in the order they were sent.
+    """
+    with db_connection(db_path) as conn:
+        rows = _q(conn,
+            """SELECT id, papel, msg, sources, creation_date
+               FROM chat_messages WHERE chat_id = ? ORDER BY id""",
+            (chat_id,),
+        ).fetchall()
+
+    return [
+        {
+            "id": mid,
+            "papel": papel,
+            "msg": msg,
+            "sources": json.loads(sources) if sources else [],
+            "creation_date": creation_date,
+        }
+        for mid, papel, msg, sources, creation_date in rows
+    ]
+
+### UTILS ###
 
 def count_due_flashcards_db(
     user_id: int,
