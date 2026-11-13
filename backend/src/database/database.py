@@ -1297,8 +1297,8 @@ def save_chat_db(subject_id: int, user_id: int, titulo: str, creation_date: date
             VALUES (?, ?, ?, ?) RETURNING id
         """
 
-        # RETURNING porque lastrowid não é confiável no libsql
-        cur.execute(ins, (subject_id, user_id, titulo, creation_date))
+        # RETURNING porque lastrowid não é confiável no libsql; str() porque o libsql não aceita date
+        cur.execute(ins, (subject_id, user_id, titulo, str(creation_date)))
         return cur.fetchone()[0]
 
 
@@ -1395,7 +1395,7 @@ def save_chat_message_db(
     Returns the message id.
     """
     sources_json = json.dumps(sources, ensure_ascii=False) if sources is not None else None
-    creation_date = creation_date or datetime.now(timezone.utc).isoformat()
+    creation_date = str(creation_date or datetime.now(timezone.utc).isoformat())
     with db_connection(db_path) as conn:
         row = _q(conn,
             """INSERT INTO chat_messages (chat_id, papel, msg, sources, creation_date)

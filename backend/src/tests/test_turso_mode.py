@@ -349,3 +349,31 @@ def test_admin_backup_in_turso_mode(turso, client, auth_headers, monkeypatch, tm
     st = client.get("/admin/status", headers=auth_headers(1))
     assert st.status_code == 200 and st.get_json()["users_count"] == 5
     assert TOKEN not in st.get_data(as_text=True)
+
+
+def test_chat_no_modo_turso(turso, monkeypatch):
+    tabelas = {r[0] for r in _raw().execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert {"chats", "chat_messages"} <= tabelas
+
+    uid = db.save_user_db("Ana", "senha12345", "ana@x.com")
+    sid = db.save_subject_db(uid, "Grafos", "d", 0, "i", "#f00", date.today().isoformat())
+
+    # o libsql recusa date/datetime como parâmetro (o sqlite3 aceita, por isso o fake não pegava)
+    checar = fake_libsql._check
+
+    def checar_tipos(sql, params):
+        for p in params:
+            if p is not None and not isinstance(p, (int, float, str, bytes)):
+                raise ValueError(f"Unsupported parameter type {p}")
+        return checar(sql, params)
+
+    monkeypatch.setattr(fake_libsql, "_check", checar_tipos)
+
+    chat_id = db.save_chat_db(sid, uid, "Novo chat", date.today())  # date, como a rota manda
+    db.save_chat_message_db(chat_id, "user", "oi")
+    db.save_chat_message_db(chat_id, "assistant", "olá [1]", [{"n": 1, "file_name": "g.pdf"}])
+
+    chat = db.get_chat_db(chat_id)
+    assert chat.user_id == uid and chat.materia_nome == "Grafos"
+    assert [m["papel"] for m in db.get_chat_messages_db(chat_id)] == ["user", "assistant"]
+    assert db.delete_chat_db(chat_id)

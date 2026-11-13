@@ -8,21 +8,26 @@ const sources = [
 ];
 
 describe('ChatMessage', () => {
-    it('mostra a resposta e abre as fontes ao tocar', async () => {
-        render(<ChatMessage papel="assistant" msg="É uma coloração com k cores [1]." sources={sources} />);
+    it('formata negrito e citações e abre as fontes ao tocar', async () => {
+        const { container } = render(
+            <ChatMessage papel="assistant" msg="É uma **coloração** com k cores [1]." sources={sources} />
+        );
 
-        expect(screen.getByText('É uma coloração com k cores [1].')).toBeInTheDocument();
+        expect(screen.getByText('coloração').tagName).toBe('STRONG');
+        expect(container.textContent).not.toContain('**');
+        expect(container.textContent).not.toContain('[1]');
+
         const toggle = screen.getByRole('button', { name: /2 fontes/ });
-        expect(screen.queryByText('[1] grafos.pdf')).not.toBeInTheDocument();
+        expect(screen.queryByText('Uma k-coloração atribui…')).not.toBeInTheDocument();
 
         await userEvent.click(toggle);
-        expect(screen.getByText('[1] grafos.pdf')).toBeInTheDocument();
+        expect(screen.getByText('Uma k-coloração atribui…')).toBeInTheDocument();
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
     });
 
-    it('pergunta do usuário não tem fontes', () => {
-        render(<ChatMessage papel="user" msg="O que é k-coloração?" />);
-        expect(screen.getByText('O que é k-coloração?')).toBeInTheDocument();
+    it('pergunta do usuário fica como texto puro, sem fontes', () => {
+        render(<ChatMessage papel="user" msg="O que é **k**-coloração?" />);
+        expect(screen.getByText('O que é **k**-coloração?')).toBeInTheDocument();
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 });

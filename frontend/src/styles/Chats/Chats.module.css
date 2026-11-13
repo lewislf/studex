@@ -1,4 +1,4 @@
-/* Lista de chats */
+/* ---------- Lista de chats ---------- */
 
 .empty {
     padding: var(--mantine-spacing-xl) 0;
@@ -7,31 +7,33 @@
 
 .chatCard {
     display: flex;
-    align-items: stretch;
+    align-items: center;
     background-color: var(--mantine-color-white);
     border: 1px solid var(--mantine-color-gray-2);
     border-radius: var(--mantine-radius-md);
-    box-shadow: var(--mantine-shadow-sm);
-    overflow: hidden;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    box-shadow: var(--mantine-shadow-xs);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .chatCard:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--mantine-shadow-md);
-}
-
-.chatStripe {
-    width: 6px;
-    flex-shrink: 0;
+    border-color: var(--mantine-color-gray-4);
+    box-shadow: var(--mantine-shadow-sm);
 }
 
 .chatLink {
     flex: 1;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-md);
     padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
     color: inherit;
     text-decoration: none;
+}
+
+.chatText {
+    flex: 1;
+    min-width: 0;
 }
 
 .chatTitle {
@@ -50,87 +52,199 @@
     white-space: nowrap;
 }
 
+.chatChevron {
+    flex-shrink: 0;
+    color: var(--mantine-color-gray-5);
+}
+
 .chatDelete {
-    align-self: center;
     margin-right: var(--mantine-spacing-sm);
 }
 
-/* Tela da conversa: ocupa a altura útil, com só a lista de mensagens rolando */
+/* ---------- Conversa ---------- */
 
 .chatPage {
     display: flex;
     flex-direction: column;
-    /* 60px do cabeçalho + paddings do AppShell e do Container */
-    height: calc(100dvh - 60px - 2 * var(--mantine-spacing-md) - 2 * var(--mantine-spacing-md));
+    /* 60px do cabeçalho + padding do AppShell e do Container */
+    height: calc(100dvh - 60px - 4 * var(--mantine-spacing-md));
     min-height: 420px;
-    padding: var(--mantine-spacing-xl);
     background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-2);
     border-radius: var(--mantine-radius-lg);
+    box-shadow: var(--mantine-shadow-sm);
+    overflow: hidden;
 }
 
-.chatPage > :first-child {
-    margin-bottom: 0;
+.chatHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-sm);
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    border-bottom: 1px solid var(--mantine-color-gray-2);
+    flex-shrink: 0;
 }
 
-.chatSubject {
-    font-size: 0.85rem;
-    font-weight: 600;
+.headerBadge {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.headerText {
+    min-width: 0;
+    flex: 1;
+}
+
+.headerTitle {
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--mantine-color-dark-9);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.headerSubject {
+    font-size: 0.8rem;
     color: var(--mantine-color-gray-6);
-    margin-bottom: var(--mantine-spacing-md);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .messages {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: var(--mantine-spacing-sm);
-    padding: var(--mantine-spacing-sm) 2px;
     overscroll-behavior: contain;
+    background-color: var(--mantine-color-gray-0);
 }
 
-.hint {
+.messagesInner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mantine-spacing-md);
+    min-height: 100%;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: var(--mantine-spacing-lg) var(--mantine-spacing-md);
+}
+
+.welcome {
     margin: auto;
-    max-width: 420px;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+}
+
+.welcomeBadge {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--mantine-spacing-xs);
+}
+
+.welcomeTitle {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--mantine-color-dark-9);
+}
+
+.welcomeText {
     font-size: 0.9rem;
+    color: var(--mantine-color-gray-6);
+}
+
+.suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--mantine-spacing-xs);
+    margin-top: var(--mantine-spacing-md);
+}
+
+.suggestion {
+    font-weight: 500;
 }
 
 .rowUser,
 .rowAssistant {
     display: flex;
+    align-items: flex-end;
+    gap: var(--mantine-spacing-xs);
 }
 
 .rowUser {
     justify-content: flex-end;
 }
 
+.avatar {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #212529;
+    color: var(--mantine-color-white);
+}
+
 .bubbleUser,
 .bubbleAssistant {
-    max-width: min(75%, 720px);
-    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
-    border-radius: 16px;
+    max-width: min(80%, 640px);
+    padding: 10px 14px;
+    border-radius: 18px;
     overflow-wrap: anywhere;
 }
 
 .bubbleUser {
     background-color: #212529;
     color: var(--mantine-color-white);
-    border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 6px;
 }
 
 .bubbleAssistant {
-    background-color: var(--mantine-color-gray-0);
+    background-color: var(--mantine-color-white);
     border: 1px solid var(--mantine-color-gray-2);
     color: var(--mantine-color-dark-9);
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: 6px;
+    box-shadow: var(--mantine-shadow-xs);
 }
 
 .bubbleText {
     white-space: pre-wrap;
     font-size: 0.95rem;
-    line-height: 1.5;
+    line-height: 1.55;
     color: inherit;
+}
+
+.cite {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    margin: 0 1px;
+    border-radius: 9px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    vertical-align: text-top;
+    background-color: var(--mantine-color-blue-0);
+    color: var(--mantine-color-blue-7);
 }
 
 .sourcesToggle {
@@ -138,15 +252,15 @@
     align-items: center;
     gap: 4px;
     margin-top: var(--mantine-spacing-xs);
+    min-height: 28px;
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--mantine-color-blue-7);
-    min-height: 28px;
 }
 
 .sourcesList {
     margin: 4px 0 0;
-    padding-left: 0;
+    padding: 0;
     list-style: none;
     display: flex;
     flex-direction: column;
@@ -156,14 +270,16 @@
 .sourcesList li {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 6px 8px;
-    background-color: var(--mantine-color-white);
-    border-radius: 8px;
-    border: 1px solid var(--mantine-color-gray-2);
+    gap: 4px;
+    padding: 8px 10px;
+    background-color: var(--mantine-color-gray-0);
+    border-radius: 10px;
 }
 
 .sourceName {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--mantine-color-dark-7);
@@ -171,25 +287,45 @@
 
 .sourceExcerpt {
     font-size: 0.75rem;
+    line-height: 1.45;
     color: var(--mantine-color-gray-7);
+}
+
+.composerWrap {
+    flex-shrink: 0;
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md) var(--mantine-spacing-xs);
+    border-top: 1px solid var(--mantine-color-gray-2);
+    background-color: var(--mantine-color-white);
 }
 
 .composer {
     display: flex;
     align-items: flex-end;
     gap: var(--mantine-spacing-xs);
-    padding-top: var(--mantine-spacing-sm);
-    border-top: 1px solid var(--mantine-color-gray-2);
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 6px 6px 6px 16px;
+    border: 1px solid var(--mantine-color-gray-3);
+    border-radius: 24px;
+    background-color: var(--mantine-color-white);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.composer:focus-within {
+    border-color: #212529;
+    box-shadow: 0 0 0 3px rgba(33, 37, 41, 0.08);
 }
 
 .composerInput {
     flex: 1;
+    min-width: 0;
 }
 
 .composerInput textarea {
     /* 16px evita o zoom automático do iOS ao focar o campo */
     font-size: 16px;
-    border-radius: 20px;
+    line-height: 1.45;
+    padding: 7px 0;
 }
 
 .sendButton {
@@ -202,25 +338,46 @@
     background-color: #000000;
 }
 
-@media (max-width: $mantine-breakpoint-sm) {
-    .chatCard:hover {
-        transform: none;
-    }
+.composerHint {
+    max-width: 780px;
+    margin: 4px auto 0;
+    font-size: 0.7rem;
+    color: var(--mantine-color-gray-5);
+    text-align: center;
+}
 
+@media (max-width: $mantine-breakpoint-sm) {
     .chatLink {
         padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+        gap: var(--mantine-spacing-sm);
     }
 
     .chatPage {
         /* cabeçalho + barra inferior (60px + área de gestos) + padding xs do AppShell */
         height: calc(100dvh - 60px - 60px - env(safe-area-inset-bottom) - 2 * var(--mantine-spacing-xs));
-        min-height: 360px;
-        padding: var(--mantine-spacing-md);
+        min-height: 320px;
         border-radius: var(--mantine-radius-md);
+    }
+
+    .chatHeader {
+        padding: 6px var(--mantine-spacing-xs);
+    }
+
+    .messagesInner {
+        padding: var(--mantine-spacing-md) var(--mantine-spacing-sm);
+        gap: var(--mantine-spacing-sm);
     }
 
     .bubbleUser,
     .bubbleAssistant {
-        max-width: 88%;
+        max-width: 85%;
+    }
+
+    .avatar {
+        display: none;
+    }
+
+    .composerWrap {
+        padding: 6px var(--mantine-spacing-xs);
     }
 }

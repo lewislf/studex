@@ -1,7 +1,25 @@
 import { useState } from 'react';
 import { Text, UnstyledButton } from '@mantine/core';
-import { IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronUp, IconSparkles } from '@tabler/icons-react';
 import styles from '../../styles/Chats/Chats.module.css';
+
+/**
+ * Formata o texto da resposta: **negrito** e citações [n] viram elementos;
+ * o resto fica como texto puro (sem HTML vindo do modelo).
+ */
+export function renderInline(text) {
+    return String(text ?? '')
+        .split(/(\*\*[^*\n]+\*\*|\[\d+\])/g)
+        .map((part, i) => {
+            if (part.length > 4 && part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={i}>{part.slice(2, -2)}</strong>;
+            }
+            if (/^\[\d+\]$/.test(part)) {
+                return <span key={i} className={styles.cite}>{part.slice(1, -1)}</span>;
+            }
+            return part;
+        });
+}
 
 /**
  * Um balão da conversa. Respostas do assistente mostram as fontes (trechos
@@ -14,15 +32,24 @@ import styles from '../../styles/Chats/Chats.module.css';
  */
 export default function ChatMessage({ papel, msg, sources = [] }) {
     const [showSources, setShowSources] = useState(false);
-    const isUser = papel === 'user';
+
+    if (papel === 'user') {
+        return (
+            <div className={styles.rowUser}>
+                <div className={styles.bubbleUser}>
+                    <Text className={styles.bubbleText}>{msg}</Text>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className={isUser ? styles.rowUser : styles.rowAssistant}>
-            <div className={isUser ? styles.bubbleUser : styles.bubbleAssistant}>
-                {/* shortcut: texto puro com quebras de linha; renderizar markdown se o Gemini passar a usar muita formatação */}
-                <Text className={styles.bubbleText}>{msg}</Text>
+        <div className={styles.rowAssistant}>
+            <span className={styles.avatar} aria-hidden="true"><IconSparkles size={16} /></span>
+            <div className={styles.bubbleAssistant}>
+                <Text className={styles.bubbleText}>{renderInline(msg)}</Text>
 
-                {!isUser && sources.length > 0 && (
+                {sources.length > 0 && (
                     <>
                         <UnstyledButton
                             className={styles.sourcesToggle}
@@ -36,7 +63,10 @@ export default function ChatMessage({ papel, msg, sources = [] }) {
                             <ol className={styles.sourcesList}>
                                 {sources.map((s) => (
                                     <li key={s.n}>
-                                        <span className={styles.sourceName}>[{s.n}] {s.file_name || 'documento'}</span>
+                                        <span className={styles.sourceName}>
+                                            <span className={styles.cite}>{s.n}</span>
+                                            {s.file_name || 'documento'}
+                                        </span>
                                         {s.excerpt && <span className={styles.sourceExcerpt}>{s.excerpt}…</span>}
                                     </li>
                                 ))}

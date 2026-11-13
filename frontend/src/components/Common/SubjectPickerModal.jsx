@@ -4,6 +4,7 @@ import {
     Button, Stack, Group, Text, Loader, Alert, ActionIcon
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 import { useSubjects } from '../../hooks/useSubjects';
 import SubjectIcon from './SubjectIcon';
 import styles from '../../styles/Common/SubjectPickerModal.module.css';
@@ -25,6 +26,7 @@ import { COLOR_OPTIONS, ICON_OPTIONS, DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLO
  */
 export default function SubjectPickerModal({ opened, onClose, userId, fileName, onConfirm, onlyCreate = false, onlyExisting = false, confirmLabel }) {
     const { subjects, loading, error, fetchSubjects, createSubject } = useSubjects(userId);
+    const isMobile = useMediaQuery('(max-width: 48em)');
 
     const initialMode = onlyCreate && !onlyExisting ? 'nova' : 'existente';
     const [mode, setMode] = useState(initialMode);       // 'existente' | 'nova'
@@ -96,7 +98,8 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
             opened={opened}
             onClose={onClose}
             title={onlyCreate ? 'Adicionar nova Matéria' : (fileName ? `Salvar "${fileName}" em uma matéria` : 'Escolher matéria')}
-            centered
+            // no celular o teclado da busca encolhe a tela; centralizado, o modal pulava junto e tremia
+            centered={!isMobile}
         >
             <Stack>
                 {!onlyCreate && !onlyExisting && (
@@ -128,6 +131,8 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
                             value={selectedId}
                             onChange={setSelectedId}
                             searchable
+                            // a lista não troca de lado quando o teclado abre (era o outro motivo do tremor)
+                            comboboxProps={{ position: 'bottom', middlewares: { flip: false, shift: false } }}
                         />
                     ) : (
                         <Text c="dimmed" size="sm">

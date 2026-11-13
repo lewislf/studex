@@ -3,7 +3,7 @@ import { Link, useNavigate, useOutletContext } from 'react-router';
 import {
     Container, Stack, Flex, Title, Text, Button, Loader, Alert, Group, ActionIcon,
 } from '@mantine/core';
-import { IconPlus, IconTrash, IconAlertCircle, IconMessageCircle } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconAlertCircle, IconMessageCircle, IconChevronRight } from '@tabler/icons-react';
 import SubjectPickerModal from '../Common/SubjectPickerModal';
 import { formatDate } from '../SubjectDetail/api.js';
 import { fetchChats, createChat, deleteChat } from './api.js';
@@ -105,15 +105,20 @@ export default function Chats() {
                     <Stack gap="sm">
                         {chats.map((chat) => (
                             <div key={chat.id} className={styles.chatCard}>
-                                <span
-                                    className={styles.chatStripe}
-                                    style={{ backgroundColor: chat.materia_cor || DEFAULT_SUBJECT_COLOR }}
-                                />
                                 <Link to={`/chats/${chat.id}`} className={styles.chatLink}>
-                                    <Text className={styles.chatTitle}>{chat.titulo}</Text>
-                                    <Text className={styles.chatMeta}>
-                                        {chat.materia_nome} · {formatDate(chat.creation_date)}
-                                    </Text>
+                                    <span
+                                        className={styles.headerBadge}
+                                        style={{ backgroundColor: chat.materia_cor || DEFAULT_SUBJECT_COLOR }}
+                                    >
+                                        <IconMessageCircle size={18} color="white" />
+                                    </span>
+                                    <span className={styles.chatText}>
+                                        <Text className={styles.chatTitle}>{chat.titulo}</Text>
+                                        <Text className={styles.chatMeta}>
+                                            {chat.materia_nome} · {formatDate(chat.creation_date)}
+                                        </Text>
+                                    </span>
+                                    <IconChevronRight size={18} className={styles.chatChevron} />
                                 </Link>
                                 <ActionIcon
                                     variant="subtle"
