@@ -2,8 +2,10 @@ import os
 from pathlib import Path
 
 # Removido antes de importar o app, para a suíte não usar um Turso real; o modo
-# turso é testado só com o driver falso (fake_libsql.py).
-for _var in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"):
+# turso é testado só com o driver falso (fake_libsql.py). CORS_ORIGINS e
+# ADMIN_USER_IDS saem pelo mesmo motivo: os exportados para rodar o app local
+# mudariam o padrão que os testes conferem.
+for _var in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "CORS_ORIGINS", "ADMIN_USER_IDS"):
     os.environ.pop(_var, None)
 
 # auth.py exige JWT_SECRET

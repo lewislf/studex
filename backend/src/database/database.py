@@ -1338,15 +1338,15 @@ def get_chat_db(
     Returns the chat, if it exists
     """
     with db_connection(db_path) as conn:
-        row = _q(conn, """SELECT id, subject_id, user_id, titulo, creation_date
-                          FROM chats
-                          WHERE id = ?""", (chat_id,)).fetchone()
+        row = _q(conn, """SELECT c.id, c.subject_id, c.user_id, c.titulo, c.creation_date, s.name, s.color
+                          FROM chats c JOIN subjects s ON s.id = c.subject_id
+                          WHERE c.id = ?""", (chat_id,)).fetchone()
 
     if row is None:
         return None
 
-    chat_id, subject_id, user_id, titulo, creation_date = row
-    return Conversa(subject_id, user_id, titulo, creation_date, chat_id)
+    chat_id, subject_id, user_id, titulo, creation_date, nome, cor = row
+    return Conversa(subject_id, user_id, titulo, creation_date, chat_id, materia_nome=nome, materia_cor=cor)
 
 
 def update_chat_title_db(chat_id: int, titulo: str, db_path: Path = DB_PATH) -> None:

@@ -42,13 +42,15 @@ def test_criar_listar_e_conversar(client, auth_headers, dono):
                         json={"question": "  O que é k-coloração?  "}, headers=auth_headers(uid))
     assert r.status_code == 200
     assert r.get_json() == RESPOSTA
-    resp.assert_called_once_with("O que é k-coloração?", uid, sid)
+    # primeira pergunta: histórico vazio
+    resp.assert_called_once_with("O que é k-coloração?", uid, sid, [])
 
     chats = client.get(f"/users/{uid}/chats", headers=auth_headers(uid)).get_json()
     assert chats[0]["titulo"] == "O que é k-coloração?"
     assert chats[0]["materia_nome"] == "Grafos"
 
     chat = client.get(f"/users/{uid}/chats/{chat_id}", headers=auth_headers(uid)).get_json()
+    assert chat["materia_nome"] == "Grafos" and chat["materia_cor"] == "#f00"
     assert [m["papel"] for m in chat["mensagens"]] == ["user", "assistant"]
     assert chat["mensagens"][1]["sources"][0]["file_name"] == "grafos.pdf"
 
@@ -122,3 +124,35 @@ def test_limite_de_perguntas_429(client, auth_headers, dono, monkeypatch):
     finally:
         app.config["RATELIMIT_ENABLED"] = False
     assert codes == [200, 200, 429]
+
+
+def test_historico_vai_para_o_responder(client, auth_headers, dono):
+    uid, _, sid = dono
+    chat_id = _criar(client, auth_headers, uid, sid)
+    url = f"/users/{uid}/chats/{chat_id}/messages"
+
+    with patch("routes.chat_routes.responder", return_value=RESPOSTA) as resp:
+        client.post(url, json={"question": "Quais os tipos?"}, headers=auth_headers(uid))
+        client.post(url, json={"question": "E o segundo?"}, headers=auth_headers(uid))
+
+    pergunta, _, _, historico = resp.call_args.args
+    assert pergunta == "E o segundo?"
+    # a pergunta atual não entra no histórico; só a troca anterior
+    assert [(m["papel"], m["msg"]) for m in historico] == [
+        ("user", "Quais os tipos?"), ("assistant", RESPOSTA["answer"]),
+    ]
+
+
+def test_historico_limitado_as_6_ultimas(client, auth_headers, dono):
+    uid, _, sid = dono
+    chat_id = _criar(client, auth_headers, uid, sid)
+    url = f"/users/{uid}/chats/{chat_id}/messages"
+
+    with patch("routes.chat_routes.responder", return_value=RESPOSTA) as resp:
+        for i in range(5):
+            client.post(url, json={"question": f"pergunta {i}"}, headers=auth_headers(uid))
+
+    historico = resp.call_args.args[3]
+    assert len(historico) == 6
+    assert historico[0]["msg"] == "pergunta 1"   # as mais antigas ficaram de fora
+    assert historico[-1]["papel"] == "assistant"

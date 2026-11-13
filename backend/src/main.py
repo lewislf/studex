@@ -51,6 +51,11 @@ swagger_template = {
         ),
         "version": "v1",
     },
+    # botão "Authorize": colar "Bearer <token>" do /users/login
+    "securityDefinitions": {
+        "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"},
+    },
+    "security": [{"Bearer": []}],
 }
 Swagger(
     app,

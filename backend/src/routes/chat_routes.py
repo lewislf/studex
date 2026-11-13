@@ -220,8 +220,9 @@ def send_message(user_id, chat_id):
             logger.warning("rate limit: chat bloqueado por usuário")
             return rate_limit.too_many(wait)
 
+    chat_messages = get_chat_messages_db(chat_id)[-6:]
     try:
-        resultado = responder(question, user_id, chat.subject_id)
+        resultado = responder(question, user_id, chat.subject_id, chat_messages)
     except Exception:
         # LGPD: a pergunta não vai para o log
         logger.exception("Falha ao responder no chat %s", chat_id)
