@@ -7,7 +7,7 @@ import nest_asyncio
 nest_asyncio.apply()
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "qdrant"))
-from qdrant_server import get_vector_store, collection_exists, COLLECTION_NAME
+from qdrant_server import get_vector_store, collection_exists, ensure_payload_indexes, COLLECTION_NAME
 
 import fitz  # PyMuPDF
 
@@ -132,11 +132,13 @@ def build_vector_index(nodes: list[BaseNode], collection_name: str = COLLECTION_
     vector_store = get_vector_store(collection_name)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    return VectorStoreIndex(
+    index = VectorStoreIndex(
         nodes,
         storage_context=storage_context,
         embed_model=embed_model,
     )
+    ensure_payload_indexes(collection_name)  # a coleção só existe depois do primeiro insert
+    return index
 
 
 def index_documents(

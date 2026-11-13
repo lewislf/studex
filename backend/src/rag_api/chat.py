@@ -1,6 +1,6 @@
 from llama_index.core import VectorStoreIndex
 from search_query import embed_model, llm, build_metadata_filters
-from qdrant_server import get_vector_store
+from qdrant_server import get_vector_store, collection_exists, ensure_payload_indexes
 
 SEM_RESPOSTA = "Não encontrei essa informação no material desta matéria."
 
@@ -25,6 +25,10 @@ def _get_index():
 
 
 def buscar_trechos(pergunta, user_id, subject_id, k=5):
+    # nenhum PDF indexado ainda: o Qdrant responderia 404
+    if not collection_exists():
+        return []
+    ensure_payload_indexes()
     retriever = _get_index().as_retriever(
         similarity_top_k=k,
         filters=build_metadata_filters(user_id=user_id, subject_id=subject_id),
