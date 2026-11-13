@@ -20,11 +20,14 @@ import { COLOR_OPTIONS, ICON_OPTIONS, DEFAULT_SUBJECT_ICON, DEFAULT_SUBJECT_COLO
  * @param {string} [props.fileName] - Name of the file being uploaded (shown in the title).
  * @param {Function} props.onConfirm - Callback invoked with the chosen or created subject_id to trigger the upload.
  * @param {boolean} [props.onlyCreate] - If true, locks SegmentedControl and displays only the creation form.
+ * @param {boolean} [props.onlyExisting] - If true, hides SegmentedControl and the creation form; only an existing subject can be chosen.
+ * @param {string} [props.confirmLabel] - Text of the confirm button (default depends on onlyCreate).
  */
-export default function SubjectPickerModal({ opened, onClose, userId, fileName, onConfirm, onlyCreate = false }) {
+export default function SubjectPickerModal({ opened, onClose, userId, fileName, onConfirm, onlyCreate = false, onlyExisting = false, confirmLabel }) {
     const { subjects, loading, error, fetchSubjects, createSubject } = useSubjects(userId);
 
-    const [mode, setMode] = useState(onlyCreate ? 'nova' : 'existente');       // 'existente' | 'nova'
+    const initialMode = onlyCreate && !onlyExisting ? 'nova' : 'existente';
+    const [mode, setMode] = useState(initialMode);       // 'existente' | 'nova'
     const [selectedId, setSelectedId] = useState(null);  // chosen existing subject
     const [newName, setNewName] = useState('');
     const [newDesc, setNewDesc] = useState('');
@@ -40,14 +43,14 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
             // when `opened` flips, and the modal content is not remounted
             // (no key-based reset available without restructuring).
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            setMode(onlyCreate ? 'nova' : 'existente');
+            setMode(initialMode);
             setSelectedId(null);
             setNewName('');
             setNewDesc('');
             setSelectedIcon(DEFAULT_SUBJECT_ICON);
             setSelectedColor(DEFAULT_SUBJECT_COLOR);
         }
-    }, [opened, fetchSubjects, onlyCreate]);
+    }, [opened, fetchSubjects, initialMode]);
 
     const hasSubjects = subjects.length > 0;
 
@@ -57,7 +60,7 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
         try {
             let subjectId = selectedId;
 
-            if (mode === 'nova') {
+            if (mode === 'nova' && !onlyExisting) {
                 subjectId = await createSubject({
                     name: newName.trim(),
                     description: newDesc.trim(),
@@ -96,7 +99,7 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
             centered
         >
             <Stack>
-                {!onlyCreate && (
+                {!onlyCreate && !onlyExisting && (
                     <SegmentedControl
                         value={mode}
                         onChange={setMode}
@@ -128,12 +131,14 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
                         />
                     ) : (
                         <Text c="dimmed" size="sm">
-                            Você ainda não tem matérias. Crie uma nova para continuar.
+                            {onlyExisting
+                                ? 'Você ainda não tem matérias. Crie uma na aba Matérias para poder criar um chat.'
+                                : 'Você ainda não tem matérias. Crie uma nova para continuar.'}
                         </Text>
                     )
                 )}
 
-                {mode === 'nova' && (
+                {mode === 'nova' && !onlyExisting && (
                     <Stack gap="xs">
                         <TextInput
                             label="Nome da matéria"
@@ -198,7 +203,7 @@ export default function SubjectPickerModal({ opened, onClose, userId, fileName, 
                         Cancelar
                     </Button>
                     <Button onClick={handleConfirm} loading={submitting} disabled={confirmDisabled}>
-                        {onlyCreate ? 'Adicionar' : 'Enviar e salvar'}
+                        {confirmLabel ?? (onlyCreate ? 'Adicionar' : 'Enviar e salvar')}
                     </Button>
                 </Group>
             </Stack>

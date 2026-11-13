@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { IconHome, IconCards, IconBooks, IconChartBar } from '@tabler/icons-react';
+import { IconHome, IconCards, IconBooks, IconMessageCircle, IconChartBar } from '@tabler/icons-react';
 import classes from '../../styles/Mantine/MobileNav.module.css';
 import { LINKS } from '../../config/Constants';
 import { isActiveLink } from '../../utils/navHelpers';
@@ -8,6 +8,7 @@ const ICONS = {
     '/': IconHome,
     '/revisoes': IconCards,
     '/materias': IconBooks,
+    '/chats': IconMessageCircle,
     '/estatisticas': IconChartBar,
 };
 

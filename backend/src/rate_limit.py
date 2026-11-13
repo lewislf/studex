@@ -171,6 +171,8 @@ def limits() -> dict:
         "login_window": _int_env("RATELIMIT_LOGIN_WINDOW_SECONDS", 900),
         "signup_ip_max": _int_env("RATELIMIT_SIGNUP_IP_MAX", 10),
         "signup_window": _int_env("RATELIMIT_SIGNUP_WINDOW_SECONDS", 3600),
+        "chat_user_max": _int_env("RATELIMIT_CHAT_USER_MAX", 20),  # perguntas por usuário
+        "chat_window": _int_env("RATELIMIT_CHAT_WINDOW_SECONDS", 600),
     }
 
 

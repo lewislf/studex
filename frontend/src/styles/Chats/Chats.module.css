@@ -1,0 +1,226 @@
+/* Lista de chats */
+
+.empty {
+    padding: var(--mantine-spacing-xl) 0;
+    color: var(--mantine-color-gray-6);
+}
+
+.chatCard {
+    display: flex;
+    align-items: stretch;
+    background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-md);
+    box-shadow: var(--mantine-shadow-sm);
+    overflow: hidden;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.chatCard:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--mantine-shadow-md);
+}
+
+.chatStripe {
+    width: 6px;
+    flex-shrink: 0;
+}
+
+.chatLink {
+    flex: 1;
+    min-width: 0;
+    padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+    color: inherit;
+    text-decoration: none;
+}
+
+.chatTitle {
+    font-weight: 700;
+    color: var(--mantine-color-dark-9);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chatMeta {
+    font-size: 0.8rem;
+    color: var(--mantine-color-gray-6);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chatDelete {
+    align-self: center;
+    margin-right: var(--mantine-spacing-sm);
+}
+
+/* Tela da conversa: ocupa a altura útil, com só a lista de mensagens rolando */
+
+.chatPage {
+    display: flex;
+    flex-direction: column;
+    /* 60px do cabeçalho + paddings do AppShell e do Container */
+    height: calc(100dvh - 60px - 2 * var(--mantine-spacing-md) - 2 * var(--mantine-spacing-md));
+    min-height: 420px;
+    padding: var(--mantine-spacing-xl);
+    background-color: var(--mantine-color-white);
+    border-radius: var(--mantine-radius-lg);
+}
+
+.chatPage > :first-child {
+    margin-bottom: 0;
+}
+
+.chatSubject {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--mantine-color-gray-6);
+    margin-bottom: var(--mantine-spacing-md);
+}
+
+.messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mantine-spacing-sm);
+    padding: var(--mantine-spacing-sm) 2px;
+    overscroll-behavior: contain;
+}
+
+.hint {
+    margin: auto;
+    max-width: 420px;
+    font-size: 0.9rem;
+}
+
+.rowUser,
+.rowAssistant {
+    display: flex;
+}
+
+.rowUser {
+    justify-content: flex-end;
+}
+
+.bubbleUser,
+.bubbleAssistant {
+    max-width: min(75%, 720px);
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    border-radius: 16px;
+    overflow-wrap: anywhere;
+}
+
+.bubbleUser {
+    background-color: #212529;
+    color: var(--mantine-color-white);
+    border-bottom-right-radius: 4px;
+}
+
+.bubbleAssistant {
+    background-color: var(--mantine-color-gray-0);
+    border: 1px solid var(--mantine-color-gray-2);
+    color: var(--mantine-color-dark-9);
+    border-bottom-left-radius: 4px;
+}
+
+.bubbleText {
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: inherit;
+}
+
+.sourcesToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: var(--mantine-spacing-xs);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--mantine-color-blue-7);
+    min-height: 28px;
+}
+
+.sourcesList {
+    margin: 4px 0 0;
+    padding-left: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sourcesList li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    background-color: var(--mantine-color-white);
+    border-radius: 8px;
+    border: 1px solid var(--mantine-color-gray-2);
+}
+
+.sourceName {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--mantine-color-dark-7);
+}
+
+.sourceExcerpt {
+    font-size: 0.75rem;
+    color: var(--mantine-color-gray-7);
+}
+
+.composer {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--mantine-spacing-xs);
+    padding-top: var(--mantine-spacing-sm);
+    border-top: 1px solid var(--mantine-color-gray-2);
+}
+
+.composerInput {
+    flex: 1;
+}
+
+.composerInput textarea {
+    /* 16px evita o zoom automático do iOS ao focar o campo */
+    font-size: 16px;
+    border-radius: 20px;
+}
+
+.sendButton {
+    background-color: #212529;
+    color: var(--mantine-color-white);
+    flex-shrink: 0;
+}
+
+.sendButton:hover {
+    background-color: #000000;
+}
+
+@media (max-width: $mantine-breakpoint-sm) {
+    .chatCard:hover {
+        transform: none;
+    }
+
+    .chatLink {
+        padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    }
+
+    .chatPage {
+        /* cabeçalho + barra inferior (60px + área de gestos) + padding xs do AppShell */
+        height: calc(100dvh - 60px - 60px - env(safe-area-inset-bottom) - 2 * var(--mantine-spacing-xs));
+        min-height: 360px;
+        padding: var(--mantine-spacing-md);
+        border-radius: var(--mantine-radius-md);
+    }
+
+    .bubbleUser,
+    .bubbleAssistant {
+        max-width: 88%;
+    }
+}

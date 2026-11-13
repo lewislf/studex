@@ -14,6 +14,7 @@ from routes.mindmap_routes import mindmap_bp
 from routes.summary_routes import summary_bp
 from routes.study_routes import study_bp
 from routes.admin_routes import admin_bp
+from routes.chat_routes import chat_bp
 from routes.document_routes import cleanup_stale_uploads
 
 app = Flask(__name__)
@@ -50,6 +51,11 @@ swagger_template = {
         ),
         "version": "v1",
     },
+    # botão "Authorize": colar "Bearer <token>" do /users/login
+    "securityDefinitions": {
+        "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"},
+    },
+    "security": [{"Bearer": []}],
 }
 Swagger(
     app,
@@ -67,6 +73,7 @@ app.register_blueprint(mindmap_bp)
 app.register_blueprint(summary_bp)
 app.register_blueprint(study_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(chat_bp)
 
 # Remove PDFs órfãos de uploads interrompidos; falha aqui não pode impedir a subida.
 try:
