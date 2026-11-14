@@ -17,6 +17,7 @@ from database.database import (
     count_due_flashcards_db,
     count_flashcards_by_user_db,
     get_activity_days_db,
+    get_user_decks_db,
     compute_streak,
 )
 from qdrant.qdrant_server import delete_vectors_by_metadata
@@ -335,6 +336,50 @@ def delete_user(user_id):
         return "", 204
 
     return jsonify({"error": "User not found"}), 404
+
+
+@user_bp.get("/<int:user_id>/decks")
+@require_auth
+def get_user_decks(user_id):
+    """
+    Lista todos os baralhos do usuário, de todas as matérias, numa consulta só.
+    ---
+    tags:
+      - Baralhos
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: ID do usuário
+    responses:
+      200:
+        description: Baralhos com contagens e dados da matéria (pode ser vazia)
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: integer}
+              subtitle: {type: string}
+              new: {type: integer}
+              learning: {type: integer}
+              review: {type: integer}
+              total_cards: {type: integer}
+              subject_id: {type: integer}
+              subject_name: {type: string}
+              subject_icon: {type: string}
+              subject_color: {type: string}
+    """
+    return jsonify([
+        deck.to_dict() | {
+            "subject_id": deck.subject_id,
+            "subject_name": nome,
+            "subject_icon": icone,
+            "subject_color": cor,
+        }
+        for deck, nome, icone, cor in get_user_decks_db(user_id)
+    ])
 
 
 @user_bp.get("/<int:user_id>/activity")

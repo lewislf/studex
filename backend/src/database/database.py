@@ -938,7 +938,7 @@ def get_decks_db(
     with db_connection(db_path) as conn:
         rows = _q(conn, """SELECT id, subject_id, titulo, acuracia, novos, aprendendo, review, creation_date
                                     FROM decks 
-                                    WHERE subject_id LIKE ?""", (subject_id,)).fetchall()  
+                                    WHERE subject_id = ?""", (subject_id,)).fetchall()  
         
         if rows is None:
             return None
@@ -948,6 +948,25 @@ def get_decks_db(
             decks.append(Baralho(subject_id, titulo, acuracia, novos, aprendendo, review, creation_date, deck_id))
         
         return decks
+
+def get_user_decks_db(user_id: int, db_path: Path = DB_PATH) -> list:
+    """
+    All decks of a user, with the subject's name, icon and color, in one query
+    (the Revisions page used to make one request per subject).
+
+    Returns a list of (Baralho, subject_name, subject_icon, subject_color).
+    """
+    with db_connection(db_path) as conn:
+        rows = _q(conn, """SELECT d.id, d.subject_id, d.titulo, d.acuracia, d.novos, d.aprendendo, d.review,
+                                 d.creation_date, s.name, s.icon, s.color
+                          FROM decks d JOIN subjects s ON s.id = d.subject_id
+                          WHERE s.user_id = ?
+                          ORDER BY d.id""", (user_id,)).fetchall()
+
+    return [
+        (Baralho(sid, titulo, acuracia, novos, aprendendo, review, creation_date, deck_id), nome, icone, cor)
+        for deck_id, sid, titulo, acuracia, novos, aprendendo, review, creation_date, nome, icone, cor in rows
+    ]
 
 def get_deck_db(
     deck_id: int,
