@@ -438,15 +438,39 @@
     }
 
     .weekdaysContainer {
-        --group-gap: 6px;
+        --group-gap: 4px;
+    }
+
+    /* os 7 dias dividem a largura: sem isso a fileira vazava em telas estreitas */
+    .weekdayItem {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .weekdayItem:hover {
+        transform: none;
     }
 
     .checkmarkCircle {
-        width: 26px;
-        height: 26px;
+        width: clamp(20px, 7vw, 26px);
+        height: clamp(20px, 7vw, 26px);
     }
 
     .streakMessage {
         max-width: 100%;
+    }
+}
+
+/* telas bem estreitas (celular pequeno, DevTools aberto) */
+@media (max-width: 360px) {
+    .container,
+    .leftCard,
+    .rightCard,
+    .heatmapContainer {
+        padding: var(--mantine-spacing-sm);
+    }
+
+    .weekdayItem p {
+        font-size: 0.65rem;
     }
 }

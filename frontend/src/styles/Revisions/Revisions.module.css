@@ -206,7 +206,8 @@
 
 .cardContent {
     flex: 1;
-    padding: 0 var(--mantine-spacing-xl);
+    min-width: 0;
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-xl);
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -218,6 +219,14 @@
     display: flex;
     align-items: center;
     gap: var(--mantine-spacing-md);
+    flex: 1;
+    min-width: 0;
+}
+
+/* contagens + "revisar" numa linha só; quem encolhe é a descrição */
+.deckActions {
+    --group-wrap: nowrap;
+    flex-shrink: 0;
 }
 
 .iconBox {
@@ -247,6 +256,10 @@
     font-size: 0.9rem;
     color: var(--mantine-color-gray-6);
     font-weight: 500;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .countsGroup {
@@ -434,6 +447,7 @@
     }
 
     .deckActions {
+        --group-wrap: wrap;
         justify-content: space-between;
         flex-wrap: wrap;
         gap: var(--mantine-spacing-sm);
