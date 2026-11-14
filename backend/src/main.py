@@ -13,9 +13,21 @@ from routes.flashcard_routes import flashcard_bp
 from routes.mindmap_routes import mindmap_bp
 from routes.summary_routes import summary_bp
 from routes.study_routes import study_bp
+from routes.admin_routes import admin_bp
+from routes.chat_routes import chat_bp
+from routes.document_routes import cleanup_stale_uploads
 
 app = Flask(__name__)
-CORS(app)
+
+# Origens permitidas; CORS_ORIGINS (separadas por vírgula) sobrescreve o padrão.
+_CORS_PADRAO = (
+    "https://studex-dusky.vercel.app,"
+    "http://localhost:5173,http://127.0.0.1:5173"   # Vite em desenvolvimento
+)
+CORS_ORIGINS = [
+    o.strip() for o in os.environ.get("CORS_ORIGINS", _CORS_PADRAO).split(",") if o.strip()
+]
+CORS(app, origins=CORS_ORIGINS)
 HOST = "0.0.0.0"
 SOCKET = int(os.environ.get("PORT", 5000))
 
@@ -39,6 +51,11 @@ swagger_template = {
         ),
         "version": "v1",
     },
+    # botão "Authorize": colar "Bearer <token>" do /users/login
+    "securityDefinitions": {
+        "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"},
+    },
+    "security": [{"Bearer": []}],
 }
 Swagger(
     app,
@@ -55,6 +72,14 @@ app.register_blueprint(flashcard_bp)
 app.register_blueprint(mindmap_bp)
 app.register_blueprint(summary_bp)
 app.register_blueprint(study_bp)
+app.register_blueprint(admin_bp)
+app.register_blueprint(chat_bp)
+
+# Remove PDFs órfãos de uploads interrompidos; falha aqui não pode impedir a subida.
+try:
+    cleanup_stale_uploads(24)
+except Exception:
+    pass
 
 
 @app.get("/routes")

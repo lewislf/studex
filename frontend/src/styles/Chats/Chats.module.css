@@ -1,0 +1,383 @@
+/* ---------- Lista de chats ---------- */
+
+.empty {
+    padding: var(--mantine-spacing-xl) 0;
+    color: var(--mantine-color-gray-6);
+}
+
+.chatCard {
+    display: flex;
+    align-items: center;
+    background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-md);
+    box-shadow: var(--mantine-shadow-xs);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.chatCard:hover {
+    border-color: var(--mantine-color-gray-4);
+    box-shadow: var(--mantine-shadow-sm);
+}
+
+.chatLink {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-md);
+    padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+    color: inherit;
+    text-decoration: none;
+}
+
+.chatText {
+    flex: 1;
+    min-width: 0;
+}
+
+.chatTitle {
+    font-weight: 700;
+    color: var(--mantine-color-dark-9);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chatMeta {
+    font-size: 0.8rem;
+    color: var(--mantine-color-gray-6);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chatChevron {
+    flex-shrink: 0;
+    color: var(--mantine-color-gray-5);
+}
+
+.chatDelete {
+    margin-right: var(--mantine-spacing-sm);
+}
+
+/* ---------- Conversa ---------- */
+
+.chatPage {
+    display: flex;
+    flex-direction: column;
+    /* 60px do cabeçalho + padding do AppShell e do Container */
+    height: calc(100dvh - 60px - 4 * var(--mantine-spacing-md));
+    min-height: 420px;
+    background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: var(--mantine-radius-lg);
+    box-shadow: var(--mantine-shadow-sm);
+    overflow: hidden;
+}
+
+.chatHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-sm);
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    border-bottom: 1px solid var(--mantine-color-gray-2);
+    flex-shrink: 0;
+}
+
+.headerBadge {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.headerText {
+    min-width: 0;
+    flex: 1;
+}
+
+.headerTitle {
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--mantine-color-dark-9);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.headerSubject {
+    font-size: 0.8rem;
+    color: var(--mantine-color-gray-6);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background-color: var(--mantine-color-gray-0);
+}
+
+.messagesInner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mantine-spacing-md);
+    min-height: 100%;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: var(--mantine-spacing-lg) var(--mantine-spacing-md);
+}
+
+.welcome {
+    margin: auto;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+}
+
+.welcomeBadge {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--mantine-spacing-xs);
+}
+
+.welcomeTitle {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--mantine-color-dark-9);
+}
+
+.welcomeText {
+    font-size: 0.9rem;
+    color: var(--mantine-color-gray-6);
+}
+
+.suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--mantine-spacing-xs);
+    margin-top: var(--mantine-spacing-md);
+}
+
+.suggestion {
+    font-weight: 500;
+}
+
+.rowUser,
+.rowAssistant {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--mantine-spacing-xs);
+}
+
+.rowUser {
+    justify-content: flex-end;
+}
+
+.avatar {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #212529;
+    color: var(--mantine-color-white);
+}
+
+.bubbleUser,
+.bubbleAssistant {
+    max-width: min(80%, 640px);
+    padding: 10px 14px;
+    border-radius: 18px;
+    overflow-wrap: anywhere;
+}
+
+.bubbleUser {
+    background-color: #212529;
+    color: var(--mantine-color-white);
+    border-bottom-right-radius: 6px;
+}
+
+.bubbleAssistant {
+    background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-2);
+    color: var(--mantine-color-dark-9);
+    border-bottom-left-radius: 6px;
+    box-shadow: var(--mantine-shadow-xs);
+}
+
+.bubbleText {
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: inherit;
+}
+
+.cite {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    margin: 0 1px;
+    border-radius: 9px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    vertical-align: text-top;
+    background-color: var(--mantine-color-blue-0);
+    color: var(--mantine-color-blue-7);
+}
+
+.sourcesToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: var(--mantine-spacing-xs);
+    min-height: 28px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--mantine-color-blue-7);
+}
+
+.sourcesList {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sourcesList li {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background-color: var(--mantine-color-gray-0);
+    border-radius: 10px;
+}
+
+.sourceName {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--mantine-color-dark-7);
+}
+
+.sourceExcerpt {
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--mantine-color-gray-7);
+}
+
+.composerWrap {
+    flex-shrink: 0;
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md) var(--mantine-spacing-xs);
+    border-top: 1px solid var(--mantine-color-gray-2);
+    background-color: var(--mantine-color-white);
+}
+
+.composer {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--mantine-spacing-xs);
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 6px 6px 6px 16px;
+    border: 1px solid var(--mantine-color-gray-3);
+    border-radius: 24px;
+    background-color: var(--mantine-color-white);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.composer:focus-within {
+    border-color: #212529;
+    box-shadow: 0 0 0 3px rgba(33, 37, 41, 0.08);
+}
+
+.composerInput {
+    flex: 1;
+    min-width: 0;
+}
+
+.composerInput textarea {
+    /* 16px evita o zoom automático do iOS ao focar o campo */
+    font-size: 16px;
+    line-height: 1.45;
+    padding: 7px 0;
+}
+
+.sendButton {
+    background-color: #212529;
+    color: var(--mantine-color-white);
+    flex-shrink: 0;
+}
+
+.sendButton:hover {
+    background-color: #000000;
+}
+
+.composerHint {
+    max-width: 780px;
+    margin: 4px auto 0;
+    font-size: 0.7rem;
+    color: var(--mantine-color-gray-5);
+    text-align: center;
+}
+
+@media (max-width: $mantine-breakpoint-sm) {
+    .chatLink {
+        padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+        gap: var(--mantine-spacing-sm);
+    }
+
+    .chatPage {
+        /* cabeçalho + barra inferior (60px + área de gestos) + padding xs do AppShell */
+        height: calc(100dvh - 60px - 60px - env(safe-area-inset-bottom) - 2 * var(--mantine-spacing-xs));
+        min-height: 320px;
+        border-radius: var(--mantine-radius-md);
+    }
+
+    .chatHeader {
+        padding: 6px var(--mantine-spacing-xs);
+    }
+
+    .messagesInner {
+        padding: var(--mantine-spacing-md) var(--mantine-spacing-sm);
+        gap: var(--mantine-spacing-sm);
+    }
+
+    .bubbleUser,
+    .bubbleAssistant {
+        max-width: 85%;
+    }
+
+    .avatar {
+        display: none;
+    }
+
+    .composerWrap {
+        padding: 6px var(--mantine-spacing-xs);
+    }
+}

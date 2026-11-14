@@ -1,4 +1,4 @@
-import { Card, Text, Group, Space } from '@mantine/core';
+import { Card, Text, Group } from '@mantine/core';
 import styles from '../../styles/Home/Home.module.css';
 
 /**
@@ -11,10 +11,10 @@ export default function HomeCard({ title, text, Icon, iconColor = 'orange' }) {
             <Group justify="space-between" align="flex-start" wrap="nowrap">
                 {/* Text area wrapping header and body description */}
                 <div className={styles.cardContent}>
-                    <Text fw={500} size="lg">
+                    <Text fw={500} size="lg" className={styles.cardTitle}>
                         {title}
                     </Text>
-                    <Text mt="xs" c="dimmed" size="sm">
+                    <Text mt="xs" c="dimmed" size="sm" className={styles.cardValue}>
                         {text}
                     </Text>
                 </div>
@@ -22,7 +22,6 @@ export default function HomeCard({ title, text, Icon, iconColor = 'orange' }) {
                 {/* Optional trailing layout icon */}
                 {Icon && (
                     <>
-                        <Space h="xl" />
                         <Icon
                             size={40}
                             color={iconColor}

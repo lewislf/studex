@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Tooltip, Container, Box } from "@mantine/core";
 import styles from '../../styles/Statistics/Statistics.module.css';
 import { MONTHS_SHORT } from '../../config/Constants';
@@ -7,6 +8,14 @@ import { MONTHS_SHORT } from '../../config/Constants';
  * Displays daily active studying counts across a 53-week span, starting on Sunday.
  */
 export default function StatisticsHeatmap({ stats }) {
+    // Em telas estreitas o calendário rola na horizontal; começa mostrando as
+    // semanas mais recentes (à direita) em vez das de um ano atrás.
+    const scrollRef = useRef(null);
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollLeft = el.scrollWidth;
+    }, [stats]);
+
     // Current date of the user's browser
     const today = new Date();
     // Normalize today's date to midnight local time for safe comparisons
@@ -94,7 +103,7 @@ export default function StatisticsHeatmap({ stats }) {
 
     return (
         <Container className={styles.heatmapContainer}>
-            <Box className={styles.heatmapScroll}>
+            <Box className={styles.heatmapScroll} ref={scrollRef}>
                 <Box className={styles.heatmapGridWrapper}>
                     {/* Months Header row */}
                     <Box className={styles.monthsRow}>

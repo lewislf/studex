@@ -9,6 +9,8 @@ import FlashcardStudyPage from './components/SubjectDetail/FlashcardStudyPage.js
 import Home from './components/Home/Home.jsx';
 import ErrorPage from './components/Common/ErrorPage.jsx';
 import Auth from './components/Auth/Auth.jsx';
+import Chats from './components/Chats/Chats.jsx';
+import ChatPage from './components/Chats/ChatPage.jsx';
 
 const routes = [
     {
@@ -53,6 +55,14 @@ const routes = [
             {
                 path: "materias/:subjectId/flashcards/:deckId",
                 element: <FlashcardStudyPage />
+            },
+            {
+                path: "chats",
+                element: <Chats />
+            },
+            {
+                path: "chats/:chatId",
+                element: <ChatPage />
             },
             {
                 path: "estatisticas",

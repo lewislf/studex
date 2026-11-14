@@ -4,7 +4,9 @@ import { useState, useCallback, useEffect } from 'react';
 import { Outlet, Navigate, useNavigate } from 'react-router';
 import Header from './components/Common/Header.jsx';
 import Footer from './components/Common/Footer.jsx';
+import MobileNav from './components/Common/MobileNav.jsx';
 import { AppShell } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 
 import profileImage from './assets/generic-profile.svg'
 import { parseUserProfile } from './utils/userHelpers.js'
@@ -20,6 +22,8 @@ export default function App() {
     // (refreshUser clearing it below on a 404), so the "no session" early
     // return must come AFTER every hook, never before.
     const [sessionData, setSessionData] = useState(() => getSession());
+    // abaixo de 48em (768px, breakpoint "sm" do Mantine) a navegação vai para baixo
+    const isMobile = useMediaQuery('(max-width: 48em)');
 
     const refreshUser = useCallback(async () => {
         const session = getSession();
@@ -63,7 +67,11 @@ export default function App() {
     }
 
     return (
-        <AppShell header={{ height: 60 }} footer={{ height: 60 }} padding="md">
+        <AppShell
+            header={{ height: 60 }}
+            footer={{ height: 'calc(60px + env(safe-area-inset-bottom))', collapsed: !isMobile }}
+            padding={{ base: 'xs', sm: 'md' }}
+        >
             <AppShell.Header>
                 <Header
                     name={user.name}
@@ -76,7 +84,13 @@ export default function App() {
                 <Outlet context={{ ...user, refreshUser }} />
             </AppShell.Main>
 
-            <Footer />
+            {isMobile ? (
+                <AppShell.Footer>
+                    <MobileNav />
+                </AppShell.Footer>
+            ) : (
+                <Footer />
+            )}
         </AppShell>
     );
 }

@@ -98,6 +98,12 @@ export function useAuth() {
             });
 
             if (!response.ok) {
+                // Mostra a mensagem do backend em 400/429 (ex.: "Muitas tentativas...");
+                // demais erros (401) mantêm a mensagem genérica.
+                if (response.status === 400 || response.status === 429) {
+                    const detail = await response.json().catch(() => null);
+                    if (detail?.error) throw new Error(detail.error);
+                }
                 throw new Error('Email ou senha inválidos.');
             }
 

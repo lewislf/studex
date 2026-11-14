@@ -23,34 +23,23 @@ export default function Revisions() {
 
         async function fetchDecks() {
             try {
-                const subjectsRes = await fetch(`${API_URL}/users/${user.id}/subjects`, { headers: getAuthHeaders() });
-                if (!subjectsRes.ok) return;
-                const subjects = await subjectsRes.json();
-                const subjectById = new Map(subjects.map(s => [s.id, s]));
-
-                const allDecks = (
-                    await Promise.all(
-                        subjects.map(s =>
-                            fetch(`${API_URL}/users/${user.id}/subjects/${s.id}/decks`, { headers: getAuthHeaders() })
-                                .then(r => r.ok ? r.json() : [])
-                                .catch(() => [])
-                        )
-                    )
-                ).flat();
+                // uma requisição só: todos os baralhos já com nome, ícone e cor da matéria
+                const res = await fetch(`${API_URL}/users/${user.id}/decks`, { headers: getAuthHeaders() });
+                if (!res.ok) return;
+                const allDecks = await res.json();
 
                 if (cancelled) return;
 
                 // O baralho tem sua própria cor fixa no backend (não a da
-                // matéria): usa o ícone/cor reais da matéria, buscados acima.
+                // matéria): usa o ícone/cor reais da matéria.
                 const decksToday = allDecks.map(d => {
-                    const subject = subjectById.get(d.subject_id);
                     return {
                         id: d.id,
                         subject_id: d.subject_id,
                         subject_name: d.subject_name,
                         subtitle: d.subtitle || '',
-                        icon: subject?.icon,
-                        color: subject?.color,
+                        icon: d.subject_icon,
+                        color: d.subject_color,
                         new: d.new ?? 0,
                         learning: d.learning ?? 0,
                         review: d.review ?? 0,

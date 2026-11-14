@@ -227,7 +227,7 @@ export default function FlashcardStudyPage() {
     }
 
     return (
-        <Container size="xl" py="md">
+        <Container size="xl" py={{ base: 0, sm: 'md' }} px={{ base: 0, sm: 'md' }}>
             <Box className={styles.page}>
                 <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
                     <SubjectBreadcrumb items={breadcrumbItems} />
@@ -307,7 +307,7 @@ function CompletionState({ stats, backTo, onRestart }) {
             <Stack align="center" justify="center" gap="lg" className={styles.centerState}>
                 <IconTrophy size={56} color="var(--mantine-color-orange-6)" />
                 <Title order={2}>Sessão concluída!</Title>
-                <SimpleGrid cols={4} spacing="lg" className={styles.statsGrid}>
+                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg" className={styles.statsGrid}>
                     <StatTile label="Fácil" value={stats.facil} color="green" />
                     <StatTile label="Bom" value={stats.bom} color="blue" />
                     <StatTile label="Difícil" value={stats.dificil} color="orange" />
@@ -372,6 +372,7 @@ function StudyCard({ card, isGlobal, revealed, respondedCount, total, progressPc
                                     size="md"
                                     variant="light"
                                     color={color}
+                                    className={styles.ratingButton}
                                     leftSection={Icon ? <Icon size={16} /> : null}
                                     disabled={submitting}
                                     onClick={() => onRate(value)}

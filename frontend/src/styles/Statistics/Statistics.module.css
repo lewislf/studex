@@ -24,15 +24,20 @@
 
 .dashboardGrid {
     display: grid;
-    grid-template-columns: 1.2fr 1fr;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     gap: var(--mantine-spacing-xl);
     margin-bottom: var(--mantine-spacing-xl);
 }
 
 @media (max-width: 992px) {
     .dashboardGrid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
+}
+
+.dashboardGrid > * {
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .leftCard {
@@ -374,5 +379,74 @@
 
     100% {
         transform: translateY(0);
+    }
+}
+/* Celular: menos margem para sobrar largura útil */
+@media (max-width: $mantine-breakpoint-sm) {
+    .container,
+    .leftCard,
+    .rightCard,
+    .heatmapContainer {
+        padding: var(--mantine-spacing-md);
+    }
+
+    .dashboardGrid {
+        gap: var(--mantine-spacing-md);
+    }
+
+    /* sem efeito de hover no toque */
+    .leftCard:hover,
+    .rightCard:hover,
+    .heatmapContainer:hover {
+        transform: none;
+    }
+
+    /* lista de números em 2 colunas */
+    .statList {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+        gap: var(--mantine-spacing-md) var(--mantine-spacing-sm);
+    }
+
+    .statList svg {
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    .statLabel {
+        font-size: 0.72rem;
+        line-height: 1.2;
+    }
+
+    .statValue {
+        font-size: 1.15rem;
+    }
+
+    .flameIcon {
+        width: 52px;
+        height: 52px;
+    }
+
+    .streakCount {
+        font-size: 3.5rem;
+    }
+
+    .streakLabel {
+        font-size: 1.1rem;
+    }
+
+    .weekdaysContainer {
+        --group-gap: 6px;
+    }
+
+    .checkmarkCircle {
+        width: 26px;
+        height: 26px;
+    }
+
+    .streakMessage {
+        max-width: 100%;
     }
 }

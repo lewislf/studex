@@ -131,3 +131,45 @@
 .openLink:hover {
     color: var(--mantine-color-dark-9);
 }
+
+/* Celular: menos margem para sobrar largura útil */
+.cardContent,
+.statBadge {
+    min-width: 0;
+}
+
+.statBadgeLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: $mantine-breakpoint-sm) {
+    .container {
+        padding: var(--mantine-spacing-md);
+    }
+
+    .cardContent {
+        padding: var(--mantine-spacing-md);
+    }
+
+    .cardTitle {
+        font-size: 1.25rem;
+    }
+
+    .statBadge {
+        padding: 6px var(--mantine-spacing-xs);
+    }
+
+    .statBadgeLabel {
+        font-size: 0.65rem;
+    }
+
+    .statBadgeValue {
+        font-size: 1rem;
+    }
+
+    .subjectCard:hover {
+        transform: none;
+    }
+}

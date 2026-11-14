@@ -187,7 +187,9 @@
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    height: 80px;
+    min-height: 80px;
+    color: inherit;
+    text-decoration: none;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
@@ -391,4 +393,64 @@
 .dayFooterFree {
     color: #2ec4b6;
     font-weight: 700;
+}
+/* Celular: menos margem para sobrar largura útil */
+@media (max-width: $mantine-breakpoint-sm) {
+    .container,
+    .decksSection,
+    .weeklyProjection {
+        padding: var(--mantine-spacing-md);
+    }
+
+    .cardContent {
+        flex-direction: column;
+        align-items: stretch;
+        padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+        gap: var(--mantine-spacing-sm);
+        min-width: 0;
+    }
+
+    .deckInfo {
+        min-width: 0;
+        gap: var(--mantine-spacing-sm);
+    }
+
+    .iconBox {
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+    }
+
+    .deckTitle {
+        font-size: 1rem;
+    }
+
+    .deckSubtitle {
+        font-size: 0.8rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .deckActions {
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--mantine-spacing-sm);
+    }
+
+    .countsGroup {
+        gap: var(--mantine-spacing-sm);
+        width: 100%;
+    }
+
+    .totalCards {
+        text-align: left;
+        min-width: 0;
+    }
+
+    .deckCard:hover,
+    .summaryContainer:hover {
+        transform: none;
+    }
 }
