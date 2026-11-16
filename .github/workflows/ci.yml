@@ -82,6 +82,10 @@ jobs:
       - name: Start Docker Compose backend
         run: docker compose up -d --build backend
 
+      # O container só monta backend/src; o teste do turso_smoke procura /scripts
+      - name: Copy scripts into backend container
+        run: docker compose cp scripts backend:/scripts
+
       # Executes the Pytest suite inside the backend container
       - name: Run Pytest tests in backend container
         run: docker compose exec -T backend python -m pytest

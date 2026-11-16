@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router';
 import {
     Container, Stack, Flex, Title, Text, Button, Loader, Alert, Group, ActionIcon,
@@ -25,20 +25,15 @@ export default function Chats() {
     const [error, setError] = useState(null);
     const [pickerOpened, setPickerOpened] = useState(false);
 
-    const load = useCallback(async () => {
+    useEffect(() => {
         if (!userId) return;
-        setLoading(true);
-        setError(null);
-        try {
-            setChats(await fetchChats(userId));
-        } catch {
-            setError('Não foi possível carregar seus chats.');
-        } finally {
-            setLoading(false);
-        }
+        let ativo = true;
+        fetchChats(userId)
+            .then((lista) => { if (ativo) setChats(lista); })
+            .catch(() => { if (ativo) setError('Não foi possível carregar seus chats.'); })
+            .finally(() => { if (ativo) setLoading(false); });
+        return () => { ativo = false; };
     }, [userId]);
-
-    useEffect(() => { load(); }, [load]);
 
     async function handleCreate(subjectId) {
         setPickerOpened(false);

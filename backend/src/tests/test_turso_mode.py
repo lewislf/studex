@@ -256,7 +256,14 @@ def _smoke():
     """Carrega scripts/turso_smoke.py (não é pacote) sem executar o fluxo."""
     import importlib.util
     from pathlib import Path
-    caminho = Path(__file__).resolve().parents[3] / "scripts" / "turso_smoke.py"
+    # no repo fica em <raiz>/scripts; no container do CI, em /scripts
+    caminho = next(
+        (p / "scripts" / "turso_smoke.py" for p in Path(__file__).resolve().parents
+         if (p / "scripts" / "turso_smoke.py").exists()),
+        None,
+    )
+    if caminho is None:
+        pytest.skip("scripts/turso_smoke.py não está acessível daqui")
     spec = importlib.util.spec_from_file_location("turso_smoke_mod", caminho)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
