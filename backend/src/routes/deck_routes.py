@@ -128,7 +128,7 @@ def get_deck(user_id, subject_id, deck_id):
         return jsonify({"error": "deck not found"}), 404
 
     if subject_id != deck.subject_id:
-        return jsonify({"error": "deck with id " + deck_id + "is not from this subject"}), 404
+        return jsonify({"error": f"deck with id {deck_id} is not from this subject"}), 404
  
     subject = get_subject_db(deck.subject_id)
 
@@ -245,7 +245,7 @@ def delete_deck(user_id, subject_id, deck_id):
         return jsonify({"error": "User does not have this subject!"}), 404
     
     if deck is not None and subject_id != deck.subject_id:
-        return jsonify({"error": "deck with id " + deck_id + "is not from this subject"}), 404
+        return jsonify({"error": f"deck with id {deck_id} is not from this subject"}), 404
 
     if delete_deck_db(deck_id):
         return "", 204

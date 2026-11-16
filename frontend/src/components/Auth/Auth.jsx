@@ -51,12 +51,22 @@ export default function Auth() {
             errors.email = 'Email inválido';
         }
 
-        if (values.password.length < 6) {
-            errors.password = 'A senha deve ter ao menos 6 caracteres';
+        // Cadastro: mesmas regras do backend (8 a 128). Login: só exige senha
+        // preenchida, pois contas antigas podem ter senhas curtas.
+        if (type === 'register') {
+            if (values.password.length < 8) {
+                errors.password = 'A senha deve ter ao menos 8 caracteres';
+            } else if (values.password.length > 128) {
+                errors.password = 'A senha deve ter no máximo 128 caracteres';
+            }
+        } else if (values.password.length === 0) {
+            errors.password = 'Informe sua senha';
         }
 
         if (type === 'register' && values.name.trim().length === 0) {
             errors.name = 'Informe seu nome';
+        } else if (type === 'register' && values.name.trim().length > 100) {
+            errors.name = 'O nome deve ter no máximo 100 caracteres';
         }
 
         setFieldErrors(errors);

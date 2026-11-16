@@ -130,3 +130,28 @@
     text-overflow: ellipsis;
     pointer-events: auto;
 }
+
+/* Celular: menos margem para sobrar largura útil */
+@media (max-width: $mantine-breakpoint-sm) {
+    .canvasWrapper {
+        height: 62vh;
+    }
+
+    /* no celular o minimapa cobre boa parte da tela */
+    .minimap {
+        display: none;
+    }
+
+    /* painel do nó vira uma folha que sobe de baixo, sem cobrir o mapa inteiro */
+    .detailPanel {
+        top: auto;
+        left: 0;
+        width: 100%;
+        max-width: 100%;
+        max-height: 55%;
+        border-left: none;
+        border-top: 1px solid var(--mantine-color-gray-2);
+        border-radius: var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0;
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+    }
+}

@@ -1,5 +1,6 @@
 import logging
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
@@ -72,9 +73,10 @@ from dedup import (
 # getter do banco pra buscar os materiais já existentes na matéria, por tipo,
 # no mesmo estilo que as rotas de summary/mindmap já usam (nenhuma função
 # nova em database.py)
+# lambdas para resolver o nome na hora da chamada (permite substituir os getters nos testes)
 _MATERIAL_DEDUP_GETTERS = {
-    "resumo": get_summaries_db,
-    "mapa_mental": get_mindmaps_db,
+    "resumo": lambda subject_id: get_summaries_db(subject_id),
+    "mapa_mental": lambda subject_id: get_mindmaps_db(subject_id),
 }
 
 
@@ -84,7 +86,7 @@ def _embed_textos(textos: list[str]) -> list[list[float]]:
     return embed_model.get_text_embedding_batch(textos)
 
 
-def _dedup_baralho(materials: list[dict], subject_id: int, filename: str) -> list[dict]:
+def _dedup_baralho(materials: list[dict], subject_id: int, upload_ref: str) -> list[dict]:
     """
     Aplica o funil de deduplicação de flashcards (rag_api/dedup.py) no
     material tipo "baralho", se houver. Com menos de DEDUP_MIN_CARDS_NOVOS
@@ -107,8 +109,8 @@ def _dedup_baralho(materials: list[dict], subject_id: int, filename: str) -> lis
 
     if not deve_criar_baralho(cards_dedup):
         logger.info(
-            "Baralho descartado para %s (matéria %s): %d cards novos após dedup, mínimo é %d",
-            filename, subject_id, len(cards_dedup), DEDUP_MIN_CARDS_NOVOS,
+            "Baralho descartado (upload %s, matéria %s): %d cards novos após dedup, mínimo é %d",
+            upload_ref, subject_id, len(cards_dedup), DEDUP_MIN_CARDS_NOVOS,
         )
         return [m for m in materials if m["tipo"] != "baralho"]
 
@@ -116,7 +118,7 @@ def _dedup_baralho(materials: list[dict], subject_id: int, filename: str) -> lis
     return materials
 
 
-def _dedup_resumo_mapa(materials: list[dict], subject_id: int, filename: str) -> list[dict]:
+def _dedup_resumo_mapa(materials: list[dict], subject_id: int, upload_ref: str) -> list[dict]:
     """
     Aplica o dedup lexical (rag_api/dedup.py) aos materiais tipo "resumo" e
     "mapa_mental" contra os já existentes na matéria. Reenviar o mesmo PDF
@@ -135,8 +137,8 @@ def _dedup_resumo_mapa(materials: list[dict], subject_id: int, filename: str) ->
             continue  # sobreviveu ao dedup, mantém no resultado
 
         logger.info(
-            "%s descartado para %s (matéria %s): duplicado de material já existente",
-            tipo, filename, subject_id,
+            "%s descartado (upload %s, matéria %s): duplicado de material já existente",
+            tipo, upload_ref, subject_id,
         )
         resultado = [m for m in resultado if m["tipo"] != tipo]
 
@@ -146,6 +148,34 @@ document_bp = Blueprint("documents", __name__, url_prefix="/users/<int:user_id>/
 
 DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
 ALLOWED_EXTENSIONS = {".pdf"}
+
+
+def _remove_stored_pdf(path: Path) -> None:
+    """Apaga o PDF enviado sem nunca levantar; loga só o prefixo uuid (o resto do nome é do usuário)."""
+    ref = path.name[:32]
+    try:
+        path.unlink(missing_ok=True)
+        logger.debug("PDF temporário removido: %s", ref)
+    except Exception as exc:
+        logger.warning("Falha ao remover PDF temporário %s: %s", ref, type(exc).__name__)
+
+
+def cleanup_stale_uploads(max_age_hours: float = 24) -> int:
+    """Remove de DOCS_DIR os *.pdf mais velhos que max_age_hours e devolve quantos foram."""
+    removidos = 0
+    if not DOCS_DIR.is_dir():
+        return 0
+    limite = time.time() - max_age_hours * 3600
+    for arquivo in DOCS_DIR.iterdir():
+        try:
+            if arquivo.suffix.lower() != ".pdf" or not arquivo.is_file():
+                continue
+            if arquivo.stat().st_mtime < limite:
+                arquivo.unlink(missing_ok=True)
+                removidos += 1
+        except Exception as exc:
+            logger.warning("Falha ao limpar arquivo antigo %s: %s", arquivo.name[:32], type(exc).__name__)
+    return removidos
 
 
 @document_bp.get("/progress")
@@ -292,24 +322,31 @@ def upload_document(user_id):
     # arquivo (ex: "aula1.pdf") não colidem no mesmo path. O nome original
     # segue como sufixo só pra debug.
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
-    stored_filename = f"{uuid4().hex}_{filename}"
+    upload_ref = uuid4().hex  # id opaco para os logs
+    stored_filename = f"{upload_ref}_{filename}"
     saved_path = DOCS_DIR / stored_filename
-    file.save(saved_path)
-
-    # Envio conta como atividade mesmo que a geração de materiais falhe
-    # depois. Nunca pode derrubar o upload.
     try:
-        record_activity_db(user_id, date.today().isoformat())
-    except Exception:
-        logger.exception("Falha ao registrar atividade de upload do usuário %s", user_id)
+        file.save(saved_path)
+    except BaseException:
+        # não deixa gravação parcial
+        _remove_stored_pdf(saved_path)
+        raise
 
-    token = _start_progress(user_id, filename, tipos_pedidos or MATERIAIS_VALIDOS)
+    token = None
     try:
+        # conta como atividade mesmo que a geração falhe; não pode derrubar o upload
+        try:
+            record_activity_db(user_id, date.today().isoformat())
+        except Exception:
+            logger.exception("Falha ao registrar atividade de upload do usuário %s", user_id)
+
+        token = _start_progress(user_id, filename, tipos_pedidos or MATERIAIS_VALIDOS)
         try:
             docs = load_documents([saved_path], metadata=doc_metadata)
             nodes = split_into_nodes(docs)
-        except Exception:
-            logger.exception("Falha ao indexar documento %s", filename)
+        except Exception as exc:
+            # só o tipo: a mensagem pode conter o caminho do PDF
+            logger.error("Falha ao ler/dividir documento (upload %s): %s", upload_ref, type(exc).__name__)
             return jsonify({"error": "Falha ao indexar o documento"}), 500
 
         index_error = None
@@ -319,7 +356,7 @@ def upload_document(user_id):
                 build_vector_index(nodes, collection_name=COLLECTION_NAME)
             except Exception as exc:
                 index_error = exc
-                logger.exception("Falha ao indexar documento %s", filename)
+                logger.exception("Falha ao indexar documento (upload %s)", upload_ref)
 
         try:
             with ThreadPoolExecutor(max_workers=2) as executor:
@@ -335,7 +372,7 @@ def upload_document(user_id):
                 materials = future_materials.result()
                 future_index.result()
         except Exception:
-            logger.exception("Falha ao gerar materiais para %s", filename)
+            logger.exception("Falha ao gerar materiais (upload %s)", upload_ref)
             return jsonify({
                 "filename": filename,
                 "collection": COLLECTION_NAME,
@@ -351,14 +388,14 @@ def upload_document(user_id):
         if subject_id is not None:
             tinha_materiais_antes_do_dedup = bool(materials)
             try:
-                materials = _dedup_baralho(materials, subject_id, filename)
+                materials = _dedup_baralho(materials, subject_id, upload_ref)
             except Exception:
                 # dedup não pode impedir de salvar resumo/mapa: loga e segue com
                 # o baralho original se o dedup falhar
                 logger.exception("Falha ao deduplicar flashcards para a matéria %s", subject_id)
 
             try:
-                materials = _dedup_resumo_mapa(materials, subject_id, filename)
+                materials = _dedup_resumo_mapa(materials, subject_id, upload_ref)
             except Exception:
                 # mesmo princípio: dedup de resumo/mapa não pode impedir salvar
                 logger.exception("Falha ao deduplicar resumo/mapa mental para a matéria %s", subject_id)
@@ -374,7 +411,7 @@ def upload_document(user_id):
                 flashcards_only = tipos_pedidos == {"flashcards"}
                 logger.info(
                     "Upload descartado por dedup: %s (matéria %s)",
-                    filename, subject_id,
+                    upload_ref, subject_id,
                 )
                 return jsonify({
                     "filename": filename,
@@ -410,7 +447,10 @@ def upload_document(user_id):
             "materiais": materials,
         }), 201
     finally:
+        # antes de _clear_progress, que pode levantar
+        _remove_stored_pdf(saved_path)
         # Limpa o progresso independente do resultado, mas só se a entrada
         # ainda for deste upload (token bate); senão apagaria o progresso de
         # um upload concorrente do mesmo usuário ainda rodando.
-        _clear_progress(user_id, token)
+        if token is not None:
+            _clear_progress(user_id, token)

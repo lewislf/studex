@@ -89,6 +89,8 @@ def cosine_similarity(vec_a, vec_b) -> float:
     devolve 0.0 em vez de dividir por zero."""
     a = np.asarray(vec_a, dtype=float)
     b = np.asarray(vec_b, dtype=float)
+    if a.shape != b.shape:
+        return 0.0
     norma_a = np.linalg.norm(a)
     norma_b = np.linalg.norm(b)
     if norma_a == 0 or norma_b == 0:

@@ -40,3 +40,47 @@
         filter: drop-shadow(0 0 2px rgba(255, 159, 28, 0.3));
     }
 }
+
+.cardContent {
+    min-width: 0;
+}
+
+/* Celular: menos margem e cartões compactos (rótulo pequeno, número em destaque) */
+@media (max-width: $mantine-breakpoint-sm) {
+    .container {
+        padding: var(--mantine-spacing-md);
+        margin: var(--mantine-spacing-sm) auto;
+    }
+
+    .card {
+        --card-padding: var(--mantine-spacing-md);
+    }
+
+    .card:hover {
+        transform: none;
+    }
+
+    .cardTitle {
+        font-size: var(--mantine-font-size-xs);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--mantine-color-dimmed);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cardValue {
+        margin-top: 4px;
+        font-size: 1.4rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--mantine-color-dark-7);
+    }
+
+    .cardIcon {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+    }
+}

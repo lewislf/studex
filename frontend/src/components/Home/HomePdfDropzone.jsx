@@ -75,6 +75,8 @@ export default function HomePdfDropzone({ selectedMaterials }) {
                 const res = await fetch(`${API_URL}/users/${encodeURIComponent(userId)}/documents/progress`, { headers: getAuthHeaders() });
                 if (!res.ok || cancelled) return;
                 const data = await res.json();
+                // a resposta pode chegar depois que o upload terminou
+                if (cancelled) return;
                 setUploadProgress(data.active ? data : null);
             } catch {
                 // rede instável durante o polling não deve derrubar a tela de progresso
@@ -83,10 +85,11 @@ export default function HomePdfDropzone({ selectedMaterials }) {
 
         poll();
         const id = setInterval(poll, 1500);
+        // o estado final é montado em handleSubjectConfirm; limpar aqui fazia
+        // os ícones voltarem a girar logo após o upload terminar
         return () => {
             cancelled = true;
             clearInterval(id);
-            setUploadProgress(null);
         };
     }, [loading, userId]);
 
@@ -138,18 +141,22 @@ export default function HomePdfDropzone({ selectedMaterials }) {
             // trouxe (não um chute): se o mapa mental foi omitido (ex: sem
             // entidades suficientes), o checklist reflete isso corretamente.
             const tipos = new Set((result.materiais || []).map((m) => m.tipo));
-            if (isMountedRef.current) {
-                setUploadProgress({
-                    resumo: tipos.has('resumo'),
-                    mapa_mental: tipos.has('mapa_mental'),
-                    flashcards: tipos.has('baralho'),
-                });
-            }
+            // mantém o ✓ de etapas que o polling já confirmou (ex.: material
+            // gerado mas descartado como duplicata não vem na resposta)
+            const marcarFinal = (salvo) => (prev) => ({
+                resumo: tipos.has('resumo') || Boolean(prev?.resumo),
+                mapa_mental: tipos.has('mapa_mental') || Boolean(prev?.mapa_mental),
+                flashcards: tipos.has('baralho') || Boolean(prev?.flashcards),
+                salvo,
+            });
+            if (isMountedRef.current) setUploadProgress(marcarFinal(false));
             await refreshUser();
+            // só marca como salvo depois que os contadores foram atualizados
+            if (isMountedRef.current) setUploadProgress(marcarFinal(true));
             // Segura o checklist completo visível um instante antes de
             // trocar pra tela de sucesso, senão a troca é instantânea demais
             // pro usuário perceber que tudo terminou.
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            await new Promise((resolve) => setTimeout(resolve, 1200));
 
             // Backend answers 207 (present as an `error` field even though
             // uploadPdf still returns the parsed body) when the document was
