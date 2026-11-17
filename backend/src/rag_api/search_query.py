@@ -7,7 +7,7 @@ import nest_asyncio
 nest_asyncio.apply()
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "qdrant"))
-from qdrant_server import get_vector_store, collection_exists, COLLECTION_NAME
+from qdrant_server import get_vector_store, collection_exists, ensure_payload_indexes, COLLECTION_NAME
 
 import fitz  # PyMuPDF
 
@@ -21,41 +21,41 @@ from llama_index.core import (
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import BaseNode
 from llama_index.core.vector_stores import ExactMatchFilter, MetadataFilters
-from llama_index.embeddings.ollama import OllamaEmbedding
-from llama_index.llms.ollama import Ollama
+from google.genai import types
+from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
+from llama_index.llms.google_genai import GoogleGenAI
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_EMBED_HOST = os.environ.get("OLLAMA_EMBED_HOST", OLLAMA_HOST) # Permite apontar embedding e LLM pra hosts diferentes, se precisar.
-OLLAMA_LLM_HOST = os.environ.get("OLLAMA_LLM_HOST", OLLAMA_HOST)
-LLM_MODEL = os.environ.get("LLM_MODEL", "llama3.2:latest")
-LLM_CONTEXT_WINDOW = int(os.environ.get("LLM_CONTEXT_WINDOW", "4096"))
-
-# Se os livros forem muito grandes, precisa de mais tempo para processar tudo. Aumentar esse tempo ajuda a LLM conseguir processar.
-LLM_REQUEST_TIMEOUT = float(os.environ.get("LLM_REQUEST_TIMEOUT", "600"))
+GEMINI_API_KEY = (
+    os.environ.get("GEMINI_API_KEY")
+    or os.environ.get("GOOGLE_API_KEY")
+    or "missing-api-key"
+)
+LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-3.5-flash-lite")
+EMBED_MODEL = os.environ.get("EMBED_MODEL", "gemini-embedding-001")
+LLM_CONTEXT_WINDOW = int(os.environ.get("LLM_CONTEXT_WINDOW", "1048576"))
 
 # Teto de tokens gerados por chamada. Sem isso, modelos com "thinking" (ex: qwen3)
 # geram milhares de tokens de raciocínio e uma única chamada leva minutos.
 LLM_MAX_OUTPUT_TOKENS = int(os.environ.get("LLM_MAX_OUTPUT_TOKENS", "2048"))
 
-# embed_batch_size alto: bge-m3 é um modelo leve e a GPU tem VRAM de sobra,
-# então o gargalo é o número de round-trips HTTP ao Ollama, não o tamanho do
-# batch. Subir de 10 (default da lib) pra 64 reduz drasticamente as chamadas
-# num documento com muitos chunks (ex: 66 chunks vira 2 chamadas em vez de 7).
-embed_model = OllamaEmbedding(
-    model_name="bge-m3",
-    base_url=OLLAMA_EMBED_HOST,
-    request_timeout=LLM_REQUEST_TIMEOUT,
+# embed_batch_size alto: reduz o número de round-trips HTTP à API num documento
+# com muitos chunks (ex: 66 chunks vira 2 chamadas em vez de 7).
+embed_model = GoogleGenAIEmbedding(
+    model_name=EMBED_MODEL,
+    api_key=GEMINI_API_KEY,
     embed_batch_size=64,
 )
 
-llm = Ollama(
-    model=LLM_MODEL,  # ver modelos disponíveis com `ollama list`
-    base_url=OLLAMA_LLM_HOST,
-    request_timeout=LLM_REQUEST_TIMEOUT,
+llm = GoogleGenAI(
+    model=LLM_MODEL,
+    api_key=GEMINI_API_KEY,
     temperature=0.1,
     context_window=LLM_CONTEXT_WINDOW,
-    thinking=False,
-    additional_kwargs={"num_predict": LLM_MAX_OUTPUT_TOKENS},
+    max_tokens=LLM_MAX_OUTPUT_TOKENS,
+    generation_config=types.GenerateContentConfig(
+        temperature=0.1,
+        max_output_tokens=LLM_MAX_OUTPUT_TOKENS,
+    ),
 )
 
 Settings.embed_model = embed_model
@@ -109,12 +109,22 @@ def load_documents(input_files, metadata: dict | None = None) -> list[Document]:
     return docs
 
 
+# Limita a quantidade máxima de chunks por documento para caber com folga nas
+# cotas por minuto do Free Tier do Gemini (30k tokens/min no gemini-embedding-001
+# e 250k tokens/min no LLM), amostrando uniformemente livros grandes.
+MAX_DOCUMENT_CHUNKS = int(os.environ.get("MAX_DOCUMENT_CHUNKS", "24"))
+
+
 def split_into_nodes(docs: list[Document]) -> list[BaseNode]:
     """Divide os documentos em chunks uma única vez, para reaproveitar entre
     indexação, resumo em cascata e extração do mapa mental, em vez de cada
     etapa re-dividir o mesmo texto do zero."""
     splitter = SentenceSplitter(chunk_size=1024, chunk_overlap=20)
-    return splitter.get_nodes_from_documents(docs)
+    nodes = splitter.get_nodes_from_documents(docs)
+    if MAX_DOCUMENT_CHUNKS > 0 and len(nodes) > MAX_DOCUMENT_CHUNKS:
+        step = len(nodes) / MAX_DOCUMENT_CHUNKS
+        nodes = [nodes[int(i * step)] for i in range(MAX_DOCUMENT_CHUNKS)]
+    return nodes
 
 
 def build_vector_index(nodes: list[BaseNode], collection_name: str = COLLECTION_NAME) -> VectorStoreIndex:
@@ -122,11 +132,13 @@ def build_vector_index(nodes: list[BaseNode], collection_name: str = COLLECTION_
     vector_store = get_vector_store(collection_name)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    return VectorStoreIndex(
+    index = VectorStoreIndex(
         nodes,
         storage_context=storage_context,
         embed_model=embed_model,
     )
+    ensure_payload_indexes(collection_name)  # a coleção só existe depois do primeiro insert
+    return index
 
 
 def index_documents(
